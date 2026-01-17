@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# Aegis Linux - First Boot Configuration Script
+# =============================================================================
+# This script runs on first boot to configure the system
+# =============================================================================
+
+set -euo pipefail
+
+# Check if running in install mode (from Calamares)
+INSTALL_MODE="${1:-}"
+
+log() {
+    echo "[Aegis] $1"
+    logger -t aegis-first-boot "$1"
+}
+
+# Send desktop notification if possible
+notify() {
+    if command -v notify-send &>/dev/null && [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
+        notify-send "Aegis Linux" "$1" --icon=security-high
+    fi
+}
+
+# Configure AppArmor
+configure_apparmor() {
+    log "Configuring AppArmor..."
+
+    # Ensure AppArmor is enabled
+    if systemctl is-enabled apparmor.service &>/dev/null; then
+        log "AppArmor service already enabled"
+    else
+        systemctl enable apparmor.service
+    fi
+
+    # Load all profiles
+    if [[ -d /etc/apparmor.d ]]; then
+        log "Loading AppArmor profiles..."
+
+        # Set profiles to complain mode initially for user-friendly experience
+        # Users can transition to enforce mode when ready
+        if command -v aa-complain &>/dev/null; then
+            find /etc/apparmor.d -maxdepth 1 -type f -exec aa-complain {} \; 2>/dev/null || true
+        fi
+    fi
+
+    log "AppArmor configured"
+}
+
+# Check system security status
+security_check() {
+    log "Running security checks..."
+
+    local issues=()
+
+    # Check AppArmor
+    if ! aa-status &>/dev/null; then
+        issues+=("AppArmor not running")
+    fi
+
+    # Check firewall
+    if ! systemctl is-active nftables.service &>/dev/null; then
+        issues+=("Firewall not active")
+    fi
+
+    # Check audit
+    if ! systemctl is-active auditd.service &>/dev/null; then
+        issues+=("Audit daemon not running")
+    fi
+
+    # Check kernel lockdown
+    if [[ -f /sys/kernel/security/lockdown ]]; then
+        local lockdown
+        lockdown=$(cat /sys/kernel/security/lockdown)
+        if [[ "$lockdown" != *"confidentiality"* ]]; then
+            issues+=("Kernel lockdown not in confidentiality mode")
+        fi
+    fi
+
+    if [[ ${#issues[@]} -eq 0 ]]; then
+        log "All security checks passed"
+        notify "Security check passed. System is protected."
+    else
+        log "Security issues found: ${issues[*]}"
+        notify "Security issues found: ${issues[*]}"
+    fi
+}
+
+# Create user directories
+setup_user_dirs() {
+    log "Setting up user directories..."
+
+    # Get all non-system users
+    while IFS=: read -r username _ uid _ _ home _; do
+        if [[ $uid -ge 1000 && $uid -lt 65534 && -d "$home" ]]; then
+            # Create Screenshots directory
+            mkdir -p "$home/Pictures/Screenshots"
+
+            # Set ownership
+            chown -R "$username:$username" "$home/Pictures" 2>/dev/null || true
+
+            log "Set up directories for user: $username"
+        fi
+    done < /etc/passwd
+}
+
+# Main function
+main() {
+    log "Starting Aegis first boot configuration..."
+
+    if [[ "$INSTALL_MODE" == "--install" ]]; then
+        # Running from Calamares installer
+        log "Running in install mode"
+        configure_apparmor
+    else
+        # Running on actual first boot
+        log "Running on first boot"
+        configure_apparmor
+        setup_user_dirs
+        security_check
+    fi
+
+    log "First boot configuration complete"
+}
+
+# Run main function
+main

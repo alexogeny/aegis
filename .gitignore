@@ -1,0 +1,29 @@
+# Build outputs
+/out/
+*.iso
+*.sha256
+*.b2sum
+
+# Work directories
+/work/
+/tmp/
+
+# Test artifacts
+test-disk.qcow2
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Package build artifacts
+*.pkg.tar.*
+*.log
+pkg/
+src/

@@ -1,0 +1,277 @@
+#!/usr/bin/env bash
+# Aegis Linux - Security Hardening Check Script
+# =============================================================================
+# Verify that security configurations are properly applied
+# =============================================================================
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# Counters
+PASS=0
+WARN=0
+FAIL=0
+
+print_header() {
+    echo -e "\n${BLUE}=== $1 ===${NC}\n"
+}
+
+check_pass() {
+    echo -e "${GREEN}[PASS]${NC} $1"
+    ((PASS++))
+}
+
+check_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+    ((WARN++))
+}
+
+check_fail() {
+    echo -e "${RED}[FAIL]${NC} $1"
+    ((FAIL++))
+}
+
+# Check kernel hardening parameters
+check_kernel() {
+    print_header "Kernel Hardening"
+
+    local checks=(
+        "kernel.kptr_restrict:2"
+        "kernel.dmesg_restrict:1"
+        "kernel.kexec_load_disabled:1"
+        "kernel.yama.ptrace_scope:2"
+        "kernel.randomize_va_space:2"
+        "net.ipv4.tcp_syncookies:1"
+        "net.ipv4.conf.all.rp_filter:1"
+        "net.ipv4.conf.all.accept_redirects:0"
+        "net.ipv4.conf.all.send_redirects:0"
+    )
+
+    for check in "${checks[@]}"; do
+        local param="${check%%:*}"
+        local expected="${check##*:}"
+        local actual
+
+        actual=$(sysctl -n "$param" 2>/dev/null || echo "N/A")
+
+        if [[ "$actual" == "$expected" ]]; then
+            check_pass "$param = $actual"
+        elif [[ "$actual" == "N/A" ]]; then
+            check_warn "$param not available"
+        else
+            check_fail "$param = $actual (expected $expected)"
+        fi
+    done
+}
+
+# Check AppArmor status
+check_apparmor() {
+    print_header "AppArmor"
+
+    if command -v aa-status &>/dev/null; then
+        if systemctl is-active apparmor.service &>/dev/null; then
+            check_pass "AppArmor service is running"
+
+            local profiles
+            profiles=$(aa-status --profiled 2>/dev/null || echo "0")
+            local enforced
+            enforced=$(aa-status --enforced 2>/dev/null || echo "0")
+            local complain
+            complain=$(aa-status --complaining 2>/dev/null || echo "0")
+
+            if [[ "$profiles" -gt 0 ]]; then
+                check_pass "$profiles profiles loaded"
+                if [[ "$enforced" -gt 0 ]]; then
+                    check_pass "$enforced profiles in enforce mode"
+                fi
+                if [[ "$complain" -gt 0 ]]; then
+                    check_warn "$complain profiles in complain mode"
+                fi
+            else
+                check_fail "No AppArmor profiles loaded"
+            fi
+        else
+            check_fail "AppArmor service is not running"
+        fi
+    else
+        check_fail "AppArmor not installed"
+    fi
+}
+
+# Check firewall status
+check_firewall() {
+    print_header "Firewall (nftables)"
+
+    if command -v nft &>/dev/null; then
+        if systemctl is-active nftables.service &>/dev/null; then
+            check_pass "nftables service is running"
+
+            local rules
+            rules=$(nft list ruleset 2>/dev/null | wc -l)
+
+            if [[ "$rules" -gt 5 ]]; then
+                check_pass "Firewall rules loaded ($rules lines)"
+            else
+                check_warn "Minimal firewall rules ($rules lines)"
+            fi
+
+            # Check default policy
+            if nft list ruleset 2>/dev/null | grep -q "policy drop"; then
+                check_pass "Default input policy is DROP"
+            else
+                check_warn "Default input policy may not be DROP"
+            fi
+        else
+            check_fail "nftables service is not running"
+        fi
+    else
+        check_fail "nftables not installed"
+    fi
+}
+
+# Check audit daemon
+check_audit() {
+    print_header "Audit Framework"
+
+    if command -v auditctl &>/dev/null; then
+        if systemctl is-active auditd.service &>/dev/null; then
+            check_pass "auditd service is running"
+
+            local rules
+            rules=$(auditctl -l 2>/dev/null | wc -l)
+
+            if [[ "$rules" -gt 10 ]]; then
+                check_pass "Audit rules loaded ($rules rules)"
+            elif [[ "$rules" -gt 0 ]]; then
+                check_warn "Minimal audit rules ($rules rules)"
+            else
+                check_fail "No audit rules loaded"
+            fi
+        else
+            check_fail "auditd service is not running"
+        fi
+    else
+        check_fail "auditd not installed"
+    fi
+}
+
+# Check kernel lockdown
+check_lockdown() {
+    print_header "Kernel Lockdown"
+
+    if [[ -f /sys/kernel/security/lockdown ]]; then
+        local status
+        status=$(cat /sys/kernel/security/lockdown)
+
+        if [[ "$status" == *"[confidentiality]"* ]]; then
+            check_pass "Kernel lockdown: confidentiality"
+        elif [[ "$status" == *"[integrity]"* ]]; then
+            check_warn "Kernel lockdown: integrity (consider confidentiality)"
+        elif [[ "$status" == *"[none]"* ]]; then
+            check_fail "Kernel lockdown: disabled"
+        else
+            check_warn "Kernel lockdown status: $status"
+        fi
+    else
+        check_warn "Kernel lockdown not available"
+    fi
+}
+
+# Check boot parameters
+check_boot() {
+    print_header "Boot Parameters"
+
+    local cmdline
+    cmdline=$(cat /proc/cmdline)
+
+    local params=(
+        "pti=on"
+        "spectre_v2=on"
+        "lockdown=confidentiality"
+        "lsm=.*apparmor"
+        "audit=1"
+    )
+
+    for param in "${params[@]}"; do
+        if echo "$cmdline" | grep -qE "$param"; then
+            check_pass "Boot param: $param"
+        else
+            check_warn "Missing boot param: $param"
+        fi
+    done
+}
+
+# Check file permissions
+check_permissions() {
+    print_header "Sensitive File Permissions"
+
+    local files=(
+        "/etc/shadow:400"
+        "/etc/gshadow:400"
+        "/etc/passwd:644"
+        "/etc/sudoers:440"
+    )
+
+    for entry in "${files[@]}"; do
+        local file="${entry%%:*}"
+        local expected="${entry##*:}"
+
+        if [[ -f "$file" ]]; then
+            local actual
+            actual=$(stat -c %a "$file")
+
+            if [[ "$actual" == "$expected" || "$actual" -le "$expected" ]]; then
+                check_pass "$file ($actual)"
+            else
+                check_fail "$file has permissions $actual (expected $expected or stricter)"
+            fi
+        fi
+    done
+}
+
+# Summary
+print_summary() {
+    echo -e "\n${BLUE}=== Summary ===${NC}\n"
+    echo -e "${GREEN}Passed:${NC} $PASS"
+    echo -e "${YELLOW}Warnings:${NC} $WARN"
+    echo -e "${RED}Failed:${NC} $FAIL"
+
+    local total=$((PASS + WARN + FAIL))
+    local score=$((PASS * 100 / total))
+
+    echo -e "\n${BLUE}Security Score:${NC} $score%"
+
+    if [[ $FAIL -eq 0 && $WARN -eq 0 ]]; then
+        echo -e "\n${GREEN}Excellent! All security checks passed.${NC}"
+    elif [[ $FAIL -eq 0 ]]; then
+        echo -e "\n${YELLOW}Good. Some warnings to review.${NC}"
+    else
+        echo -e "\n${RED}Action needed. Please address failed checks.${NC}"
+    fi
+}
+
+# Main
+main() {
+    echo -e "${BLUE}"
+    echo "╔══════════════════════════════════════════════╗"
+    echo "║    Aegis Linux - Security Hardening Check    ║"
+    echo "╚══════════════════════════════════════════════╝"
+    echo -e "${NC}"
+
+    check_kernel
+    check_apparmor
+    check_firewall
+    check_audit
+    check_lockdown
+    check_boot
+    check_permissions
+    print_summary
+}
+
+main

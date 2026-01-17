@@ -1,0 +1,42 @@
+# Aegis Linux - Local AppArmor Profile Overrides
+# =============================================================================
+#
+# This directory contains local customizations to AppArmor profiles.
+# Files here will NOT be overwritten during system updates.
+#
+# To add custom rules to a profile:
+#
+# 1. Create a file matching the profile name
+#    Example: For Firefox profile "usr.bin.firefox", create:
+#    /etc/apparmor.d/local/usr.bin.firefox
+#
+# 2. Add your custom rules to this file
+#    Example content:
+#    # Allow access to custom directory
+#    /home/*/.custom-app/** rw,
+#
+# 3. Reload the profile:
+#    sudo apparmor_parser -r /etc/apparmor.d/usr.bin.firefox
+#
+# Common rule syntax:
+#   r  - read
+#   w  - write
+#   x  - execute
+#   l  - link
+#   k  - lock
+#   m  - memory map executable
+#
+# Wildcards:
+#   *  - matches any characters except /
+#   ** - matches any characters including /
+#   ?  - matches single character
+#
+# For more information:
+#   https://gitlab.com/apparmor/apparmor/-/wikis/QuickProfileLanguage
+#
+# To transition profiles from complain to enforce mode:
+#   sudo aa-enforce /etc/apparmor.d/usr.bin.firefox
+#
+# To check current profile status:
+#   sudo aa-status
+#

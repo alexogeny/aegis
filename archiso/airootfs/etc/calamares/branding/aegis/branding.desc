@@ -1,0 +1,36 @@
+---
+componentName: aegis
+
+# Strings for the installer
+strings:
+    productName:         "Aegis Linux"
+    shortProductName:    "Aegis"
+    version:             "2026.01"
+    shortVersion:        "2026.01"
+    versionedName:       "Aegis Linux 2026.01"
+    shortVersionedName:  "Aegis 2026.01"
+    bootloaderEntryName: "Aegis Linux"
+    productUrl:          "https://github.com/aegis-linux"
+    supportUrl:          "https://github.com/aegis-linux/support"
+    knownIssuesUrl:      "https://github.com/aegis-linux/issues"
+    releaseNotesUrl:     "https://github.com/aegis-linux/releases"
+
+# Images for the installer
+images:
+    productBanner:       "images/banner.png"
+    productIcon:         "images/icon.png"
+    productLogo:         "images/logo.png"
+    productWallpaper:    "images/wallpaper.png"
+    productWelcome:      "images/welcome.png"
+
+# Slideshow
+slideshow:               "show.qml"
+slideshowAPI: 2
+
+# Style (Catppuccin Mocha colors)
+style:
+    SidebarBackground:        "#1e1e2e"
+    SidebarText:              "#cdd6f4"
+    SidebarTextSelect:        "#cba6f7"
+    SidebarBackgroundCurrent: "#313244"
+    SidebarBackgroundSelected: "#45475a"

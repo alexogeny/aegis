@@ -1,0 +1,26 @@
+# Aegis Linux - System Environment Variables
+# =============================================================================
+
+# Editor
+EDITOR=nvim
+VISUAL=nvim
+
+# XDG Base Directories
+XDG_CONFIG_HOME=$HOME/.config
+XDG_CACHE_HOME=$HOME/.cache
+XDG_DATA_HOME=$HOME/.local/share
+XDG_STATE_HOME=$HOME/.local/state
+
+# Qt theming
+QT_QPA_PLATFORMTHEME=qt5ct
+
+# NVIDIA Wayland support
+__GLX_VENDOR_LIBRARY_NAME=nvidia
+GBM_BACKEND=nvidia-drm
+LIBVA_DRIVER_NAME=nvidia
+
+# Mozilla Wayland
+MOZ_ENABLE_WAYLAND=1
+
+# Electron Wayland (for VSCode, Slack, Discord, etc.)
+ELECTRON_OZONE_PLATFORM_HINT=auto
