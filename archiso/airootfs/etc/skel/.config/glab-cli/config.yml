@@ -1,0 +1,72 @@
+# Aegis Linux - GitLab CLI Configuration
+# Run 'glab auth login' to authenticate
+
+# Editor
+editor: nvim
+
+# Default git protocol
+git_protocol: ssh
+
+# Pager
+pager: delta
+
+# Browser
+browser: firefox
+
+# Prompt
+prompt: enabled
+
+# Aliases for common workflows
+aliases:
+    # Quick status
+    st: "!glab mr list --author=@me && glab issue list --author=@me"
+
+    # MR (Merge Request) shortcuts - GitLab's equivalent of PRs
+    mrc: mr create --fill
+    mrd: mr create --draft --fill
+    mrv: mr view --web
+    mrl: mr list
+    mrm: mr merge --squash
+    mra: mr approve
+    mrr: mr revoke
+
+    # Issue shortcuts
+    ic: issue create
+    il: issue list
+    iv: issue view --web
+    ie: issue edit
+    ic: issue close
+
+    # Repo/Project shortcuts
+    pv: repo view --web
+    pf: repo fork --clone
+
+    # Pipeline/CI shortcuts
+    pipe: pipeline list
+    pipe-view: pipeline view
+    ci: pipeline ci view
+    ci-lint: pipeline ci lint
+    jobs: pipeline ci jobs
+
+    # Review workflow
+    review-mine: mr list --reviewer=@me
+    my-mrs: mr list --author=@me
+
+    # Labels
+    labels: label list
+
+    # Milestones
+    miles: milestone list
+
+    # Dashboard
+    dash: "!echo '=== MRs Awaiting My Review ===' && glab mr list --reviewer=@me 2>/dev/null && echo '' && echo '=== My Open MRs ===' && glab mr list --author=@me 2>/dev/null && echo '' && echo '=== Recent Pipelines ===' && glab pipeline list --per-page=5 2>/dev/null"
+
+    # Quick web access
+    web: repo view --web
+    ci-web: pipeline ci view --web
+
+# Hosts configuration (add after auth)
+hosts:
+    gitlab.com:
+        api_host: gitlab.com
+        git_protocol: ssh

@@ -1,0 +1,183 @@
+# Aegis Linux - Global Git Ignore
+# Files and patterns to ignore in all repositories
+
+# ===== OS Generated =====
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ===== Editors =====
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Vim/Neovim
+*.swp
+*.swo
+*.swn
+*~
+.netrwhist
+Session.vim
+tags
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# ===== Development =====
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+.envrc
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+.python-version
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Rust
+/target/
+Cargo.lock
+*.rs.bk
+
+# Go
+/vendor/
+go.sum
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+# ===== Build Outputs =====
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.dSYM/
+
+# ===== Logs & Databases =====
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# ===== Secrets & Credentials =====
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+.secrets
+secrets.yaml
+secrets.json
+credentials.json
+service-account.json
+.gcp-credentials.json
+.aws/
+.azure/
+
+# ===== Misc =====
+*.bak
+*.tmp
+*.temp
+*.orig
+*.rej
+.cache/
+.parcel-cache/
+.turbo/
+coverage/
+.nyc_output/
+*.lcov
+
+# ===== Terraform =====
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# ===== Kubernetes =====
+kubeconfig
+*.kubeconfig
+
+# ===== direnv =====
+.direnv/
+
+# ===== SOPS =====
+*.dec
+*.decrypted.*

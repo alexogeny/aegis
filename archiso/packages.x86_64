@@ -322,6 +322,10 @@ bun
 # Go
 go
 
+# Git Forges CLI
+github-cli
+glab
+
 # Additional dev utilities
 jq
 yq
@@ -330,6 +334,33 @@ lazygit
 delta
 tokei
 hyperfine
+difftastic
+watchexec
+just
+direnv
+mkcert
+age
+sops
+pre-commit
+shellcheck
+shfmt
+
+# Database tools
+sqlite
+postgresql-libs
+redis
+
+# API & Network dev
+curlie
+xh
+grpcurl
+websocat
+
+# Container & K8s
+kubectl
+k9s
+helm
+podman
 
 # -----------------------------------------------------------------------------
 # Applications - Browsers

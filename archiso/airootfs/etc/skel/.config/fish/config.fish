@@ -37,15 +37,67 @@ abbr -a gpl 'git pull'
 abbr -a gs 'git status'
 abbr -a gd 'git diff'
 abbr -a gl 'git log --oneline'
+abbr -a gco 'git checkout'
+abbr -a gsw 'git switch'
+abbr -a gb 'git branch'
+abbr -a gst 'git stash'
+abbr -a lg 'lazygit'
+
+# GitHub/GitLab CLI abbreviations
+abbr -a ghpr 'gh pr'
+abbr -a ghis 'gh issue'
+abbr -a ghdash 'gh dash'
+abbr -a glmr 'glab mr'
+abbr -a glis 'glab issue'
+
+# Docker abbreviations
+abbr -a dps 'docker ps'
+abbr -a dpa 'docker ps -a'
+abbr -a di 'docker images'
+abbr -a dex 'docker exec -it'
+abbr -a dc 'docker compose'
+abbr -a dcu 'docker compose up -d'
+abbr -a dcd 'docker compose down'
+abbr -a dcl 'docker compose logs -f'
+
+# Kubernetes abbreviations
+abbr -a k 'kubectl'
+abbr -a kgp 'kubectl get pods'
+abbr -a kgs 'kubectl get svc'
+abbr -a kgd 'kubectl get deployments'
+abbr -a kaf 'kubectl apply -f'
+abbr -a kdf 'kubectl delete -f'
+abbr -a klog 'kubectl logs -f'
+abbr -a kex 'kubectl exec -it'
 
 # Initialize Starship prompt
 if type -q starship
     starship init fish | source
 end
 
-# Initialize zoxide
+# Initialize zoxide (smart cd)
 if type -q zoxide
     zoxide init fish | source
+end
+
+# Initialize direnv (per-directory environments)
+if type -q direnv
+    direnv hook fish | source
+end
+
+# GitHub CLI completions
+if type -q gh
+    gh completion -s fish | source 2>/dev/null
+end
+
+# GitLab CLI completions
+if type -q glab
+    glab completion -s fish | source 2>/dev/null
+end
+
+# kubectl completions
+if type -q kubectl
+    kubectl completion fish | source 2>/dev/null
 end
 
 # Welcome message for TTY

@@ -1,0 +1,77 @@
+# Aegis Linux - GitHub CLI Configuration
+# Run 'gh auth login' to authenticate
+
+# Editor for gh commands
+editor: nvim
+
+# Default git protocol (ssh recommended for security)
+git_protocol: ssh
+
+# Prompt style
+prompt: enabled
+
+# Pager (use delta for nice diffs)
+pager: delta
+
+# Browser for web commands
+browser: firefox
+
+# Aliases for common workflows
+aliases:
+    # Quick status overview
+    st: "!gh pr status && gh issue status"
+
+    # Clone with all branches
+    cl: repo clone
+
+    # PR shortcuts
+    prc: pr create --fill
+    prd: pr create --draft --fill
+    prv: pr view --web
+    prl: pr list
+    prm: pr merge --auto --squash
+    prr: pr review
+    pra: pr checks
+
+    # Issue shortcuts
+    ic: issue create
+    il: issue list
+    iv: issue view
+    ie: issue edit
+
+    # Repo shortcuts
+    rv: repo view --web
+    rf: repo fork --clone
+
+    # Notifications
+    notif: "!gh api notifications --jq '.[] | \"\\(.subject.type): \\(.subject.title)\"' | head -20"
+
+    # Search PRs/issues
+    search-prs: "!gh pr list --search"
+    search-issues: "!gh issue list --search"
+
+    # Review workflow
+    review-requested: pr list --search "review-requested:@me"
+    my-prs: pr list --author "@me"
+
+    # CI/CD
+    runs: run list
+    run-view: run view
+    run-watch: run watch
+
+    # Gist shortcuts
+    gist-new: gist create
+    gist-list: gist list
+
+    # Dashboard
+    dash: "!echo '=== PRs Awaiting Review ===' && gh pr list --search 'review-requested:@me' && echo '' && echo '=== My Open PRs ===' && gh pr list --author '@me' && echo '' && echo '=== Recent Notifications ===' && gh api notifications --jq '.[] | \"\\(.subject.type): \\(.subject.title)\"' 2>/dev/null | head -5"
+
+    # Copilot (if available)
+    ai: copilot suggest
+
+    # Quick actions
+    web: repo view --web
+    actions: run list --limit 10
+
+http_unix_socket:
+version: "1"

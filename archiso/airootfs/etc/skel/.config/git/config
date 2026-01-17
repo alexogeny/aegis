@@ -1,0 +1,281 @@
+# Aegis Linux - Git Configuration
+# User-specific settings (name, email) should be set via:
+#   git config --global user.name "Your Name"
+#   git config --global user.email "your@email.com"
+
+[init]
+    # Default branch name
+    defaultBranch = main
+
+[core]
+    # Use delta for paging (beautiful diffs)
+    pager = delta
+
+    # Prevent issues with line endings
+    autocrlf = input
+
+    # Treat spaces before tabs and trailing whitespace as errors
+    whitespace = space-before-tab,-indent-with-non-tab,trailing-space
+
+    # Speed up commands by ignoring untracked files
+    untrackedCache = true
+
+    # Use global gitignore
+    excludesFile = ~/.config/git/ignore
+
+[color]
+    ui = auto
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    # Use n and N to navigate diff hunks
+    navigate = true
+    # Show line numbers
+    line-numbers = true
+    # Catppuccin Mocha theme colors
+    syntax-theme = Catppuccin Mocha
+    # Side-by-side view (set to false for inline)
+    side-by-side = false
+    # Hyperlinks to file:line
+    hyperlinks = true
+
+[merge]
+    # Show base version in conflicts
+    conflictstyle = zdiff3
+    # Use difftastic for mergetool
+    tool = nvimdiff
+
+[diff]
+    # Use difftastic for diffs
+    external = difft
+    # Detect copies and renames
+    renames = copies
+    # Better algorithm for diffs
+    algorithm = histogram
+    # Color moved lines differently
+    colorMoved = default
+
+[difftool]
+    prompt = false
+
+[difftool "difft"]
+    cmd = difft "$LOCAL" "$REMOTE"
+
+[fetch]
+    # Auto-prune deleted remote branches
+    prune = true
+    # Prune tags too
+    pruneTags = true
+    # Parallel fetch
+    parallel = 0
+
+[pull]
+    # Rebase instead of merge on pull
+    rebase = true
+
+[push]
+    # Push current branch to same name on remote
+    default = current
+    # Auto-setup remote tracking
+    autoSetupRemote = true
+    # Push tags with commits
+    followTags = true
+
+[rebase]
+    # Auto-stash before rebase
+    autoStash = true
+    # Auto-squash fixup commits
+    autoSquash = true
+
+[rerere]
+    # Remember how merge conflicts were resolved
+    enabled = true
+
+[status]
+    # Show submodule summary
+    submoduleSummary = true
+    # Short status format
+    short = true
+    # Show branch info
+    branch = true
+
+[log]
+    # Show relative dates
+    date = relative
+
+[commit]
+    # Show diff in commit message editor
+    verbose = true
+
+[branch]
+    # Sort branches by most recent commit
+    sort = -committerdate
+
+[tag]
+    # Sort tags by version
+    sort = -version:refname
+
+[help]
+    # Correct typos
+    autocorrect = prompt
+
+[credential]
+    # Cache credentials for 1 hour
+    helper = cache --timeout=3600
+
+[url "git@github.com:"]
+    # Use SSH for GitHub
+    insteadOf = https://github.com/
+
+[url "git@gitlab.com:"]
+    # Use SSH for GitLab
+    insteadOf = https://gitlab.com/
+
+[alias]
+    # Status shortcuts
+    s = status
+    ss = status --short --branch
+
+    # Commit shortcuts
+    c = commit
+    cm = commit -m
+    ca = commit --amend
+    can = commit --amend --no-edit
+    cf = commit --fixup
+
+    # Add shortcuts
+    a = add
+    aa = add --all
+    ap = add --patch
+
+    # Branch shortcuts
+    b = branch
+    ba = branch --all
+    bd = branch --delete
+    bD = branch --delete --force
+    bm = branch --move
+
+    # Checkout shortcuts
+    co = checkout
+    cob = checkout -b
+    com = checkout main
+    cod = checkout develop
+
+    # Switch (newer checkout alternative)
+    sw = switch
+    swc = switch --create
+
+    # Diff shortcuts
+    d = diff
+    ds = diff --staged
+    dt = difftool
+    dft = "!git diff --name-only | xargs -I {} difft {} {}"
+
+    # Log shortcuts
+    l = log --oneline -20
+    lg = log --graph --oneline --decorate -20
+    la = log --graph --oneline --decorate --all -30
+    ll = log --pretty=format:'%C(yellow)%h%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' -20
+    hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
+
+    # Push/Pull shortcuts
+    p = push
+    pf = push --force-with-lease
+    pu = push -u origin HEAD
+    pl = pull
+    plr = pull --rebase
+
+    # Fetch shortcuts
+    f = fetch
+    fa = fetch --all
+
+    # Rebase shortcuts
+    rb = rebase
+    rbi = rebase --interactive
+    rbc = rebase --continue
+    rba = rebase --abort
+    rbs = rebase --skip
+
+    # Merge shortcuts
+    m = merge
+    ma = merge --abort
+    mff = merge --ff-only
+
+    # Stash shortcuts
+    st = stash
+    stp = stash pop
+    stl = stash list
+    std = stash drop
+    sta = stash apply
+    sts = stash show --patch
+
+    # Reset shortcuts
+    unstage = reset HEAD --
+    uncommit = reset --soft HEAD~1
+    hardreset = reset --hard
+
+    # Remote shortcuts
+    r = remote
+    rv = remote --verbose
+    ra = remote add
+    rr = remote remove
+
+    # Cherry-pick
+    cp = cherry-pick
+    cpc = cherry-pick --continue
+    cpa = cherry-pick --abort
+
+    # Tags
+    t = tag
+    tl = tag --list
+
+    # Worktree
+    wt = worktree
+    wta = worktree add
+    wtl = worktree list
+    wtr = worktree remove
+
+    # Cleanup
+    cleanup = "!git branch --merged | grep -v '\\*\\|main\\|master\\|develop' | xargs -n 1 git branch -d"
+    prune-local = "!git fetch --prune && git branch -vv | grep ': gone]' | awk '{print $1}' | xargs -r git branch -D"
+
+    # Show contributors
+    contributors = shortlog --summary --numbered
+
+    # What did I do today?
+    today = log --since=midnight --author='$(git config user.email)' --oneline
+
+    # What did I do this week?
+    week = log --since='1 week ago' --author='$(git config user.email)' --oneline
+
+    # Find commits by message
+    find = "!f() { git log --pretty=format:'%C(yellow)%h %Cblue%ad %Creset%s' --date=short --all --grep=$1; }; f"
+
+    # Find commits by content
+    search = "!f() { git log --pretty=format:'%C(yellow)%h %Cblue%ad %Creset%s' --date=short --all -S$1; }; f"
+
+    # Show ignored files
+    ignored = "!git ls-files -v | grep '^[[:lower:]]'"
+
+    # Assume unchanged (useful for local config files)
+    assume = update-index --assume-unchanged
+    unassume = update-index --no-assume-unchanged
+    assumed = "!git ls-files -v | grep ^h | cut -c 3-"
+
+    # Quick amend with all changes
+    oops = "!git add -A && git commit --amend --no-edit"
+
+    # Interactive rebase on last N commits
+    reb = "!f() { git rebase -i HEAD~$1; }; f"
+
+    # Create a backup branch
+    backup = "!f() { git branch backup/$(git branch --show-current)/$(date +%Y%m%d-%H%M%S); }; f"
+
+    # WIP commit
+    wip = "!git add -A && git commit -m 'WIP: work in progress [skip ci]'"
+    unwip = reset HEAD~1
+
+    # Aliases list
+    aliases = config --get-regexp alias
