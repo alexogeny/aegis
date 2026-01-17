@@ -1,0 +1,290 @@
+{
+  "policies": {
+    "DisableTelemetry": true,
+    "DisableFirefoxStudies": true,
+    "DisablePocket": true,
+    "DisableFirefoxAccounts": false,
+    "DisableFormHistory": false,
+    "DisablePasswordReveal": false,
+    "DisplayBookmarksToolbar": "newtab",
+    "DisplayMenuBar": "default-off",
+    "DontCheckDefaultBrowser": true,
+    "EnableTrackingProtection": {
+      "Value": true,
+      "Locked": false,
+      "Cryptomining": true,
+      "Fingerprinting": true
+    },
+    "EncryptedMediaExtensions": {
+      "Enabled": true,
+      "Locked": false
+    },
+    "ExtensionUpdate": true,
+    "FirefoxHome": {
+      "Search": true,
+      "TopSites": false,
+      "SponsoredTopSites": false,
+      "Highlights": false,
+      "Pocket": false,
+      "SponsoredPocket": false,
+      "Snippets": false,
+      "Locked": false
+    },
+    "FirefoxSuggest": {
+      "WebSuggestions": false,
+      "SponsoredSuggestions": false,
+      "ImproveSuggest": false,
+      "Locked": false
+    },
+    "HardwareAcceleration": true,
+    "Homepage": {
+      "URL": "about:home",
+      "Locked": false,
+      "StartPage": "previous-session"
+    },
+    "HttpsOnlyMode": "enabled",
+    "NetworkPrediction": false,
+    "NewTabPage": true,
+    "NoDefaultBookmarks": false,
+    "OfferToSaveLogins": true,
+    "OfferToSaveLoginsDefault": true,
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "PasswordManagerEnabled": true,
+    "PDFjs": {
+      "Enabled": true,
+      "EnablePermissions": false
+    },
+    "Permissions": {
+      "Camera": {
+        "BlockNewRequests": false,
+        "Locked": false
+      },
+      "Microphone": {
+        "BlockNewRequests": false,
+        "Locked": false
+      },
+      "Location": {
+        "BlockNewRequests": false,
+        "Locked": false
+      },
+      "Notifications": {
+        "BlockNewRequests": true,
+        "Locked": false
+      },
+      "Autoplay": {
+        "Default": "block-audio-video",
+        "Locked": false
+      }
+    },
+    "PopupBlocking": {
+      "Default": true,
+      "Locked": false
+    },
+    "Preferences": {
+      "privacy.donottrackheader.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "privacy.globalprivacycontrol.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "privacy.resistFingerprinting": {
+        "Value": false,
+        "Status": "default"
+      },
+      "privacy.trackingprotection.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "privacy.trackingprotection.socialtracking.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "privacy.query_stripping.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "privacy.query_stripping.enabled.pbmode": {
+        "Value": true,
+        "Status": "default"
+      },
+      "browser.contentblocking.category": {
+        "Value": "strict",
+        "Status": "default"
+      },
+      "browser.safebrowsing.malware.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "browser.safebrowsing.phishing.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "browser.send_pings": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.urlbar.speculativeConnect.enabled": {
+        "Value": false,
+        "Status": "default"
+      },
+      "dom.security.https_only_mode": {
+        "Value": true,
+        "Status": "default"
+      },
+      "dom.security.https_only_mode_ever_enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "network.cookie.cookieBehavior": {
+        "Value": 5,
+        "Status": "default"
+      },
+      "network.cookie.lifetimePolicy": {
+        "Value": 0,
+        "Status": "default"
+      },
+      "network.dns.disablePrefetch": {
+        "Value": true,
+        "Status": "default"
+      },
+      "network.predictor.enabled": {
+        "Value": false,
+        "Status": "default"
+      },
+      "network.prefetch-next": {
+        "Value": false,
+        "Status": "default"
+      },
+      "network.http.referer.XOriginPolicy": {
+        "Value": 2,
+        "Status": "default"
+      },
+      "network.http.referer.XOriginTrimmingPolicy": {
+        "Value": 2,
+        "Status": "default"
+      },
+      "geo.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "media.peerconnection.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "media.peerconnection.ice.default_address_only": {
+        "Value": true,
+        "Status": "default"
+      },
+      "media.peerconnection.ice.no_host": {
+        "Value": false,
+        "Status": "default"
+      },
+      "media.peerconnection.ice.proxy_only_if_behind_proxy": {
+        "Value": true,
+        "Status": "default"
+      },
+      "webgl.disabled": {
+        "Value": false,
+        "Status": "default"
+      },
+      "dom.event.clipboardevents.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "extensions.pocket.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "toolkit.telemetry.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "toolkit.telemetry.unified": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "toolkit.telemetry.archive.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "datareporting.healthreport.uploadEnabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "datareporting.policy.dataSubmissionEnabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "app.shield.optoutstudies.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "app.normandy.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "beacon.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.ping-centre.telemetry": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.newtabpage.activity-stream.feeds.telemetry": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.newtabpage.activity-stream.telemetry": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.tabs.crashReporting.sendReport": {
+        "Value": false,
+        "Status": "default"
+      },
+      "browser.crashReports.unsubmittedCheck.autoSubmit2": {
+        "Value": false,
+        "Status": "default"
+      },
+      "gfx.webrender.all": {
+        "Value": true,
+        "Status": "default"
+      },
+      "media.ffmpeg.vaapi.enabled": {
+        "Value": true,
+        "Status": "default"
+      },
+      "widget.dmabuf.force-enabled": {
+        "Value": true,
+        "Status": "default"
+      }
+    },
+    "PromptForDownloadLocation": false,
+    "SanitizeOnShutdown": {
+      "Cache": false,
+      "Cookies": false,
+      "Downloads": false,
+      "FormData": false,
+      "History": false,
+      "Sessions": false,
+      "SiteSettings": false,
+      "OfflineApps": false,
+      "Locked": false
+    },
+    "SearchSuggestEnabled": true,
+    "ShowHomeButton": true,
+    "UserMessaging": {
+      "WhatsNew": false,
+      "ExtensionRecommendations": false,
+      "FeatureRecommendations": false,
+      "UrlbarInterventions": false,
+      "SkipOnboarding": true,
+      "MoreFromMozilla": false,
+      "Locked": false
+    }
+  }
+}

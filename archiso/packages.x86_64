@@ -254,6 +254,8 @@ udiskie
 xdg-user-dirs
 xdg-utils
 reflector
+zram-generator
+systemd-oomd
 
 # -----------------------------------------------------------------------------
 # Calamares Installer

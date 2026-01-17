@@ -1,0 +1,53 @@
+# Aegis Linux - I/O Scheduler Configuration
+# =============================================================================
+# Optimal I/O schedulers for different storage types
+# =============================================================================
+
+# NVMe devices - use 'none' (no scheduler needed for NVMe)
+# NVMe has its own internal scheduling and doesn't benefit from kernel schedulers
+ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="none"
+
+# SATA/SAS SSDs - use 'mq-deadline' for low latency
+# mq-deadline provides good latency with minimal overhead for SSDs
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+
+# SATA/SAS HDDs - use 'bfq' for better interactivity
+# BFQ provides fair bandwidth distribution and low latency for interactive tasks
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+
+# Virtual block devices (VMs) - use 'none' or 'mq-deadline'
+ACTION=="add|change", KERNEL=="vd[a-z]", ATTR{queue/scheduler}="none"
+
+# MMC/SD cards - use 'mq-deadline'
+ACTION=="add|change", KERNEL=="mmcblk[0-9]*", ATTR{queue/scheduler}="mq-deadline"
+
+# Loop devices - use 'none'
+ACTION=="add|change", KERNEL=="loop[0-9]*", ATTR{queue/scheduler}="none"
+
+# =============================================================================
+# Queue depth and readahead tuning
+# =============================================================================
+
+# NVMe - increase queue depth and readahead
+ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/nr_requests}="1024"
+ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/read_ahead_kb}="256"
+
+# SSDs - moderate queue depth
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/nr_requests}="256"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/read_ahead_kb}="256"
+
+# HDDs - larger readahead for sequential reads
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/nr_requests}="128"
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/read_ahead_kb}="1024"
+
+# =============================================================================
+# Power management
+# =============================================================================
+
+# Enable APM for HDDs (when on battery - requires laptop-mode or similar)
+# Level 254 = maximum performance, 1 = maximum power saving
+# ACTION=="add", SUBSYSTEM=="block", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", \
+#     RUN+="/usr/bin/hdparm -B 254 /dev/%k"
+
+# Enable SATA link power management for SSDs
+ACTION=="add", SUBSYSTEM=="scsi_host", KERNEL=="host*", ATTR{link_power_management_policy}="med_power_with_dipm"
