@@ -1,0 +1,17 @@
+[Unit]
+Description=Aegis Download Scanner - Automatic malware scanning for downloads
+Documentation=man:clamdscan(1)
+After=clamav-daemon.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/aegis-download-scanner monitor
+Restart=on-failure
+RestartSec=10
+
+# Resource limits
+MemoryMax=256M
+CPUQuota=25%
+
+[Install]
+WantedBy=default.target

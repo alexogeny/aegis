@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+# Aegis Linux - Download Scanner
+# =============================================================================
+# Monitors the Downloads directory and scans new files automatically
+# Quarantines infected files and sends notifications
+# =============================================================================
+
+set -euo pipefail
+
+# Configuration
+WATCH_DIR="${HOME}/Downloads"
+QUARANTINE_DIR="${HOME}/.local/share/aegis-quarantine"
+LOG_FILE="${HOME}/.local/share/aegis-quarantine/scan.log"
+SCAN_DELAY=2  # Seconds to wait after file creation before scanning
+
+# Colors for terminal output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Create directories
+mkdir -p "$QUARANTINE_DIR"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+
+notify() {
+    local urgency="$1"
+    local title="$2"
+    local message="$3"
+
+    if command -v notify-send &>/dev/null; then
+        notify-send -u "$urgency" "$title" "$message"
+    fi
+}
+
+scan_file() {
+    local file="$1"
+
+    # Skip if file doesn't exist or is a directory
+    [[ ! -f "$file" ]] && return 0
+
+    # Skip if file is still being written (check if size changes)
+    local size1 size2
+    size1=$(stat -c %s "$file" 2>/dev/null || echo 0)
+    sleep 1
+    size2=$(stat -c %s "$file" 2>/dev/null || echo 0)
+
+    if [[ "$size1" != "$size2" ]]; then
+        # File still being downloaded, wait
+        sleep "$SCAN_DELAY"
+    fi
+
+    log "Scanning: $file"
+
+    # Scan with ClamAV
+    local result
+    if result=$(clamdscan --no-summary "$file" 2>&1); then
+        # Clean file
+        log "CLEAN: $file"
+        notify "low" "Aegis Scanner" "✓ Download scanned clean: $(basename "$file")"
+        return 0
+    else
+        # Check if it's actually infected or just an error
+        if echo "$result" | grep -q "FOUND"; then
+            # Infected - quarantine
+            local virus_name
+            virus_name=$(echo "$result" | grep "FOUND" | sed 's/.*: \(.*\) FOUND/\1/')
+
+            log "INFECTED: $file - $virus_name"
+
+            # Move to quarantine
+            local quarantine_name
+            quarantine_name="$(date +%Y%m%d_%H%M%S)_$(basename "$file")"
+            mv "$file" "$QUARANTINE_DIR/$quarantine_name"
+
+            # Set restrictive permissions
+            chmod 000 "$QUARANTINE_DIR/$quarantine_name"
+
+            log "QUARANTINED: $quarantine_name"
+
+            notify "critical" "⚠️ Malware Detected!" \
+                "File: $(basename "$file")\nThreat: $virus_name\n\nFile has been quarantined."
+
+            return 1
+        else
+            # Scan error (not infected)
+            log "SCAN ERROR: $file - $result"
+            return 0
+        fi
+    fi
+}
+
+monitor_downloads() {
+    echo -e "${GREEN}[Aegis]${NC} Starting download monitor for: $WATCH_DIR"
+    log "Download scanner started - watching: $WATCH_DIR"
+
+    # Use inotifywait to monitor for new files
+    if ! command -v inotifywait &>/dev/null; then
+        echo -e "${RED}[Error]${NC} inotifywait not found. Install inotify-tools."
+        exit 1
+    fi
+
+    # Monitor for file creation and close_write events
+    inotifywait -m -e close_write -e moved_to --format '%w%f' "$WATCH_DIR" 2>/dev/null | \
+    while read -r file; do
+        # Skip partial/temporary files
+        [[ "$(basename "$file")" == .* ]] && continue
+        [[ "$(basename "$file")" == *.part ]] && continue
+        [[ "$(basename "$file")" == *.crdownload ]] && continue
+        [[ "$(basename "$file")" == *.tmp ]] && continue
+
+        # Wait a moment for file to be fully written
+        sleep "$SCAN_DELAY"
+
+        # Scan in background to not block monitoring
+        scan_file "$file" &
+    done
+}
+
+# Command handling
+case "${1:-monitor}" in
+    monitor)
+        monitor_downloads
+        ;;
+    scan)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: $0 scan <file|directory>"
+            exit 1
+        fi
+        if [[ -d "$2" ]]; then
+            find "$2" -type f -exec "$0" scan {} \;
+        else
+            scan_file "$2"
+        fi
+        ;;
+    quarantine-list)
+        echo "Quarantined files:"
+        ls -lh "$QUARANTINE_DIR" 2>/dev/null || echo "No quarantined files"
+        ;;
+    quarantine-delete)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: $0 quarantine-delete <filename|all>"
+            exit 1
+        fi
+        if [[ "$2" == "all" ]]; then
+            rm -rf "$QUARANTINE_DIR"/*
+            echo "Quarantine cleared"
+        else
+            rm -f "$QUARANTINE_DIR/$2"
+            echo "Deleted: $2"
+        fi
+        ;;
+    quarantine-restore)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: $0 quarantine-restore <filename>"
+            exit 1
+        fi
+        chmod 644 "$QUARANTINE_DIR/$2"
+        mv "$QUARANTINE_DIR/$2" "$WATCH_DIR/"
+        echo "Restored: $2 (WARNING: File may be malicious!)"
+        ;;
+    help|--help|-h)
+        echo "Aegis Download Scanner"
+        echo ""
+        echo "Usage: $0 <command> [args]"
+        echo ""
+        echo "Commands:"
+        echo "  monitor              Start monitoring Downloads folder (default)"
+        echo "  scan <path>          Scan a specific file or directory"
+        echo "  quarantine-list      List quarantined files"
+        echo "  quarantine-delete    Delete quarantined file(s)"
+        echo "  quarantine-restore   Restore a quarantined file (use with caution!)"
+        echo "  help                 Show this help"
+        ;;
+    *)
+        echo "Unknown command: $1"
+        echo "Run '$0 help' for usage"
+        exit 1
+        ;;
+esac

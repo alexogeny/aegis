@@ -27,4 +27,5 @@ file_permissions=(
   ["/root/.automated_script.sh"]="0:0:755"
   ["/usr/local/bin/aegis-first-boot"]="0:0:755"
   ["/usr/local/bin/aegis-hardening-check"]="0:0:755"
+  ["/usr/local/bin/aegis-download-scanner"]="0:0:755"
 )

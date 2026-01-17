@@ -1,5 +1,11 @@
 {
   "policies": {
+    "ExtensionSettings": {
+      "uBlock0@raymondhill.net": {
+        "installation_mode": "force_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi"
+      }
+    },
     "DisableTelemetry": true,
     "DisableFirefoxStudies": true,
     "DisablePocket": true,
@@ -116,11 +122,31 @@
       },
       "browser.safebrowsing.malware.enabled": {
         "Value": true,
-        "Status": "default"
+        "Status": "locked"
       },
       "browser.safebrowsing.phishing.enabled": {
         "Value": true,
-        "Status": "default"
+        "Status": "locked"
+      },
+      "browser.safebrowsing.downloads.enabled": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "browser.safebrowsing.downloads.remote.enabled": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "browser.safebrowsing.downloads.remote.block_potentially_unwanted": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "browser.safebrowsing.downloads.remote.block_uncommon": {
+        "Value": true,
+        "Status": "locked"
+      },
+      "browser.safebrowsing.blockedURIs.enabled": {
+        "Value": true,
+        "Status": "locked"
       },
       "browser.send_pings": {
         "Value": false,

@@ -1,0 +1,25 @@
+[Unit]
+Description=ClamAV On-Access Scanner
+Documentation=man:clamonacc(8) man:clamd.conf(5)
+After=clamav-daemon.service
+Requires=clamav-daemon.service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/clamonacc -F --config-file=/etc/clamav/clamonacc.conf
+Restart=on-failure
+RestartSec=10
+
+# Run as root (required for fanotify)
+User=root
+
+# Hardening
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=false
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_DAC_READ_SEARCH
+AmbientCapabilities=CAP_SYS_ADMIN CAP_DAC_READ_SEARCH
+
+[Install]
+WantedBy=multi-user.target
