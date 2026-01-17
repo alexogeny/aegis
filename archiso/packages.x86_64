@@ -75,6 +75,9 @@ waybar
 fuzzel
 wofi
 
+# Global Search (Spotlight-like)
+anyrun-git
+
 # -----------------------------------------------------------------------------
 # Notifications
 # -----------------------------------------------------------------------------
@@ -91,6 +94,12 @@ pipewire-jack
 wireplumber
 pavucontrol
 pamixer
+
+# Audio Mixer & DSP
+qpwgraph
+easyeffects
+lsp-plugins
+calf
 
 # -----------------------------------------------------------------------------
 # Terminal Emulators
@@ -232,6 +241,13 @@ wl-clipboard
 cliphist
 
 # -----------------------------------------------------------------------------
+# Screen Recording
+# -----------------------------------------------------------------------------
+gpu-screen-recorder
+wf-recorder
+obs-studio
+
+# -----------------------------------------------------------------------------
 # Authentication & Polkit
 # -----------------------------------------------------------------------------
 polkit-gnome
@@ -340,3 +356,18 @@ neovim
 gnome-disk-utility
 baobab
 dconf-editor
+
+# -----------------------------------------------------------------------------
+# Elgato Stream Deck & Key Light Control
+# -----------------------------------------------------------------------------
+python-pydantic
+python-pillow
+python-hidapi
+python-requests
+python-websocket-client
+
+# -----------------------------------------------------------------------------
+# AUR Packages (handled by chaotic-aur)
+# -----------------------------------------------------------------------------
+# streamdeck-ui (Stream Deck control)
+# python-elgato (Key Light control)

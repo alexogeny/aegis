@@ -1,0 +1,23 @@
+# Aegis Linux - Swappy Screenshot Editor Configuration
+
+[Default]
+# Save directory
+save_dir=$HOME/Pictures/Screenshots
+
+# Save filename format
+save_filename_format=screenshot-%Y%m%d-%H%M%S.png
+
+# Default color for drawing
+paint_mode=brush
+
+# Line width
+line_size=5
+
+# Text size
+text_size=20
+
+# Show UI immediately after screenshot
+early_exit=false
+
+# Save before closing
+autosave=false

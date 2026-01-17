@@ -1,0 +1,13 @@
+// Aegis Linux - Anyrun Shell Plugin
+// Execute shell commands with ">" prefix
+
+Config(
+    // Shell to use
+    shell: Some("fish"),
+
+    // Prefix to trigger shell commands
+    prefix: ">",
+
+    // Max entries
+    max_entries: 3,
+)

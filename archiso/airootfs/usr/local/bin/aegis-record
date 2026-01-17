@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# Aegis Linux - Screen Recording Utility
+# Uses gpu-screen-recorder for hardware-accelerated recording
+
+set -euo pipefail
+
+RECORDING_DIR="${HOME}/Videos/Recordings"
+RECORDING_PID_FILE="/tmp/aegis-recording.pid"
+FILENAME="recording-$(date +%Y%m%d-%H%M%S).mp4"
+FILEPATH="${RECORDING_DIR}/${FILENAME}"
+
+# Ensure recording directory exists
+mkdir -p "${RECORDING_DIR}"
+
+notify() {
+    local urgency="${2:-normal}"
+    notify-send -u "$urgency" -t 3000 -i media-record "Screen Recording" "$1"
+}
+
+is_recording() {
+    [[ -f "${RECORDING_PID_FILE}" ]] && kill -0 "$(cat "${RECORDING_PID_FILE}")" 2>/dev/null
+}
+
+start_recording() {
+    local mode="${1:-screen}"
+    local audio="${2:-yes}"
+
+    if is_recording; then
+        notify "Already recording! Press Super+Shift+R to stop." "critical"
+        exit 1
+    fi
+
+    local audio_flag=""
+    if [[ "$audio" == "yes" ]]; then
+        # Record default audio output
+        audio_flag="-a default_output"
+    fi
+
+    case "$mode" in
+        screen|full)
+            # Record entire screen
+            gpu-screen-recorder -w screen -c mp4 -f 60 -q very_high ${audio_flag} -o "${FILEPATH}" &
+            ;;
+        region|select)
+            # Record selected region using slurp
+            local geometry
+            geometry=$(slurp)
+            gpu-screen-recorder -w "${geometry}" -c mp4 -f 60 -q very_high ${audio_flag} -o "${FILEPATH}" &
+            ;;
+        window|focused)
+            # Record focused window
+            if command -v hyprctl &>/dev/null; then
+                local window_class
+                window_class=$(hyprctl activewindow -j | jq -r '.class')
+                gpu-screen-recorder -w "${window_class}" -c mp4 -f 60 -q very_high ${audio_flag} -o "${FILEPATH}" &
+            else
+                gpu-screen-recorder -w screen -c mp4 -f 60 -q very_high ${audio_flag} -o "${FILEPATH}" &
+            fi
+            ;;
+        gif)
+            # Record as GIF (no audio)
+            FILEPATH="${RECORDING_DIR}/recording-$(date +%Y%m%d-%H%M%S).gif"
+            gpu-screen-recorder -w screen -c gif -f 30 -q very_high -o "${FILEPATH}" &
+            ;;
+        *)
+            echo "Usage: aegis-record [screen|region|window|gif] [yes|no (audio)]"
+            exit 1
+            ;;
+    esac
+
+    echo $! > "${RECORDING_PID_FILE}"
+    notify "Recording started..."
+}
+
+stop_recording() {
+    if ! is_recording; then
+        notify "Not currently recording." "critical"
+        exit 1
+    fi
+
+    # Send SIGINT for graceful stop
+    kill -INT "$(cat "${RECORDING_PID_FILE}")" 2>/dev/null || true
+    rm -f "${RECORDING_PID_FILE}"
+
+    # Wait a moment for file to be finalized
+    sleep 1
+
+    notify "Recording saved to Videos/Recordings"
+}
+
+toggle_recording() {
+    if is_recording; then
+        stop_recording
+    else
+        start_recording "${1:-screen}" "${2:-yes}"
+    fi
+}
+
+case "${1:-toggle}" in
+    start)
+        start_recording "${2:-screen}" "${3:-yes}"
+        ;;
+    stop)
+        stop_recording
+        ;;
+    toggle)
+        toggle_recording "${2:-screen}" "${3:-yes}"
+        ;;
+    status)
+        if is_recording; then
+            echo "Recording in progress"
+            exit 0
+        else
+            echo "Not recording"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Usage: aegis-record [start|stop|toggle|status] [screen|region|window|gif] [yes|no]"
+        exit 1
+        ;;
+esac

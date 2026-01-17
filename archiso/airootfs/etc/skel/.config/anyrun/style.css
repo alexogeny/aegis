@@ -1,0 +1,168 @@
+/* Aegis Linux - Anyrun Catppuccin Mocha Theme */
+/* Spotlight-like global search */
+
+/* Catppuccin Mocha Colors */
+@define-color rosewater #f5e0dc;
+@define-color flamingo #f2cdcd;
+@define-color pink #f5c2e7;
+@define-color mauve #cba6f7;
+@define-color red #f38ba8;
+@define-color maroon #eba0ac;
+@define-color peach #fab387;
+@define-color yellow #f9e2af;
+@define-color green #a6e3a1;
+@define-color teal #94e2d5;
+@define-color sky #89dceb;
+@define-color sapphire #74c7ec;
+@define-color blue #89b4fa;
+@define-color lavender #b4befe;
+@define-color text #cdd6f4;
+@define-color subtext1 #bac2de;
+@define-color subtext0 #a6adc8;
+@define-color overlay2 #9399b2;
+@define-color overlay1 #7f849c;
+@define-color overlay0 #6c7086;
+@define-color surface2 #585b70;
+@define-color surface1 #45475a;
+@define-color surface0 #313244;
+@define-color base #1e1e2e;
+@define-color mantle #181825;
+@define-color crust #11111b;
+
+/* Main window */
+window {
+    background: transparent;
+}
+
+/* Main container */
+#window {
+    background-color: alpha(@base, 0.9);
+    border: 2px solid @surface1;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px alpha(@crust, 0.5);
+}
+
+/* Input box */
+#entry {
+    background-color: @surface0;
+    border: none;
+    border-radius: 12px;
+    margin: 16px;
+    padding: 12px 16px;
+    font-size: 18px;
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    color: @text;
+    caret-color: @mauve;
+}
+
+#entry:focus {
+    outline: none;
+    border: 2px solid @mauve;
+}
+
+#entry placeholder {
+    color: @overlay0;
+}
+
+/* Plugin container */
+#plugin {
+    background-color: transparent;
+    margin: 0 8px 8px 8px;
+    padding: 0;
+}
+
+/* Plugin separator */
+#plugin:hover {
+    background-color: transparent;
+}
+
+/* Match/result list */
+#main {
+    background-color: transparent;
+    padding: 0 8px 8px 8px;
+}
+
+/* Individual result items */
+#match {
+    background-color: transparent;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 2px 0;
+    font-size: 14px;
+    color: @text;
+}
+
+#match:hover {
+    background-color: @surface0;
+}
+
+#match:selected {
+    background-color: @surface1;
+    border-left: 3px solid @mauve;
+}
+
+/* Match title */
+#match-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: @text;
+}
+
+#match:selected #match-title {
+    color: @mauve;
+}
+
+/* Match description */
+#match-desc {
+    font-size: 12px;
+    color: @subtext0;
+    margin-top: 2px;
+}
+
+/* Icons in results */
+#match image {
+    margin-right: 12px;
+    -gtk-icon-size: 24px;
+}
+
+/* Plugin info (hidden by default but styled just in case) */
+#plugin-info {
+    font-size: 10px;
+    color: @overlay0;
+    padding: 4px 8px;
+}
+
+/* Scrollbar styling */
+scrollbar {
+    background-color: transparent;
+}
+
+scrollbar slider {
+    background-color: @surface2;
+    border-radius: 4px;
+    min-width: 6px;
+    min-height: 6px;
+}
+
+scrollbar slider:hover {
+    background-color: @overlay0;
+}
+
+/* List styling */
+list {
+    background-color: transparent;
+}
+
+list row {
+    background-color: transparent;
+}
+
+list row:hover {
+    background-color: @surface0;
+    border-radius: 8px;
+}
+
+list row:selected {
+    background-color: @surface1;
+    border-radius: 8px;
+}

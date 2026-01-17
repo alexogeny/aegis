@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Aegis Linux - Audio Routing Status
+# Shows the current state of virtual audio sinks and their routing
+
+set -euo pipefail
+
+# Colors
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}                    Aegis Audio Routing Status                  ${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+echo ""
+
+echo -e "${CYAN}Virtual Sinks (App Categories):${NC}"
+echo "─────────────────────────────────────────────────────────────────"
+pw-cli ls Node 2>/dev/null | grep -E "(music-media|voice-chat|game-audio|browser-audio|system-sounds|stream-output)-sink" | while read -r line; do
+    name=$(echo "$line" | grep -oP 'node\.name = "\K[^"]+')
+    desc=$(echo "$line" | grep -oP 'node\.description = "\K[^"]+' || echo "$name")
+    echo -e "  ${GREEN}✓${NC} $desc"
+done || echo "  (run 'systemctl --user restart pipewire' to initialize)"
+echo ""
+
+echo -e "${CYAN}Monitor Sources (for OBS/Streaming):${NC}"
+echo "─────────────────────────────────────────────────────────────────"
+pw-cli ls Node 2>/dev/null | grep -E "(stream-output|mic-processed)-source" | while read -r line; do
+    name=$(echo "$line" | grep -oP 'node\.name = "\K[^"]+')
+    desc=$(echo "$line" | grep -oP 'node\.description = "\K[^"]+' || echo "$name")
+    echo -e "  ${GREEN}✓${NC} $desc"
+done || echo "  (virtual sources not found)"
+echo ""
+
+echo -e "${CYAN}Physical Audio Outputs:${NC}"
+echo "─────────────────────────────────────────────────────────────────"
+pw-cli ls Node 2>/dev/null | grep -E "alsa_output\." | head -5 | while read -r line; do
+    desc=$(echo "$line" | grep -oP 'node\.description = "\K[^"]+' || echo "Unknown")
+    echo -e "  ${GREEN}✓${NC} $desc"
+done || echo "  (no physical outputs found)"
+echo ""
+
+echo -e "${CYAN}Currently Playing Streams:${NC}"
+echo "─────────────────────────────────────────────────────────────────"
+pw-cli ls Node 2>/dev/null | grep -E "Stream/Output/Audio" -A 10 | grep -E "(application\.name|node\.name)" | head -10 | while read -r line; do
+    if [[ "$line" == *"application.name"* ]]; then
+        app=$(echo "$line" | grep -oP '= "\K[^"]+')
+        echo -e "  ${YELLOW}▶${NC} $app"
+    fi
+done || echo "  (no active audio streams)"
+echo ""
+
+echo -e "${CYAN}Default Audio Output:${NC}"
+echo "─────────────────────────────────────────────────────────────────"
+default=$(wpctl status 2>/dev/null | grep -A 1 "Audio" | grep -oP '\*.*' | head -1 || echo "Unknown")
+echo -e "  ${GREEN}→${NC} $default"
+echo ""
+
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${CYAN}Tips:${NC}"
+echo "  • Use 'qpwgraph' to visualize and manually adjust audio routing"
+echo "  • Use 'easyeffects' for DSP (EQ, compression, etc.)"
+echo "  • OBS should capture from 'Stream Output (OBS Capture)' source"
+echo "  • Apps are automatically routed based on type (music, voice, games)"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"

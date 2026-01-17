@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Aegis Linux - Screenshot Utility
+# Usage: aegis-screenshot [region|screen|window|edit]
+
+set -euo pipefail
+
+SCREENSHOT_DIR="${HOME}/Pictures/Screenshots"
+FILENAME="screenshot-$(date +%Y%m%d-%H%M%S).png"
+FILEPATH="${SCREENSHOT_DIR}/${FILENAME}"
+
+# Ensure screenshot directory exists
+mkdir -p "${SCREENSHOT_DIR}"
+
+notify() {
+    notify-send -t 3000 -i camera-photo "Screenshot" "$1"
+}
+
+copy_to_clipboard() {
+    wl-copy < "$1"
+}
+
+take_screenshot() {
+    local mode="${1:-region}"
+
+    case "$mode" in
+        region|select)
+            # Select a region
+            grim -g "$(slurp)" "${FILEPATH}"
+            ;;
+        screen|full)
+            # Capture entire screen
+            grim "${FILEPATH}"
+            ;;
+        window|active)
+            # Capture active window (using hyprctl)
+            if command -v hyprctl &>/dev/null; then
+                local geometry
+                geometry=$(hyprctl activewindow -j | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"')
+                grim -g "${geometry}" "${FILEPATH}"
+            else
+                grim "${FILEPATH}"
+            fi
+            ;;
+        edit)
+            # Take region screenshot and open in editor
+            grim -g "$(slurp)" - | swappy -f -
+            exit 0
+            ;;
+        *)
+            echo "Usage: aegis-screenshot [region|screen|window|edit]"
+            exit 1
+            ;;
+    esac
+
+    # Copy to clipboard and notify
+    copy_to_clipboard "${FILEPATH}"
+    notify "Saved to ${FILENAME} and copied to clipboard"
+}
+
+# Run with argument or default to region
+take_screenshot "${1:-region}"

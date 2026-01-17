@@ -1,0 +1,27 @@
+// Aegis Linux - Anyrun Web Search Plugin
+// Search the web with "?" prefix
+
+Config(
+    // Prefix to trigger web search
+    prefix: "?",
+
+    // Search engines (first is default)
+    engines: [
+        Custom(
+            name: "DuckDuckGo",
+            url: "https://duckduckgo.com/?q={}",
+        ),
+        Custom(
+            name: "Google",
+            url: "https://www.google.com/search?q={}",
+        ),
+        Custom(
+            name: "GitHub",
+            url: "https://github.com/search?q={}",
+        ),
+        Custom(
+            name: "Arch Wiki",
+            url: "https://wiki.archlinux.org/index.php?search={}",
+        ),
+    ],
+)

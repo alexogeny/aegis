@@ -1,0 +1,11 @@
+// Aegis Linux - Anyrun Applications Plugin
+Config(
+    // Desktop actions (e.g., "New Window" entries)
+    desktop_actions: true,
+
+    // Max entries from this plugin
+    max_entries: 5,
+
+    // Terminal for terminal apps
+    terminal: Some("kitty"),
+)

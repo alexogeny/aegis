@@ -1,0 +1,57 @@
+// Aegis Linux - Anyrun Configuration
+// Spotlight-like global search launcher
+// Catppuccin Mocha theme
+
+Config(
+    // Position at top center of screen
+    x: Fraction(0.5),
+    y: Fraction(0.3),
+
+    // Width as fraction of screen
+    width: Fraction(0.4),
+
+    // Hide icons for cleaner look (optional, set to true for icons)
+    hide_icons: false,
+
+    // Ignore exclusive zones (show over waybar, etc.)
+    ignore_exclusive_zones: false,
+
+    // Layer shell layer
+    layer: Overlay,
+
+    // Hide plugin info
+    hide_plugin_info: true,
+
+    // Close on click outside
+    close_on_click: true,
+
+    // Show results immediately
+    show_results_immediately: false,
+
+    // Maximum entries to display
+    max_entries: Some(8),
+
+    // Plugins to load (in order of priority)
+    plugins: [
+        // Application launcher
+        "libapplications.so",
+
+        // Shell commands
+        "libshell.so",
+
+        // Calculator
+        "librink.so",
+
+        // Symbols/Unicode search
+        "libsymbols.so",
+
+        // Translate
+        "libtranslate.so",
+
+        // Web search
+        "libwebsearch.so",
+
+        // File search via fd
+        "libkidex.so",
+    ],
+)

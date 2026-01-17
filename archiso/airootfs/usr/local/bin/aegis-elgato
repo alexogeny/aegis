@@ -1,0 +1,262 @@
+#!/usr/bin/env bash
+# Aegis Linux - Elgato Device Control
+# Controls Elgato Key Light Air and Stream Deck devices
+
+set -euo pipefail
+
+# Configuration
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/aegis/elgato"
+KEYLIGHT_CONFIG="${CONFIG_DIR}/keylights.json"
+
+# Ensure config directory exists
+mkdir -p "${CONFIG_DIR}"
+
+# Initialize config if it doesn't exist
+init_config() {
+    if [[ ! -f "${KEYLIGHT_CONFIG}" ]]; then
+        cat > "${KEYLIGHT_CONFIG}" << 'EOF'
+{
+    "keylights": [],
+    "default_brightness": 50,
+    "default_temperature": 4500
+}
+EOF
+    fi
+}
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Discover Key Light devices on the network using mDNS
+discover_keylights() {
+    log_info "Discovering Elgato Key Light devices..."
+
+    # Try to find devices using avahi-browse (mDNS)
+    if command -v avahi-browse &>/dev/null; then
+        local devices
+        devices=$(timeout 5 avahi-browse -rpt _elg._tcp 2>/dev/null | grep "^=" | cut -d';' -f4,8 | head -10) || true
+
+        if [[ -n "$devices" ]]; then
+            log_success "Found Key Light devices:"
+            echo "$devices" | while IFS=';' read -r name ip; do
+                echo "  - ${name} at ${ip}"
+            done
+        else
+            log_warn "No Key Light devices found. Make sure they're on the same network."
+        fi
+    else
+        log_warn "avahi-browse not available. Install avahi for device discovery."
+        log_info "You can manually add devices using: aegis-elgato keylight add <ip>"
+    fi
+}
+
+# Add a Key Light by IP address
+add_keylight() {
+    local ip="${1:-}"
+    local name="${2:-KeyLight}"
+
+    if [[ -z "$ip" ]]; then
+        log_error "Usage: aegis-elgato keylight add <ip> [name]"
+        exit 1
+    fi
+
+    # Test connectivity
+    if ! curl -s --connect-timeout 2 "http://${ip}:9123/elgato/lights" &>/dev/null; then
+        log_error "Cannot connect to Key Light at ${ip}:9123"
+        exit 1
+    fi
+
+    # Add to config
+    local tmp_file
+    tmp_file=$(mktemp)
+    jq --arg ip "$ip" --arg name "$name" \
+        '.keylights += [{"ip": $ip, "name": $name}] | .keylights |= unique_by(.ip)' \
+        "${KEYLIGHT_CONFIG}" > "${tmp_file}" && mv "${tmp_file}" "${KEYLIGHT_CONFIG}"
+
+    log_success "Added Key Light '${name}' at ${ip}"
+}
+
+# List configured Key Lights
+list_keylights() {
+    init_config
+    log_info "Configured Key Lights:"
+    jq -r '.keylights[] | "  - \(.name) (\(.ip))"' "${KEYLIGHT_CONFIG}" 2>/dev/null || echo "  (none)"
+}
+
+# Control Key Light
+control_keylight() {
+    local action="${1:-}"
+    local target="${2:-all}"
+    local value="${3:-}"
+
+    init_config
+
+    # Get target IPs
+    local ips=()
+    if [[ "$target" == "all" ]]; then
+        mapfile -t ips < <(jq -r '.keylights[].ip' "${KEYLIGHT_CONFIG}" 2>/dev/null)
+    else
+        ips=("$target")
+    fi
+
+    if [[ ${#ips[@]} -eq 0 ]]; then
+        log_error "No Key Lights configured. Use: aegis-elgato keylight add <ip>"
+        exit 1
+    fi
+
+    for ip in "${ips[@]}"; do
+        case "$action" in
+            on)
+                curl -s -X PUT "http://${ip}:9123/elgato/lights" \
+                    -H "Content-Type: application/json" \
+                    -d '{"lights":[{"on":1}]}' &>/dev/null
+                log_success "Key Light at ${ip} turned ON"
+                ;;
+            off)
+                curl -s -X PUT "http://${ip}:9123/elgato/lights" \
+                    -H "Content-Type: application/json" \
+                    -d '{"lights":[{"on":0}]}' &>/dev/null
+                log_success "Key Light at ${ip} turned OFF"
+                ;;
+            toggle)
+                local current
+                current=$(curl -s "http://${ip}:9123/elgato/lights" | jq -r '.lights[0].on')
+                if [[ "$current" == "1" ]]; then
+                    control_keylight "off" "$ip"
+                else
+                    control_keylight "on" "$ip"
+                fi
+                ;;
+            brightness)
+                if [[ -z "$value" ]]; then
+                    local current
+                    current=$(curl -s "http://${ip}:9123/elgato/lights" | jq -r '.lights[0].brightness')
+                    echo "Brightness: ${current}%"
+                else
+                    curl -s -X PUT "http://${ip}:9123/elgato/lights" \
+                        -H "Content-Type: application/json" \
+                        -d "{\"lights\":[{\"brightness\":${value}}]}" &>/dev/null
+                    log_success "Brightness set to ${value}%"
+                fi
+                ;;
+            temperature|temp)
+                if [[ -z "$value" ]]; then
+                    local current
+                    current=$(curl -s "http://${ip}:9123/elgato/lights" | jq -r '.lights[0].temperature')
+                    # Convert from mired to kelvin
+                    local kelvin=$((1000000 / current))
+                    echo "Temperature: ${kelvin}K"
+                else
+                    # Convert kelvin to mired
+                    local mired=$((1000000 / value))
+                    curl -s -X PUT "http://${ip}:9123/elgato/lights" \
+                        -H "Content-Type: application/json" \
+                        -d "{\"lights\":[{\"temperature\":${mired}}]}" &>/dev/null
+                    log_success "Temperature set to ${value}K"
+                fi
+                ;;
+            status)
+                local status
+                status=$(curl -s "http://${ip}:9123/elgato/lights")
+                local on brightness temp
+                on=$(echo "$status" | jq -r '.lights[0].on')
+                brightness=$(echo "$status" | jq -r '.lights[0].brightness')
+                temp=$(echo "$status" | jq -r '.lights[0].temperature')
+                local kelvin=$((1000000 / temp))
+                echo "Key Light at ${ip}:"
+                echo "  State: $([ "$on" == "1" ] && echo "ON" || echo "OFF")"
+                echo "  Brightness: ${brightness}%"
+                echo "  Temperature: ${kelvin}K"
+                ;;
+            *)
+                log_error "Unknown action: $action"
+                echo "Usage: aegis-elgato keylight [on|off|toggle|brightness|temperature|status] [ip|all] [value]"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Stream Deck setup helper
+setup_streamdeck() {
+    log_info "Stream Deck Setup"
+    echo ""
+    echo "For Stream Deck control, Aegis uses streamdeck-ui."
+    echo ""
+
+    if command -v streamdeck &>/dev/null; then
+        log_success "streamdeck-ui is installed"
+        echo ""
+        echo "Launch with: streamdeck"
+        echo "Or add it to your autostart."
+    else
+        log_warn "streamdeck-ui not found"
+        echo ""
+        echo "Install from AUR: yay -S streamdeck-ui"
+        echo ""
+        echo "After installation, you may need to set up udev rules:"
+        echo "  sudo tee /etc/udev/rules.d/70-streamdeck.rules << EOF"
+        echo '  SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", TAG+="uaccess"'
+        echo "  EOF"
+        echo "  sudo udevadm control --reload-rules"
+    fi
+}
+
+# Main command parser
+case "${1:-help}" in
+    discover)
+        discover_keylights
+        ;;
+    keylight|kl)
+        shift
+        case "${1:-status}" in
+            add)
+                add_keylight "${2:-}" "${3:-}"
+                ;;
+            list|ls)
+                list_keylights
+                ;;
+            *)
+                control_keylight "$@"
+                ;;
+        esac
+        ;;
+    streamdeck|sd)
+        setup_streamdeck
+        ;;
+    help|--help|-h)
+        echo "Aegis Linux - Elgato Device Control"
+        echo ""
+        echo "Usage: aegis-elgato <command> [options]"
+        echo ""
+        echo "Commands:"
+        echo "  discover               Discover Key Light devices on network"
+        echo "  keylight add <ip> [name]  Add a Key Light"
+        echo "  keylight list          List configured Key Lights"
+        echo "  keylight on [ip|all]   Turn on Key Light(s)"
+        echo "  keylight off [ip|all]  Turn off Key Light(s)"
+        echo "  keylight toggle [ip|all]  Toggle Key Light(s)"
+        echo "  keylight brightness [ip|all] [0-100]  Get/set brightness"
+        echo "  keylight temperature [ip|all] [2900-7000]  Get/set color temp (Kelvin)"
+        echo "  keylight status [ip|all]  Show Key Light status"
+        echo "  streamdeck             Show Stream Deck setup info"
+        echo ""
+        echo "Shortcuts:"
+        echo "  kl = keylight"
+        echo "  sd = streamdeck"
+        ;;
+    *)
+        log_error "Unknown command: $1"
+        echo "Run 'aegis-elgato help' for usage."
+        exit 1
+        ;;
+esac

@@ -1,0 +1,10 @@
+// Aegis Linux - Anyrun Symbols Plugin
+// Search Unicode symbols with ":" prefix
+
+Config(
+    // Prefix to trigger symbol search
+    prefix: ":",
+
+    // Max entries to show
+    max_entries: 5,
+)

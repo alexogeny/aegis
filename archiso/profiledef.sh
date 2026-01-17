@@ -28,4 +28,8 @@ file_permissions=(
   ["/usr/local/bin/aegis-first-boot"]="0:0:755"
   ["/usr/local/bin/aegis-hardening-check"]="0:0:755"
   ["/usr/local/bin/aegis-download-scanner"]="0:0:755"
+  ["/usr/local/bin/aegis-screenshot"]="0:0:755"
+  ["/usr/local/bin/aegis-record"]="0:0:755"
+  ["/usr/local/bin/aegis-elgato"]="0:0:755"
+  ["/usr/local/bin/aegis-audio-status"]="0:0:755"
 )
