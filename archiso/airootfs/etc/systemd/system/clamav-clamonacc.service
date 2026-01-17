@@ -2,7 +2,7 @@
 Description=ClamAV On-Access Scanner
 Documentation=man:clamonacc(8) man:clamd.conf(5)
 After=clamav-daemon.service
-Requires=clamav-daemon.service
+Wants=clamav-daemon.service
 
 [Service]
 Type=simple
