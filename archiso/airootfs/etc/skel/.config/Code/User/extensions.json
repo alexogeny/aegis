@@ -1,0 +1,101 @@
+{
+  // =============================================================================
+  // Aegis Linux - Recommended VSCode Extensions
+  // These will be suggested when opening VSCode for the first time
+  // =============================================================================
+  "recommendations": [
+    // -------------------------------------------------------------------------
+    // Catppuccin Theming
+    // -------------------------------------------------------------------------
+    "catppuccin.catppuccin-vsc",
+    "catppuccin.catppuccin-vsc-icons",
+
+    // -------------------------------------------------------------------------
+    // Git & Version Control
+    // -------------------------------------------------------------------------
+    "eamodio.gitlens",
+    "github.vscode-pull-request-github",
+    "github.vscode-github-actions",
+    "gitlab.gitlab-workflow",
+    "mhutchie.git-graph",
+
+    // -------------------------------------------------------------------------
+    // Languages - Rust
+    // -------------------------------------------------------------------------
+    "rust-lang.rust-analyzer",
+    "vadimcn.vscode-lldb",
+    "tamasfe.even-better-toml",
+    "serayuzgur.crates",
+
+    // -------------------------------------------------------------------------
+    // Languages - Python
+    // -------------------------------------------------------------------------
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "charliermarsh.ruff",
+
+    // -------------------------------------------------------------------------
+    // Languages - TypeScript/JavaScript
+    // -------------------------------------------------------------------------
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+
+    // -------------------------------------------------------------------------
+    // Languages - Go
+    // -------------------------------------------------------------------------
+    "golang.go",
+
+    // -------------------------------------------------------------------------
+    // Languages - Shell
+    // -------------------------------------------------------------------------
+    "foxundermoon.shell-format",
+    "timonwong.shellcheck",
+    "bmalehorn.vscode-fish",
+
+    // -------------------------------------------------------------------------
+    // Languages - Config Files
+    // -------------------------------------------------------------------------
+    "redhat.vscode-yaml",
+    "tamasfe.even-better-toml",
+    "coolbear.systemd-unit-file",
+    "jnoortheen.nix-ide",
+
+    // -------------------------------------------------------------------------
+    // Container & DevOps
+    // -------------------------------------------------------------------------
+    "ms-azuretools.vscode-docker",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "hashicorp.terraform",
+
+    // -------------------------------------------------------------------------
+    // Code Quality & Productivity
+    // -------------------------------------------------------------------------
+    "usernamehw.errorlens",
+    "gruntfuggly.todo-tree",
+    "oderwat.indent-rainbow",
+    "streetsidesoftware.code-spell-checker",
+    "editorconfig.editorconfig",
+
+    // -------------------------------------------------------------------------
+    // Remote Development
+    // -------------------------------------------------------------------------
+    "ms-vscode-remote.remote-ssh",
+    "ms-vscode-remote.remote-containers",
+
+    // -------------------------------------------------------------------------
+    // Markdown & Documentation
+    // -------------------------------------------------------------------------
+    "yzhang.markdown-all-in-one",
+    "bierner.markdown-mermaid",
+
+    // -------------------------------------------------------------------------
+    // Security
+    // -------------------------------------------------------------------------
+    "snyk-security.snyk-vulnerability-scanner"
+  ],
+  "unwantedRecommendations": [
+    // Telemetry-heavy or unnecessary extensions
+    "ms-vscode.remote-server"
+  ]
+}

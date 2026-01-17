@@ -305,6 +305,73 @@ setup_kubernetes() {
 }
 
 # ============================================================================
+# VSCode Setup
+# ============================================================================
+setup_vscode() {
+    header "VSCode Setup"
+
+    if ! has_cmd code; then
+        log_error "VSCode not installed"
+        return 1
+    fi
+
+    log_success "VSCode $(code --version 2>/dev/null | head -1)"
+
+    # Install essential extensions
+    if confirm "Install recommended extensions?" "y"; then
+        log_step "Installing Catppuccin theme..."
+        code --install-extension catppuccin.catppuccin-vsc 2>/dev/null && log_success "Catppuccin theme" || log_warn "Failed to install"
+        code --install-extension catppuccin.catppuccin-vsc-icons 2>/dev/null && log_success "Catppuccin icons" || log_warn "Failed to install"
+
+        log_step "Installing Git extensions..."
+        code --install-extension eamodio.gitlens 2>/dev/null && log_success "GitLens" || log_warn "Already installed"
+        code --install-extension github.vscode-pull-request-github 2>/dev/null && log_success "GitHub PR" || log_warn "Already installed"
+        code --install-extension gitlab.gitlab-workflow 2>/dev/null && log_success "GitLab Workflow" || log_warn "Already installed"
+        code --install-extension mhutchie.git-graph 2>/dev/null && log_success "Git Graph" || log_warn "Already installed"
+
+        log_step "Installing language support..."
+        code --install-extension rust-lang.rust-analyzer 2>/dev/null && log_success "Rust Analyzer" || log_warn "Already installed"
+        code --install-extension ms-python.python 2>/dev/null && log_success "Python" || log_warn "Already installed"
+        code --install-extension charliermarsh.ruff 2>/dev/null && log_success "Ruff (Python)" || log_warn "Already installed"
+        code --install-extension golang.go 2>/dev/null && log_success "Go" || log_warn "Already installed"
+        code --install-extension esbenp.prettier-vscode 2>/dev/null && log_success "Prettier" || log_warn "Already installed"
+        code --install-extension dbaeumer.vscode-eslint 2>/dev/null && log_success "ESLint" || log_warn "Already installed"
+
+        log_step "Installing productivity extensions..."
+        code --install-extension usernamehw.errorlens 2>/dev/null && log_success "Error Lens" || log_warn "Already installed"
+        code --install-extension gruntfuggly.todo-tree 2>/dev/null && log_success "Todo Tree" || log_warn "Already installed"
+        code --install-extension oderwat.indent-rainbow 2>/dev/null && log_success "Indent Rainbow" || log_warn "Already installed"
+        code --install-extension redhat.vscode-yaml 2>/dev/null && log_success "YAML" || log_warn "Already installed"
+        code --install-extension tamasfe.even-better-toml 2>/dev/null && log_success "TOML" || log_warn "Already installed"
+
+        log_step "Installing container extensions..."
+        code --install-extension ms-azuretools.vscode-docker 2>/dev/null && log_success "Docker" || log_warn "Already installed"
+        code --install-extension ms-kubernetes-tools.vscode-kubernetes-tools 2>/dev/null && log_success "Kubernetes" || log_warn "Already installed"
+
+        log_step "Installing shell extensions..."
+        code --install-extension foxundermoon.shell-format 2>/dev/null && log_success "Shell Format" || log_warn "Already installed"
+        code --install-extension timonwong.shellcheck 2>/dev/null && log_success "ShellCheck" || log_warn "Already installed"
+        code --install-extension bmalehorn.vscode-fish 2>/dev/null && log_success "Fish" || log_warn "Already installed"
+    fi
+
+    # Disable telemetry
+    local settings_file="$HOME/.config/Code/User/settings.json"
+    if [[ -f "$settings_file" ]] && grep -q '"telemetry.telemetryLevel": "off"' "$settings_file"; then
+        log_success "Telemetry already disabled"
+    else
+        log_info "Telemetry settings are in the default config"
+    fi
+
+    echo ""
+    log_info "VSCode keybindings:"
+    echo "  Super+C          - Launch VSCode"
+    echo "  Ctrl+\`           - Toggle terminal"
+    echo "  Ctrl+Shift+G G   - Open lazygit in terminal"
+    echo "  Ctrl+Shift+P     - Command palette"
+    echo ""
+}
+
+# ============================================================================
 # mkcert (local HTTPS)
 # ============================================================================
 setup_mkcert() {
@@ -420,6 +487,7 @@ show_status() {
     echo ""
 
     echo -e "${CYAN}Dev Tools:${NC}"
+    has_cmd code && echo "  ✓ VSCode $(code --version 2>/dev/null | head -1)"
     has_cmd delta && echo "  ✓ delta (git pager)"
     has_cmd difft && echo "  ✓ difftastic (structural diffs)"
     has_cmd lazygit && echo "  ✓ lazygit (TUI)"
@@ -463,6 +531,9 @@ main() {
         mkcert)
             setup_mkcert
             ;;
+        vscode|code)
+            setup_vscode
+            ;;
         shell)
             setup_shell
             ;;
@@ -472,6 +543,7 @@ main() {
             setup_github
             setup_gitlab
             setup_docker
+            setup_vscode
             setup_languages
             setup_kubernetes
             setup_mkcert
@@ -491,6 +563,7 @@ main() {
             echo "  github      Authenticate GitHub CLI (gh)"
             echo "  gitlab      Authenticate GitLab CLI (glab)"
             echo "  docker      Set up Docker permissions"
+            echo "  vscode      Install VSCode extensions"
             echo "  languages   Set up language toolchains"
             echo "  kubernetes  Set up Kubernetes tools"
             echo "  mkcert      Install local CA for HTTPS"
@@ -510,6 +583,7 @@ main() {
                 if confirm "Set up GitHub CLI?" "y"; then setup_github; fi
                 if confirm "Set up GitLab CLI?" "y"; then setup_gitlab; fi
                 setup_docker
+                setup_vscode
                 setup_languages
                 setup_kubernetes
                 setup_mkcert
