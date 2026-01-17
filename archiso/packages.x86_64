@@ -268,13 +268,45 @@ yaml-cpp
 boost-libs
 
 # -----------------------------------------------------------------------------
-# Development Tools (for DKMS)
+# Development Tools
 # -----------------------------------------------------------------------------
 git
+git-lfs
 gcc
+clang
+llvm
 make
 cmake
+ninja
 pkgconf
+autoconf
+automake
+patch
+
+# Rust
+rust
+rust-src
+rust-analyzer
+
+# Python (uv is a fast Python package manager)
+python
+python-pip
+uv
+
+# JavaScript/TypeScript (Bun - fast JS runtime & package manager)
+bun
+
+# Go
+go
+
+# Additional dev utilities
+jq
+yq
+httpie
+lazygit
+delta
+tokei
+hyperfine
 
 # -----------------------------------------------------------------------------
 # Applications - Browsers
