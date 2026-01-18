@@ -3,7 +3,12 @@
     "allow": [
       "Bash(find:*)",
       "Bash(curl:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(PYTHONPATH=\"$PWD/archiso/airootfs/usr/local/lib/python3/dist-packages:$PYTHONPATH\" python3 -m pytest:*)",
+      "Bash(uv pip install:*)",
+      "Bash(uv tool install:*)",
+      "Bash(tree:*)",
+      "Bash(uv tool run ruff check:*)"
     ]
   }
 }
