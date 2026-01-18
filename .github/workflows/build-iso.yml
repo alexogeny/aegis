@@ -141,20 +141,20 @@ jobs:
         run: |
           # Restore custom calamares configs over package defaults
           if [ -d "/tmp/aegis-calamares-custom" ]; then
-              cp -rf /tmp/aegis-calamares-custom/* /tmp/aegis-work/x86_64/airootfs/etc/calamares/
+              cp -rf /tmp/aegis-calamares-custom/* $GITHUB_WORKSPACE/aegis-work/x86_64/airootfs/etc/calamares/
 
               # Remove old squashfs and ISO to free space before rebuilding
-              rm -f /tmp/aegis-work/x86_64/airootfs.sfs
-              rm -f /tmp/aegis-out/*.iso
+              rm -f $GITHUB_WORKSPACE/aegis-work/x86_64/airootfs.sfs
+              rm -f $GITHUB_WORKSPACE/aegis-out/*.iso
 
               # Rebuild squashfs with custom configs
-              cd /tmp/aegis-work/x86_64
+              cd $GITHUB_WORKSPACE/aegis-work/x86_64
               mksquashfs airootfs airootfs.sfs -comp zstd -Xcompression-level 12 -b 1M
 
               # Copy to iso directory
               cp airootfs.sfs iso/aegis/x86_64/
 
-              # Rebuild ISO to /tmp (more space available)
+              # Rebuild ISO
               xorriso -as mkisofs \
                   -iso-level 3 -full-iso9660-filenames -joliet -joliet-long -rational-rock \
                   -volid "AEGIS_$(date +%Y%m)" \
@@ -168,19 +168,19 @@ jobs:
                   -eltorito-alt-boot \
                   -e EFI/efiboot.img \
                   -no-emul-boot -isohybrid-gpt-basdat \
-                  -output /tmp/aegis-out/aegis-linux.iso \
+                  -output $GITHUB_WORKSPACE/aegis-out/aegis-linux.iso \
                   iso/
           fi
 
       - name: Generate checksums
         run: |
-          cd /tmp/aegis-out
+          cd $GITHUB_WORKSPACE/aegis-out
           for iso in *.iso; do
             sha256sum "$iso" > "${iso}.sha256"
             b2sum "$iso" > "${iso}.b2sum"
           done
           ls -lh
-          # Copy to workspace for release upload
+          # Copy to out directory for release upload
           mkdir -p $GITHUB_WORKSPACE/out
           cp *.iso *.sha256 *.b2sum $GITHUB_WORKSPACE/out/
 
