@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Aegis Clipboard
+Comment=Clipboard History Manager
+Exec=aegis-clipboard
+Icon=edit-paste
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=clipboard;history;copy;paste;

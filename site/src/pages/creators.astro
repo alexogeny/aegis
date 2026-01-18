@@ -1,24 +1,44 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import Header from '../components/Header.astro';
-import Footer from '../components/Footer.astro';
-import { InteractiveMixer } from '../components/creators/InteractiveMixer';
-import { InteractiveMacropad } from '../components/creators/InteractiveMacropad';
-import { InteractiveLighting } from '../components/creators/InteractiveLighting';
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { InteractiveMixer } from "../components/creators/InteractiveMixer";
+import { InteractiveMacropad } from "../components/creators/InteractiveMacropad";
+import { InteractiveLighting } from "../components/creators/InteractiveLighting";
 
 // Audio features for the info section
 const audioFeatures = [
-  { name: 'Noise Gate', desc: 'Cut background noise when not speaking' },
-  { name: 'Compressor', desc: 'Even out volume levels automatically' },
-  { name: '5-Band EQ', desc: 'Fine-tune your voice frequency response' },
-  { name: 'Limiter', desc: 'Prevent clipping and distortion' },
+  { name: "Noise Gate", desc: "Cut background noise when not speaking" },
+  { name: "Compressor", desc: "Even out volume levels automatically" },
+  { name: "5-Band EQ", desc: "Fine-tune your voice frequency response" },
+  { name: "Limiter", desc: "Prevent clipping and distortion" },
 ];
 
 const captureTools = [
-  { name: 'OBS Studio', icon: '📹', desc: 'Full-featured streaming & recording', color: 'mauve' },
-  { name: 'gpu-screen-recorder', icon: '🎬', desc: 'Zero-overhead GPU recording', color: 'green' },
-  { name: 'grim + slurp', icon: '📷', desc: 'Screenshot with region selection', color: 'blue' },
-  { name: 'swappy', icon: '✏️', desc: 'Quick screenshot annotation', color: 'peach' },
+  {
+    name: "OBS Studio",
+    icon: "📹",
+    desc: "Full-featured streaming & recording",
+    color: "mauve",
+  },
+  {
+    name: "gpu-screen-recorder",
+    icon: "🎬",
+    desc: "Zero-overhead GPU recording",
+    color: "green",
+  },
+  {
+    name: "grim + slurp",
+    icon: "📷",
+    desc: "Screenshot with region selection",
+    color: "blue",
+  },
+  {
+    name: "swappy",
+    icon: "✏️",
+    desc: "Quick screenshot annotation",
+    color: "peach",
+  },
 ];
 ---
 
@@ -38,7 +58,8 @@ const captureTools = [
             Stream and Create <span class="text-pink">Without Limits</span>
           </h1>
           <p class="text-xl text-subtext0 max-w-2xl mx-auto">
-            Professional streaming and recording on Linux. Aegis Mixer, OBS, and Elgato hardware - all working out of the box.
+            Professional streaming and recording on Linux. Aegis Mixer, OBS, and
+            Elgato hardware - all working out of the box.
           </p>
         </div>
       </div>
@@ -50,15 +71,18 @@ const captureTools = [
     <section class="px-4 py-16 bg-mantle/50">
       <div class="mx-auto max-w-6xl">
         <div class="text-center mb-12">
-          <span class="inline-block bg-sky/20 text-sky px-4 py-1 rounded-full text-sm font-medium mb-4">
+          <span
+            class="inline-block bg-sky/20 text-sky px-4 py-1 rounded-full text-sm font-medium mb-4"
+          >
             Aegis Mixer App
           </span>
           <h2 class="text-3xl font-bold text-text mb-4">
             <span class="text-sky">Virtual Audio Mixer</span>
           </h2>
           <p class="text-subtext0 max-w-2xl mx-auto">
-            Like Rode Unify or Voicemeeter, but built into your OS. Apps automatically route to the right channel.
-            Mix, route, and process - all with PipeWire.
+            Like Rode Unify or Voicemeeter, but built into your OS. Apps
+            automatically route to the right channel. Mix, route, and process -
+            all with PipeWire.
           </p>
         </div>
 
@@ -68,50 +92,70 @@ const captureTools = [
         <!-- Mic Processing Chain -->
         <div class="mt-12 grid md:grid-cols-2 gap-8">
           <div>
-            <h3 class="text-xl font-bold text-text mb-4 flex items-center gap-2">
+            <h3
+              class="text-xl font-bold text-text mb-4 flex items-center gap-2"
+            >
               <span class="text-peach">🎤</span> Microphone Processing
             </h3>
             <p class="text-subtext0 mb-4">
-              EasyEffects processes your mic input with professional DSP plugins.
-              Sound like a podcaster without expensive hardware.
+              EasyEffects processes your mic input with professional DSP
+              plugins. Sound like a podcaster without expensive hardware.
             </p>
             <div class="space-y-3">
-              {audioFeatures.map((feature) => (
-                <div class="flex items-center gap-4 bg-surface0/30 rounded-lg p-3">
-                  <div class="w-2 h-2 rounded-full bg-sky"></div>
-                  <div>
-                    <span class="text-text font-medium">{feature.name}</span>
-                    <span class="text-overlay0 text-sm ml-2">— {feature.desc}</span>
+              {
+                audioFeatures.map((feature) => (
+                  <div class="flex items-center gap-4 bg-surface0/30 rounded-lg p-3">
+                    <div class="w-2 h-2 rounded-full bg-sky" />
+                    <div>
+                      <span class="text-text font-medium">{feature.name}</span>
+                      <span class="text-overlay0 text-sm ml-2">
+                        — {feature.desc}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              }
             </div>
           </div>
 
           <!-- Signal Flow Diagram -->
           <div class="bg-mantle rounded-xl p-6 border border-surface0">
-            <h4 class="text-sm font-bold text-overlay0 mb-4 text-center">SIGNAL FLOW</h4>
+            <h4 class="text-sm font-bold text-overlay0 mb-4 text-center">
+              SIGNAL FLOW
+            </h4>
             <div class="flex flex-col items-center gap-3 text-sm">
-              <div class="bg-peach text-crust px-4 py-2 rounded-lg flex items-center gap-2">
+              <div
+                class="bg-peach text-crust px-4 py-2 rounded-lg flex items-center gap-2"
+              >
                 <span>🎤</span> Physical Microphone
               </div>
               <span class="text-overlay0">↓</span>
-              <div class="bg-surface0 text-text px-4 py-2 rounded-lg">PipeWire Capture</div>
+              <div class="bg-surface0 text-text px-4 py-2 rounded-lg">
+                PipeWire Capture
+              </div>
               <span class="text-overlay0">↓</span>
-              <div class="bg-sky text-crust px-4 py-2 rounded-lg flex items-center gap-2">
+              <div
+                class="bg-sky text-crust px-4 py-2 rounded-lg flex items-center gap-2"
+              >
                 <span>🎛️</span> EasyEffects DSP
               </div>
               <span class="text-overlay0">↓</span>
               <div class="flex gap-3">
-                <div class="bg-green text-crust px-3 py-2 rounded-lg text-center">
+                <div
+                  class="bg-green text-crust px-3 py-2 rounded-lg text-center"
+                >
                   <div class="text-lg">📹</div>
                   <div class="text-xs">OBS</div>
                 </div>
-                <div class="bg-teal text-crust px-3 py-2 rounded-lg text-center">
+                <div
+                  class="bg-teal text-crust px-3 py-2 rounded-lg text-center"
+                >
                   <div class="text-lg">💬</div>
                   <div class="text-xs">Discord</div>
                 </div>
-                <div class="bg-blue text-crust px-3 py-2 rounded-lg text-center">
+                <div
+                  class="bg-blue text-crust px-3 py-2 rounded-lg text-center"
+                >
                   <div class="text-lg">🌐</div>
                   <div class="text-xs">Browser</div>
                 </div>
@@ -128,21 +172,28 @@ const captureTools = [
     <section class="px-4 py-16">
       <div class="mx-auto max-w-6xl">
         <div class="text-center mb-12">
-          <span class="inline-block bg-mauve/20 text-mauve px-4 py-1 rounded-full text-sm font-medium mb-4">
+          <span
+            class="inline-block bg-mauve/20 text-mauve px-4 py-1 rounded-full text-sm font-medium mb-4"
+          >
             Pre-Configured
           </span>
           <h2 class="text-3xl font-bold text-text mb-4">
             OBS Studio, <span class="text-mauve">Ready to Stream</span>
           </h2>
           <p class="text-subtext0 max-w-2xl mx-auto">
-            Professional streaming software with Wayland support, GPU encoding, and perfect integration with the Aegis Mixer.
+            Professional streaming software with Wayland support, GPU encoding,
+            and perfect integration with the Aegis Mixer.
           </p>
         </div>
 
         <div class="grid md:grid-cols-2 gap-8 items-center">
           <!-- OBS Window -->
-          <div class="bg-mantle rounded-xl border-2 border-surface0 overflow-hidden shadow-2xl">
-            <div class="bg-crust px-4 py-3 flex items-center gap-2 border-b border-surface0">
+          <div
+            class="bg-mantle rounded-xl border-2 border-surface0 overflow-hidden shadow-2xl"
+          >
+            <div
+              class="bg-crust px-4 py-3 flex items-center gap-2 border-b border-surface0"
+            >
               <div class="flex gap-1.5">
                 <div class="w-3 h-3 rounded-full bg-red/80"></div>
                 <div class="w-3 h-3 rounded-full bg-yellow/80"></div>
@@ -152,30 +203,47 @@ const captureTools = [
             </div>
             <div class="p-4 bg-base">
               <!-- Preview with scene thumbnails -->
-              <div class="bg-crust rounded-lg aspect-video flex items-center justify-center mb-4 relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-br from-mauve/10 to-blue/10"></div>
+              <div
+                class="bg-crust rounded-lg aspect-video flex items-center justify-center mb-4 relative overflow-hidden"
+              >
+                <div
+                  class="absolute inset-0 bg-gradient-to-br from-mauve/10 to-blue/10"
+                >
+                </div>
                 <div class="text-center relative z-10">
                   <div class="text-4xl mb-2">📺</div>
-                  <div class="text-subtext0 text-sm">Screen Capture Preview</div>
-                  <div class="text-overlay0 text-xs mt-1">1920×1080 @ 60fps</div>
+                  <div class="text-subtext0 text-sm">
+                    Screen Capture Preview
+                  </div>
+                  <div class="text-overlay0 text-xs mt-1">
+                    1920×1080 @ 60fps
+                  </div>
                 </div>
                 <!-- Live indicator -->
-                <div class="absolute top-2 right-2 flex items-center gap-1.5 bg-surface0/80 rounded px-2 py-1">
+                <div
+                  class="absolute top-2 right-2 flex items-center gap-1.5 bg-surface0/80 rounded px-2 py-1"
+                >
                   <div class="w-2 h-2 rounded-full bg-red animate-pulse"></div>
                   <span class="text-xs text-text">LIVE</span>
                 </div>
               </div>
               <!-- Controls -->
               <div class="flex gap-4 justify-center">
-                <button class="bg-red text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2">
+                <button
+                  class="bg-red text-white px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2"
+                >
                   🔴 Start Streaming
                 </button>
-                <button class="bg-surface1 text-text px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2">
+                <button
+                  class="bg-surface1 text-text px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2"
+                >
                   ⏺️ Start Recording
                 </button>
               </div>
             </div>
-            <div class="bg-surface0/50 px-4 py-2 text-xs text-subtext0 flex justify-between border-t border-surface0">
+            <div
+              class="bg-surface0/50 px-4 py-2 text-xs text-subtext0 flex justify-between border-t border-surface0"
+            >
               <span>Profile: Aegis</span>
               <span>NVENC H.264</span>
               <span>8000 kbps</span>
@@ -217,14 +285,17 @@ const captureTools = [
     <section class="px-4 py-16 bg-mantle/50">
       <div class="mx-auto max-w-6xl">
         <div class="text-center mb-12">
-          <span class="inline-block bg-yellow/20 text-yellow px-4 py-1 rounded-full text-sm font-medium mb-4">
+          <span
+            class="inline-block bg-yellow/20 text-yellow px-4 py-1 rounded-full text-sm font-medium mb-4"
+          >
             Aegis Apps
           </span>
           <h2 class="text-3xl font-bold text-text mb-4">
             <span class="text-yellow">Hardware</span> Control Center
           </h2>
           <p class="text-subtext0 max-w-2xl mx-auto">
-            Macropad buttons and smart lighting with beautiful native GTK4 apps. Configure actions, control lighting, all natively on Linux.
+            Macropad buttons and smart lighting with beautiful native GTK4 apps.
+            Configure actions, control lighting, all natively on Linux.
           </p>
         </div>
 
@@ -269,44 +340,56 @@ const captureTools = [
     <section class="px-4 py-16">
       <div class="mx-auto max-w-6xl">
         <div class="text-center mb-12">
-          <span class="inline-block bg-green/20 text-green px-4 py-1 rounded-full text-sm font-medium mb-4">
+          <span
+            class="inline-block bg-green/20 text-green px-4 py-1 rounded-full text-sm font-medium mb-4"
+          >
             Recording & Screenshots
           </span>
           <h2 class="text-3xl font-bold text-text mb-4">
             Capture <span class="text-green">Everything</span>
           </h2>
           <p class="text-subtext0 max-w-2xl mx-auto">
-            From full streams to quick screenshots, every tool you need is pre-installed and ready to use.
+            From full streams to quick screenshots, every tool you need is
+            pre-installed and ready to use.
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {captureTools.map((tool) => (
-            <div class="bg-surface0/50 border border-surface1 rounded-xl p-6 text-center hover:border-surface2 transition-colors">
-              <div class="text-4xl mb-3">{tool.icon}</div>
-              <h3 class={`text-lg font-bold text-${tool.color} mb-2`}>{tool.name}</h3>
-              <p class="text-subtext0 text-sm">{tool.desc}</p>
-            </div>
-          ))}
+          {
+            captureTools.map((tool) => (
+              <div class="bg-surface0/50 border border-surface1 rounded-xl p-6 text-center hover:border-surface2 transition-colors">
+                <div class="text-4xl mb-3">{tool.icon}</div>
+                <h3 class={`text-lg font-bold text-${tool.color} mb-2`}>
+                  {tool.name}
+                </h3>
+                <p class="text-subtext0 text-sm">{tool.desc}</p>
+              </div>
+            ))
+          }
         </div>
 
         <!-- Additional Info -->
         <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="bg-mantle rounded-xl p-6 border border-surface0">
-            <h3 class="text-lg font-bold text-text mb-3 flex items-center gap-2">
+            <h3
+              class="text-lg font-bold text-text mb-3 flex items-center gap-2"
+            >
               <span class="text-green">🎬</span> GPU Recording
             </h3>
             <p class="text-subtext0 text-sm mb-4">
-              gpu-screen-recorder captures at native resolution with near-zero CPU overhead.
-              Perfect for gaming while recording.
+              gpu-screen-recorder captures at native resolution with near-zero
+              CPU overhead. Perfect for gaming while recording.
             </p>
             <div class="bg-crust rounded-lg p-3 font-mono text-xs">
-              <span class="text-green">$</span> gpu-screen-recorder -w screen -f 60 -o clip.mp4
+              <span class="text-green">$</span> gpu-screen-recorder -w screen -f 60
+              -o clip.mp4
             </div>
           </div>
 
           <div class="bg-mantle rounded-xl p-6 border border-surface0">
-            <h3 class="text-lg font-bold text-text mb-3 flex items-center gap-2">
+            <h3
+              class="text-lg font-bold text-text mb-3 flex items-center gap-2"
+            >
               <span class="text-blue">📷</span> Screenshot Workflow
             </h3>
             <p class="text-subtext0 text-sm mb-4">
@@ -324,9 +407,7 @@ const captureTools = [
     <!-- CTA -->
     <section class="px-4 py-16 bg-mantle/50">
       <div class="mx-auto max-w-4xl text-center">
-        <h2 class="text-3xl font-bold text-text mb-4">
-          Ready to Create?
-        </h2>
+        <h2 class="text-3xl font-bold text-text mb-4">Ready to Create?</h2>
         <p class="text-subtext0 text-lg mb-8">
           Download Aegis and start streaming on Linux today.
         </p>
