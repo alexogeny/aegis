@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-python:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv tool install ruff
+      - run: ruff check archiso/airootfs/usr/local/lib/python3/dist-packages/aegis_gtk/
+      - run: ruff format --check archiso/airootfs/usr/local/lib/python3/dist-packages/aegis_gtk/
+
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+        working-directory: ./site
+      - run: bun run format:check
+        working-directory: ./site
+
+  lint-shell:
+    name: Lint Shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck scripts/*.sh
+
+  test-python:
+    name: Test Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv python install 3.12
+      - run: uv pip install --system pytest pytest-cov
+      - run: uv run pytest tests/ -v --tb=short
+        env:
+          PYTHONPATH: ${{ github.workspace }}/archiso/airootfs/usr/local/lib/python3/dist-packages
+
+  validate-archiso:
+    name: Validate Archiso
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate
+        run: |
+          test -f archiso/profiledef.sh
+          test -f archiso/pacman.conf
+          test -f archiso/packages.x86_64
+          for app in archiso/airootfs/usr/local/bin/aegis-*; do
+            [ -f "$app" ] && head -1 "$app" | grep -q '^#!/'
+          done
+
+  build:
+    name: Build Site
+    needs: [lint-python, lint-frontend, lint-shell, test-python, validate-archiso]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+        working-directory: ./site
+      - run: bun run build
+        working-directory: ./site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site/dist
