@@ -134,7 +134,7 @@ colloid-catppuccin-gtk-theme-git
 catppuccin-cursors-mocha
 catppuccin-mocha-grub-theme-git
 papirus-icon-theme
-gtk-engine-murrine
+# gtk-engine-murrine - moved to AUR, only needed for GTK2 apps
 
 # -----------------------------------------------------------------------------
 # Fonts
