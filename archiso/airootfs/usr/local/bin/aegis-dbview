@@ -886,7 +886,7 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         return page
 
     def _build_browser_page(self) -> Gtk.Widget:
-        """Build the schema browser page."""
+        """Build the schema browser page with tree view and entity details."""
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
         # Schema selector toolbar
@@ -907,28 +907,74 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         refresh_btn.connect('clicked', self._on_refresh_schema)
         toolbar.append(refresh_btn)
 
-        # Schema tree
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_vexpand(True)
-        page.append(scroll)
+        # Spacer
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        toolbar.append(spacer)
 
-        self.schema_tree = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        self.schema_tree.add_css_class('schema-tree')
-        scroll.set_child(self.schema_tree)
+        # Expand/collapse buttons
+        expand_btn = Gtk.Button(label='Expand All')
+        expand_btn.add_css_class('flat')
+        expand_btn.connect('clicked', self._on_expand_all)
+        toolbar.append(expand_btn)
 
-        # Empty state
-        empty = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        empty.add_css_class('empty-state')
-        empty.set_halign(Gtk.Align.CENTER)
-        empty.set_valign(Gtk.Align.CENTER)
-        empty.set_vexpand(True)
+        collapse_btn = Gtk.Button(label='Collapse')
+        collapse_btn.add_css_class('flat')
+        collapse_btn.connect('clicked', self._on_collapse_all)
+        toolbar.append(collapse_btn)
 
-        empty_label = Gtk.Label(label='Connect to a database to browse schema')
-        empty.append(empty_label)
+        # Main content: tree + entity view
+        content = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        content.set_vexpand(True)
+        content.set_position(280)
+        page.append(content)
 
-        self.schema_tree.append(empty)
+        # Left: Schema tree widget
+        self.schema_tree_widget = SchemaTree(
+            on_select=self._on_schema_node_selected,
+            on_activate=self._on_schema_node_activated,
+        )
+        self.schema_tree_widget.set_size_request(200, -1)
+        content.set_start_child(self.schema_tree_widget)
+
+        # Right: Entity view
+        self.entity_view = EntityView(
+            on_query=self._on_entity_query,
+        )
+        self.entity_view.set_size_request(300, -1)
+        content.set_end_child(self.entity_view)
 
         return page
+
+    def _on_expand_all(self, button):
+        """Expand all nodes in the schema tree."""
+        self.schema_tree_widget.expand_all()
+
+    def _on_collapse_all(self, button):
+        """Collapse all nodes in the schema tree."""
+        self.schema_tree_widget.collapse_all()
+
+    def _on_schema_node_selected(self, node: SchemaNode):
+        """Handle schema node selection."""
+        self.entity_view.show_entity(node)
+
+    def _on_schema_node_activated(self, node: SchemaNode):
+        """Handle double-click on schema node (generate query)."""
+        if node.node_type == 'table':
+            query = f'SELECT * FROM {node.name} LIMIT 100;'
+            self.syntax_editor.set_text(query)
+            self.notebook.set_current_page(0)  # Switch to query tab
+        elif node.node_type == 'view':
+            query = f'SELECT * FROM {node.name} LIMIT 100;'
+            self.syntax_editor.set_text(query)
+            self.notebook.set_current_page(0)
+
+    def _on_entity_query(self, query: str):
+        """Handle query generation from entity view."""
+        self.syntax_editor.set_text(query)
+        self.notebook.set_current_page(0)  # Switch to query tab
+        # Optionally auto-run the query
+        self._on_run_query(None)
 
     def _build_history_page(self) -> Gtk.Widget:
         """Build the query history page."""
@@ -1123,63 +1169,65 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         self._load_schemas()
 
     def _load_tables(self, schema: str):
-        """Load tables for a schema."""
+        """Load tables for a schema and build the schema tree."""
         if not self.current_driver:
             return
+
+        self._current_schema = schema
 
         @run_async
         async def do_load():
             tables = await self.current_driver.get_tables(schema)
-            GLib.idle_add(self._populate_schema_tree, schema, tables)
+            # Load columns for each table
+            table_nodes = []
+            for table in tables:
+                columns = await self.current_driver.get_columns(table.name, schema)
+                column_nodes = []
+                for col in columns:
+                    col_node = SchemaNode(
+                        name=col.name,
+                        node_type='column',
+                        metadata={
+                            'data_type': col.data_type,
+                            'nullable': col.nullable,
+                            'is_pk': col.is_primary_key,
+                            'is_fk': col.is_foreign_key,
+                            'default': col.default_value,
+                        }
+                    )
+                    column_nodes.append(col_node)
+
+                table_node = SchemaNode(
+                    name=table.name,
+                    node_type='table' if table.table_type == 'table' else 'view',
+                    children=column_nodes,
+                    metadata={
+                        'row_count': table.row_count,
+                        'schema': schema,
+                    }
+                )
+                table_nodes.append(table_node)
+
+            GLib.idle_add(self._populate_schema_tree, schema, table_nodes)
 
         do_load()
 
-    def _populate_schema_tree(self, schema: str, tables):
-        """Populate the schema tree with tables."""
-        # Clear existing
-        while True:
-            child = self.schema_tree.get_first_child()
-            if child is None:
-                break
-            self.schema_tree.remove(child)
+    def _populate_schema_tree(self, schema: str, table_nodes: list[SchemaNode]):
+        """Populate the schema tree widget with tables and columns."""
+        # Create a schema node that contains all tables
+        schema_node = SchemaNode(
+            name=schema,
+            node_type='schema',
+            children=table_nodes,
+            metadata={'table_count': len(table_nodes)}
+        )
 
-        for table in tables:
-            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            row.set_margin_start(12)
-            row.set_margin_end(12)
-            row.set_margin_top(6)
-            row.set_margin_bottom(6)
+        # Set the tree data
+        self.schema_tree_widget.set_schema([schema_node])
 
-            icon = Gtk.Label(label='🗃️' if table.table_type == 'table' else '👁')
-            icon.add_css_class('table-icon')
-            row.append(icon)
-
-            name = Gtk.Label(label=table.name)
-            name.set_hexpand(True)
-            name.set_halign(Gtk.Align.START)
-            row.append(name)
-
-            if table.row_count is not None:
-                count = Gtk.Label(label=f'{table.row_count:,} rows')
-                count.add_css_class('column-type')
-                row.append(count)
-
-            # Make clickable to preview
-            click = Gtk.GestureClick()
-            click.set_button(1)
-            click.connect('released', self._on_table_clicked, schema, table.name)
-            row.add_controller(click)
-
-            self.schema_tree.append(row)
-
-    def _on_table_clicked(self, gesture, n_press, x, y, schema, table):
-        """Handle table click - show preview."""
-        if n_press == 2:  # Double-click
-            query = f'SELECT * FROM "{schema}"."{table}" LIMIT 100'
-            buffer = self.query_editor.get_buffer()
-            buffer.set_text(query)
-            self.notebook.set_current_page(0)  # Switch to query tab
-            self._on_run_query(None)
+        # Auto-expand the schema node
+        self.schema_tree_widget._expanded_nodes.add(schema)
+        self.schema_tree_widget._rebuild_tree()
 
     def _on_add_connection(self, button):
         """Show dialog to add a new connection."""

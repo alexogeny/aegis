@@ -6,6 +6,7 @@ import { InteractiveTerminal } from "../components/InteractiveTerminal";
 import { InteractiveContainers } from "../components/developers/InteractiveContainers";
 import { InteractiveClipboard } from "../components/developers/InteractiveClipboard";
 import { InteractiveDbView } from "../components/developers/InteractiveDbView";
+import { AnimatedDbDemo } from "../components/developers/AnimatedDbDemo";
 
 // Simple Icons SVG paths
 const icons = {
@@ -813,9 +814,33 @@ const vscodeExtensions = [
                 <span class="text-green">✓</span>
                 Secure credential storage via Keyring
               </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Tree-style schema browser with search
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Entity details panel with quick actions
+              </li>
             </ul>
           </div>
           <InteractiveDbView client:visible />
+        </div>
+
+        <!-- Database Viewer - Full Animated Demo -->
+        <div class="mt-16 pt-12 border-t border-surface0">
+          <div class="text-center mb-8">
+            <h3 class="text-2xl font-bold text-text mb-3">
+              See It In <span class="text-blue">Action</span>
+            </h3>
+            <p class="text-subtext0 max-w-2xl mx-auto">
+              Watch how the schema browser, entity view, and query editor work together
+              for a seamless database exploration experience.
+            </p>
+          </div>
+          <div class="max-w-5xl mx-auto">
+            <AnimatedDbDemo client:visible />
+          </div>
         </div>
       </div>
     </section>
