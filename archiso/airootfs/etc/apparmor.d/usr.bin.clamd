@@ -1,0 +1,191 @@
+# Aegis Linux - ClamAV Daemon AppArmor Profile
+# =============================================================================
+# This profile confines the ClamAV daemon (clamd) for secure virus scanning.
+# ClamAV needs read access to the entire filesystem for scanning, but
+# write access is heavily restricted.
+#
+# This profile is in ENFORCE mode since ClamAV behavior is predictable.
+#
+# To complain: sudo aa-complain /etc/apparmor.d/usr.bin.clamd
+# To enforce: sudo aa-enforce /etc/apparmor.d/usr.bin.clamd
+# =============================================================================
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+profile clamd /usr/bin/clamd flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # Capabilities
+  capability setgid,
+  capability setuid,
+  capability dac_override,
+  capability dac_read_search,
+
+  # ClamAV binaries
+  /usr/bin/clamd rm,
+  /usr/bin/clamdscan rm,
+  /usr/bin/clamscan rm,
+  /usr/bin/freshclam rm,
+  /usr/bin/sigtool rm,
+
+  # ClamAV configuration
+  /etc/clamav/ r,
+  /etc/clamav/** r,
+
+  # Virus database
+  /var/lib/clamav/ r,
+  /var/lib/clamav/** rwk,
+
+  # Log files
+  /var/log/clamav/ rw,
+  /var/log/clamav/** rw,
+
+  # Runtime files
+  /run/clamav/ rw,
+  /run/clamav/** rwk,
+
+  # Socket
+  /run/clamav/clamd.sock rw,
+  /run/clamav/clamd.ctl rw,
+
+  # Temp files for scanning
+  /tmp/clamav-* rwk,
+  owner /tmp/clamav-*/** rwk,
+  /var/tmp/clamav-* rwk,
+  owner /var/tmp/clamav-*/** rwk,
+
+  # Read access for scanning - ENTIRE filesystem
+  # This is necessary for virus scanning functionality
+  / r,
+  /** r,
+
+  # /proc access
+  @{PROC}/filesystems r,
+  @{PROC}/meminfo r,
+  @{PROC}/sys/kernel/random/uuid r,
+  owner @{PROC}/@{pid}/** r,
+
+  # Device access
+  /dev/null rw,
+  /dev/urandom r,
+
+  # Deny write to scanned files (read-only scanning)
+  deny /** w,
+  # But allow writes to ClamAV-specific locations
+  /var/lib/clamav/** rw,
+  /var/log/clamav/** rw,
+  /run/clamav/** rw,
+  /tmp/clamav-* rw,
+  /var/tmp/clamav-* rw,
+
+  # Deny network access (freshclam handles updates separately)
+  deny network,
+
+  # Deny execution of scanned files
+  deny /** x,
+  # But allow ClamAV binaries
+  /usr/bin/clamd ix,
+  /usr/bin/clamdscan ix,
+  /usr/bin/clamscan ix,
+  /usr/bin/sigtool ix,
+
+  # Include local customizations
+  include if exists <local/usr.bin.clamd>
+}
+
+# Freshclam profile (database updater)
+profile freshclam /usr/bin/freshclam flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+  include <abstractions/ssl_certs>
+
+  # Capabilities
+  capability setgid,
+  capability setuid,
+
+  # Network access for updates
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+
+  # Freshclam binary
+  /usr/bin/freshclam rm,
+
+  # Configuration
+  /etc/clamav/ r,
+  /etc/clamav/** r,
+
+  # Virus database (write access for updates)
+  /var/lib/clamav/ rw,
+  /var/lib/clamav/** rwk,
+
+  # Log files
+  /var/log/clamav/ rw,
+  /var/log/clamav/** rw,
+
+  # Runtime/PID files
+  /run/clamav/ rw,
+  /run/clamav/freshclam.pid rw,
+
+  # Temp files for downloads
+  /tmp/freshclam-* rwk,
+  /var/tmp/freshclam-* rwk,
+
+  # /proc access
+  owner @{PROC}/@{pid}/** r,
+
+  # DNS resolution
+  /etc/resolv.conf r,
+  /etc/hosts r,
+  /etc/gai.conf r,
+
+  # Include local customizations
+  include if exists <local/usr.bin.freshclam>
+}
+
+# ClamAV on-access scanner profile
+profile clamonacc /usr/bin/clamonacc flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # Capabilities for fanotify
+  capability sys_admin,
+  capability dac_override,
+  capability dac_read_search,
+
+  # Binary
+  /usr/bin/clamonacc rm,
+
+  # Configuration
+  /etc/clamav/ r,
+  /etc/clamav/** r,
+
+  # Socket communication with clamd
+  /run/clamav/clamd.sock rw,
+
+  # Log files
+  /var/log/clamav/ rw,
+  /var/log/clamav/** rw,
+
+  # Runtime files
+  /run/clamav/ rw,
+  /run/clamav/** rw,
+
+  # Read access for monitoring
+  / r,
+  /** r,
+
+  # /proc and /sys access
+  @{PROC}/** r,
+  /sys/** r,
+
+  # fanotify access
+  /dev/null rw,
+
+  # Include local customizations
+  include if exists <local/usr.bin.clamonacc>
+}

@@ -38,14 +38,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Cache pacman packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/pacman/pkg/
+          key: pacman-${{ hashFiles('archiso/packages.x86_64') }}
+          restore-keys: |
+            pacman-
+
       - name: Initialize pacman keyring
         run: |
           pacman-key --init
           pacman-key --populate archlinux
 
-      - name: Update system and install dependencies
+      - name: Update package database and install dependencies
         run: |
-          pacman -Syu --noconfirm
+          pacman -Sy --noconfirm
           pacman -S --noconfirm --needed archiso git base-devel
 
       - name: Setup Chaotic-AUR repository
@@ -84,64 +92,96 @@ jobs:
           # Refresh package databases
           pacman -Sy
 
-      - name: Build Calamares from AUR
-        id: calamares
+      - name: Setup EndeavourOS repository (for pre-built Calamares)
         run: |
-          # Create a build user (makepkg cannot run as root)
-          useradd -m builder
-          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          # Import EndeavourOS key and install keyring
+          curl -fsSL "https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64/endeavouros-keyring-20231222-1-any.pkg.tar.zst" -o /tmp/eos-keyring.pkg.tar.zst
+          pacman -U --noconfirm --config <(echo -e "[options]\nSigLevel = Never") /tmp/eos-keyring.pkg.tar.zst
+          pacman-key --populate endeavouros
 
-          # Install calamares build dependencies
-          pacman -S --noconfirm --needed cmake extra-cmake-modules qt6-base qt6-declarative qt6-tools \
-              qt6-translations kpmcore yaml-cpp boost libpwquality icu polkit-qt6 \
-              kconfig kcoreaddons ki18n kiconthemes kio kparts kservice kwidgetsaddons \
-              python squashfs-tools appstream-qt plasma5support
+          # Install mirrorlist
+          pacman -U --noconfirm "https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64/endeavouros-mirrorlist-26-1-any.pkg.tar.zst"
 
-          # Build calamares as builder user
-          cd /tmp
-          sudo -u builder git clone https://aur.archlinux.org/calamares.git
-          cd calamares
-          sudo -u builder makepkg -s --noconfirm || echo "Calamares build failed, will use archinstall as fallback"
+          # Add endeavouros to pacman.conf
+          echo "" >> /etc/pacman.conf
+          echo "[endeavouros]" >> /etc/pacman.conf
+          echo "SigLevel = PackageRequired" >> /etc/pacman.conf
+          echo "Include = /etc/pacman.d/endeavouros-mirrorlist" >> /etc/pacman.conf
 
-          # Install if built successfully
-          if ls *.pkg.tar.zst 1>/dev/null 2>&1; then
-              pacman -U --noconfirm *.pkg.tar.zst
-              mkdir -p /tmp/localrepo
-              cp *.pkg.tar.zst /tmp/localrepo/
-              cd /tmp/localrepo
-              repo-add localrepo.db.tar.gz *.pkg.tar.zst
-              echo "calamares_built=true" >> $GITHUB_OUTPUT
-          else
-              echo "calamares_built=false" >> $GITHUB_OUTPUT
-          fi
+          # Refresh package databases
+          pacman -Sy
 
       - name: Prepare ISO profile
         run: |
           # Create a working copy of the archiso profile
           cp -r archiso /tmp/aegis-profile
 
-          # If calamares was built, add local repo
-          if [ "${{ steps.calamares.outputs.calamares_built }}" = "true" ]; then
-              echo "" >> /tmp/aegis-profile/pacman.conf
-              echo "[localrepo]" >> /tmp/aegis-profile/pacman.conf
-              echo "SigLevel = Optional TrustAll" >> /tmp/aegis-profile/pacman.conf
-              echo "Server = file:///tmp/localrepo" >> /tmp/aegis-profile/pacman.conf
-              echo "calamares" >> /tmp/aegis-profile/packages.x86_64
+          # Add calamares from EndeavourOS repo
+          echo "calamares" >> /tmp/aegis-profile/packages.x86_64
+
+          # Move custom calamares configs temporarily (conflicts with package defaults)
+          if [ -d "/tmp/aegis-profile/airootfs/etc/calamares" ]; then
+              mv /tmp/aegis-profile/airootfs/etc/calamares /tmp/aegis-calamares-custom
+              rm -f /tmp/aegis-profile/airootfs/usr/share/applications/calamares.desktop 2>/dev/null || true
           fi
+
+      - name: Free up disk space
+        run: |
+          # Remove unnecessary files to free up space for ISO build
+          rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc 2>/dev/null || true
+          df -h /tmp
 
       - name: Build ISO
         run: |
-          mkdir -p /tmp/aegis-work out
-          mkarchiso -v -w /tmp/aegis-work -o out /tmp/aegis-profile
+          mkdir -p /tmp/aegis-work /tmp/aegis-out
+          mkarchiso -v -w /tmp/aegis-work -o /tmp/aegis-out /tmp/aegis-profile
+
+      - name: Apply custom Calamares configs
+        run: |
+          # Restore custom calamares configs over package defaults
+          if [ -d "/tmp/aegis-calamares-custom" ]; then
+              cp -rf /tmp/aegis-calamares-custom/* /tmp/aegis-work/x86_64/airootfs/etc/calamares/
+
+              # Remove old squashfs and ISO to free space before rebuilding
+              rm -f /tmp/aegis-work/x86_64/airootfs.sfs
+              rm -f /tmp/aegis-out/*.iso
+
+              # Rebuild squashfs with custom configs
+              cd /tmp/aegis-work/x86_64
+              mksquashfs airootfs airootfs.sfs -comp zstd -Xcompression-level 12 -b 1M
+
+              # Copy to iso directory
+              cp airootfs.sfs iso/aegis/x86_64/
+
+              # Rebuild ISO to /tmp (more space available)
+              xorriso -as mkisofs \
+                  -iso-level 3 -full-iso9660-filenames -joliet -joliet-long -rational-rock \
+                  -volid "AEGIS_$(date +%Y%m)" \
+                  -appid "Aegis Linux Live/Installer" \
+                  -publisher "Aegis Linux <https://github.com/aegis-linux>" \
+                  -preparer "mkarchiso" \
+                  -eltorito-boot syslinux/isolinux.bin \
+                  -eltorito-catalog syslinux/boot.cat \
+                  -no-emul-boot -boot-load-size 4 -boot-info-table \
+                  -isohybrid-mbr /usr/lib/syslinux/bios/isohdpfx.bin \
+                  -eltorito-alt-boot \
+                  -e EFI/efiboot.img \
+                  -no-emul-boot -isohybrid-gpt-basdat \
+                  -output /tmp/aegis-out/aegis-linux.iso \
+                  iso/
+          fi
 
       - name: Generate checksums
         run: |
-          cd out
+          cd /tmp/aegis-out
           for iso in *.iso; do
             sha256sum "$iso" > "${iso}.sha256"
             b2sum "$iso" > "${iso}.b2sum"
           done
           ls -lh
+          # Copy to workspace for release upload
+          mkdir -p $GITHUB_WORKSPACE/out
+          cp *.iso *.sha256 *.b2sum $GITHUB_WORKSPACE/out/
 
       # Note: Skipping artifact upload - ISOs are too large for free tier (500MB limit)
       # The ISO will be uploaded directly to GitHub Releases instead

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Aegis Backup - GTK4/Libadwaita Backup and Restore
-A friendly GUI for system backups using Timeshift/Snapper with Catppuccin theming.
+A friendly GUI for btrfs snapshots using Snapper with Catppuccin theming.
 """
 
 import gi
@@ -13,9 +13,10 @@ import subprocess
 import threading
 import json
 import os
+import re
 from datetime import datetime
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 from enum import Enum
 
@@ -177,12 +178,35 @@ class BackupWindow(Adw.ApplicationWindow):
         setup_css(self, APP_CSS)
 
     def _detect_backup_tool(self) -> str:
-        """Detect which backup tool is available."""
-        if os.path.exists('/usr/bin/timeshift'):
-            return 'timeshift'
+        """Detect which backup tool is available. Prefer snapper for btrfs."""
+        # Check if root is btrfs - if so, use snapper
+        if self._is_btrfs_root() and os.path.exists('/usr/bin/snapper'):
+            return 'snapper'
         elif os.path.exists('/usr/bin/snapper'):
             return 'snapper'
         return 'none'
+
+    def _is_btrfs_root(self) -> bool:
+        """Check if the root filesystem is btrfs."""
+        try:
+            result = subprocess.run(
+                ['findmnt', '-n', '-o', 'FSTYPE', '/'],
+                capture_output=True, text=True, timeout=5
+            )
+            return result.stdout.strip() == 'btrfs'
+        except Exception:
+            return False
+
+    def _check_snapper_config(self) -> bool:
+        """Check if snapper is configured for root."""
+        try:
+            result = subprocess.run(
+                ['snapper', 'list-configs'],
+                capture_output=True, text=True, timeout=10
+            )
+            return 'root' in result.stdout
+        except Exception:
+            return False
 
     def _build_ui(self):
         # Main container
@@ -290,7 +314,8 @@ class BackupWindow(Adw.ApplicationWindow):
 
         # Tool info
         tool_label = Gtk.Label()
-        tool_label.set_markup(f'<span foreground="{COLORS["overlay0"]}">Using: {self.backup_tool.title()}</span>')
+        tool_text = 'Snapper (btrfs)' if self.backup_tool == 'snapper' else 'Not configured'
+        tool_label.set_markup(f'<span foreground="{COLORS["overlay0"]}">Using: {tool_text}</span>')
         self.status_card.append(tool_label)
 
         # Info banner
@@ -540,81 +565,137 @@ class BackupWindow(Adw.ApplicationWindow):
         self.current_page = page_id
 
     def _load_snapshots(self):
-        """Load snapshots from the backup tool."""
+        """Load snapshots from snapper."""
         self.snapshots.clear()
 
         try:
-            if self.backup_tool == 'timeshift':
+            if self.backup_tool == 'snapper':
+                # Try JSON output first (newer snapper versions)
                 result = subprocess.run(
-                    ['timeshift', '--list', '--scripted'], capture_output=True, text=True, timeout=30
+                    ['snapper', '--jsonout', 'list'],
+                    capture_output=True, text=True, timeout=30
                 )
 
-                if result.returncode == 0:
-                    # Parse timeshift output
-                    for line in result.stdout.split('\n'):
-                        if line.startswith('  '):
-                            parts = line.split()
-                            if len(parts) >= 4:
-                                self.snapshots.append(
-                                    Snapshot(
-                                        id=parts[0],
-                                        name=parts[0],
-                                        date=datetime.strptime(f'{parts[1]} {parts[2]}', '%Y-%m-%d %H:%M:%S'),
-                                        snapshot_type=SnapshotType.MANUAL,
-                                        size=parts[3] if len(parts) > 3 else 'Unknown',
-                                        description='',
+                if result.returncode == 0 and result.stdout.strip():
+                    try:
+                        data = json.loads(result.stdout)
+                        # Handle both old and new JSON formats
+                        snapshots_data = data.get('root', data.get('snapshots', []))
+                        if isinstance(snapshots_data, dict):
+                            snapshots_data = snapshots_data.get('snapshots', [])
+
+                        for snap in snapshots_data:
+                            if snap.get('number', 0) == 0:
+                                continue  # Skip snapshot 0 (current)
+
+                            snap_type = snap.get('type', 'single')
+                            cleanup = snap.get('cleanup', '')
+
+                            # Determine snapshot type from snapper data
+                            if snap_type == 'pre':
+                                s_type = SnapshotType.SCHEDULED
+                            elif snap_type == 'post':
+                                s_type = SnapshotType.SCHEDULED
+                            elif 'timeline' in cleanup:
+                                s_type = SnapshotType.SCHEDULED
+                            elif 'boot' in snap.get('description', '').lower():
+                                s_type = SnapshotType.BOOT
+                            else:
+                                s_type = SnapshotType.MANUAL
+
+                            # Parse date
+                            date_str = snap.get('date', '')
+                            try:
+                                if date_str:
+                                    snap_date = datetime.fromisoformat(
+                                        date_str.replace('Z', '+00:00').replace(' ', 'T')
                                     )
+                                else:
+                                    snap_date = datetime.now()
+                            except ValueError:
+                                snap_date = datetime.now()
+
+                            description = snap.get('description', '')
+                            name = description if description else f'Snapshot #{snap.get("number", 0)}'
+
+                            self.snapshots.append(
+                                Snapshot(
+                                    id=str(snap.get('number', 0)),
+                                    name=name,
+                                    date=snap_date,
+                                    snapshot_type=s_type,
+                                    size=cleanup if cleanup else 'btrfs',
+                                    description=description,
                                 )
-
-            elif self.backup_tool == 'snapper':
-                result = subprocess.run(['snapper', '--jsonout', 'list'], capture_output=True, text=True, timeout=30)
-
-                if result.returncode == 0:
-                    data = json.loads(result.stdout)
-                    for snap in data.get('snapshots', []):
-                        snap_type = snap.get('type', 'single')
-                        self.snapshots.append(
-                            Snapshot(
-                                id=str(snap.get('number', 0)),
-                                name=snap.get('description', f'Snapshot #{snap.get("number", 0)}'),
-                                date=datetime.fromisoformat(snap.get('date', '').replace('Z', '+00:00')),
-                                snapshot_type=SnapshotType.SCHEDULED if snap_type == 'pre' else SnapshotType.MANUAL,
-                                size=snap.get('cleanup', 'Unknown'),
-                                description=snap.get('description', ''),
                             )
-                        )
+                    except json.JSONDecodeError:
+                        # Fall back to text parsing
+                        self._parse_snapper_text_output()
+                else:
+                    self._parse_snapper_text_output()
 
-        except Exception:
-            # Add mock snapshots for demonstration
-            now = datetime.now()
-            self.snapshots = [
-                Snapshot(
-                    '1',
-                    'Before system update',
-                    datetime(now.year, now.month, now.day - 2, 10, 30),
-                    SnapshotType.MANUAL,
-                    '1.2 GB',
-                    'Created before updating packages',
-                ),
-                Snapshot(
-                    '2',
-                    'Boot snapshot',
-                    datetime(now.year, now.month, now.day - 1, 8, 0),
-                    SnapshotType.BOOT,
-                    '856 MB',
-                    'Automatic boot snapshot',
-                ),
-                Snapshot(
-                    '3',
-                    'Daily backup',
-                    datetime(now.year, now.month, now.day, 3, 0),
-                    SnapshotType.SCHEDULED,
-                    '1.1 GB',
-                    'Scheduled daily snapshot',
-                ),
-            ]
+        except Exception as e:
+            # Show empty state if snapper not configured
+            pass
 
         self._populate_snapshots_list()
+
+    def _parse_snapper_text_output(self):
+        """Parse snapper list output in text format."""
+        try:
+            result = subprocess.run(
+                ['snapper', 'list'],
+                capture_output=True, text=True, timeout=30
+            )
+
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+                # Skip header lines
+                for line in lines[2:]:
+                    parts = re.split(r'\s*\|\s*', line.strip())
+                    if len(parts) >= 5:
+                        try:
+                            snap_num = parts[0].strip()
+                            if snap_num == '0' or not snap_num.isdigit():
+                                continue
+
+                            snap_type = parts[1].strip()
+                            date_str = parts[3].strip()
+                            description = parts[5].strip() if len(parts) > 5 else ''
+
+                            # Parse date
+                            try:
+                                snap_date = datetime.strptime(date_str, '%a %b %d %H:%M:%S %Y')
+                            except ValueError:
+                                try:
+                                    snap_date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                                except ValueError:
+                                    snap_date = datetime.now()
+
+                            # Determine type
+                            if snap_type == 'pre':
+                                s_type = SnapshotType.SCHEDULED
+                            elif snap_type == 'post':
+                                s_type = SnapshotType.SCHEDULED
+                            else:
+                                s_type = SnapshotType.MANUAL
+
+                            name = description if description else f'Snapshot #{snap_num}'
+
+                            self.snapshots.append(
+                                Snapshot(
+                                    id=snap_num,
+                                    name=name,
+                                    date=snap_date,
+                                    snapshot_type=s_type,
+                                    size='btrfs',
+                                    description=description,
+                                )
+                            )
+                        except (ValueError, IndexError):
+                            continue
+        except Exception:
+            pass
 
     def _populate_snapshots_list(self):
         """Populate the snapshots list UI."""
@@ -723,23 +804,24 @@ class BackupWindow(Adw.ApplicationWindow):
             self._do_create_snapshot(name)
 
     def _do_create_snapshot(self, name: str):
-        """Actually create the snapshot."""
+        """Actually create the snapshot using snapper."""
         # Show progress
         progress_dialog = Adw.MessageDialog(transient_for=self, heading='Creating Snapshot', body='Please wait...')
         progress_dialog.present()
 
         def create_thread():
             try:
-                if self.backup_tool == 'timeshift':
-                    subprocess.run(
-                        ['pkexec', 'timeshift', '--create', '--comments', name], capture_output=True, timeout=300
+                if self.backup_tool == 'snapper':
+                    result = subprocess.run(
+                        ['pkexec', 'snapper', 'create', '--description', name, '--cleanup-algorithm', 'number'],
+                        capture_output=True, text=True, timeout=300
                     )
-                elif self.backup_tool == 'snapper':
-                    subprocess.run(
-                        ['pkexec', 'snapper', 'create', '--description', name], capture_output=True, timeout=300
-                    )
-
-                GLib.idle_add(self._snapshot_created, progress_dialog)
+                    if result.returncode == 0:
+                        GLib.idle_add(self._snapshot_created, progress_dialog)
+                    else:
+                        GLib.idle_add(self._snapshot_failed, progress_dialog, result.stderr or 'Unknown error')
+                else:
+                    GLib.idle_add(self._snapshot_failed, progress_dialog, 'Snapper not configured')
             except Exception as e:
                 GLib.idle_add(self._snapshot_failed, progress_dialog, str(e))
 
@@ -784,10 +866,19 @@ class BackupWindow(Adw.ApplicationWindow):
     def _on_restore_response(self, dialog, response, snapshot: Snapshot):
         if response == 'restore':
             try:
-                if self.backup_tool == 'timeshift':
-                    subprocess.Popen(['pkexec', 'timeshift', '--restore', '--snapshot', snapshot.id])
-                elif self.backup_tool == 'snapper':
+                if self.backup_tool == 'snapper':
+                    # Snapper rollback creates a new snapshot from the selected one
+                    # This is safer than directly replacing files
                     subprocess.Popen(['pkexec', 'snapper', 'rollback', snapshot.id])
+
+                    # Show info about reboot
+                    info_dialog = Adw.MessageDialog(
+                        transient_for=self,
+                        heading='Rollback Initiated',
+                        body='A rollback snapshot has been created. Please reboot to apply the changes.',
+                    )
+                    info_dialog.add_response('ok', 'OK')
+                    info_dialog.present()
             except Exception:
                 pass
 
@@ -809,14 +900,12 @@ class BackupWindow(Adw.ApplicationWindow):
     def _on_delete_response(self, dialog, response, snapshot: Snapshot):
         if response == 'delete':
             try:
-                if self.backup_tool == 'timeshift':
+                if self.backup_tool == 'snapper':
                     subprocess.run(
-                        ['pkexec', 'timeshift', '--delete', '--snapshot', snapshot.id], capture_output=True, timeout=60
+                        ['pkexec', 'snapper', 'delete', snapshot.id],
+                        capture_output=True, timeout=60
                     )
-                elif self.backup_tool == 'snapper':
-                    subprocess.run(['pkexec', 'snapper', 'delete', snapshot.id], capture_output=True, timeout=60)
-
-                self._load_snapshots()
+                    self._load_snapshots()
             except Exception:
                 pass
 

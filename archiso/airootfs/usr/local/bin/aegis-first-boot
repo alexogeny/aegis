@@ -132,6 +132,67 @@ setup_user_dirs() {
     done < /etc/passwd
 }
 
+# Configure snapper for btrfs snapshots
+configure_snapper() {
+    log "Configuring Snapper for btrfs snapshots..."
+
+    # Check if root is btrfs
+    if ! findmnt -n -o FSTYPE / | grep -q btrfs; then
+        log "Root filesystem is not btrfs, skipping snapper configuration"
+        return
+    fi
+
+    # Check if snapper is installed
+    if ! command -v snapper &>/dev/null; then
+        log "Snapper not installed, skipping configuration"
+        return
+    fi
+
+    # Check if snapper config for root already exists
+    if snapper list-configs 2>/dev/null | grep -q "^root"; then
+        log "Snapper root config already exists"
+    else
+        # Create snapper config for root
+        log "Creating snapper config for root..."
+
+        # Ensure /.snapshots subvolume exists
+        if [[ ! -d /.snapshots ]]; then
+            log "Creating /.snapshots directory..."
+            mkdir -p /.snapshots
+        fi
+
+        # Create the snapper config
+        snapper -c root create-config / 2>/dev/null || true
+
+        # Configure snapper settings for reasonable defaults
+        if [[ -f /etc/snapper/configs/root ]]; then
+            # Keep reasonable number of snapshots
+            sed -i 's/^TIMELINE_LIMIT_HOURLY=.*/TIMELINE_LIMIT_HOURLY="5"/' /etc/snapper/configs/root
+            sed -i 's/^TIMELINE_LIMIT_DAILY=.*/TIMELINE_LIMIT_DAILY="7"/' /etc/snapper/configs/root
+            sed -i 's/^TIMELINE_LIMIT_WEEKLY=.*/TIMELINE_LIMIT_WEEKLY="4"/' /etc/snapper/configs/root
+            sed -i 's/^TIMELINE_LIMIT_MONTHLY=.*/TIMELINE_LIMIT_MONTHLY="3"/' /etc/snapper/configs/root
+            sed -i 's/^TIMELINE_LIMIT_YEARLY=.*/TIMELINE_LIMIT_YEARLY="0"/' /etc/snapper/configs/root
+
+            # Enable timeline snapshots
+            sed -i 's/^TIMELINE_CREATE=.*/TIMELINE_CREATE="yes"/' /etc/snapper/configs/root
+        fi
+
+        log "Snapper config created for root"
+    fi
+
+    # Enable snapper timer for automatic snapshots
+    systemctl enable --now snapper-timeline.timer 2>/dev/null || true
+    systemctl enable --now snapper-cleanup.timer 2>/dev/null || true
+
+    # Enable grub-btrfsd for boot menu integration
+    if systemctl list-unit-files | grep -q grub-btrfsd; then
+        systemctl enable --now grub-btrfsd 2>/dev/null || true
+        log "Enabled grub-btrfsd for boot menu snapshot integration"
+    fi
+
+    log "Snapper configured successfully"
+}
+
 # Main function
 main() {
     log "Starting Aegis first boot configuration..."
@@ -141,11 +202,13 @@ main() {
         log "Running in install mode"
         configure_apparmor
         configure_gtk_theme
+        configure_snapper
     else
         # Running on actual first boot
         log "Running on first boot"
         configure_apparmor
         configure_gtk_theme
+        configure_snapper
         setup_user_dirs
         security_check
     fi

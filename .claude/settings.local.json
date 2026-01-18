@@ -8,7 +8,8 @@
       "Bash(uv pip install:*)",
       "Bash(uv tool install:*)",
       "Bash(tree:*)",
-      "Bash(uv tool run ruff check:*)"
+      "Bash(uv tool run ruff check:*)",
+      "Bash(du:*)"
     ]
   }
 }

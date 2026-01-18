@@ -26,13 +26,17 @@ os-prober
 # -----------------------------------------------------------------------------
 cryptsetup
 lvm2
-zfs-dkms
-zfs-utils
 dosfstools
 e2fsprogs
 xfsprogs
 btrfs-progs
 ntfs-3g
+
+# Btrfs snapshot management
+snapper
+snap-pac
+grub-btrfs
+inotify-tools
 
 # -----------------------------------------------------------------------------
 # Archiso Requirements
@@ -181,6 +185,15 @@ keepassxc
 gnupg
 pass
 lynis
+
+# File integrity monitoring
+aide
+
+# Rootkit detection
+rkhunter
+
+# AppArmor profile management tools
+apparmor-utils
 
 # -----------------------------------------------------------------------------
 # Networking

@@ -1,0 +1,126 @@
+# Aegis Linux - Firefox AppArmor Profile
+# =============================================================================
+# This profile confines Firefox to reduce the attack surface.
+# Initial deployment in COMPLAIN mode for testing.
+#
+# To enforce: sudo aa-enforce /etc/apparmor.d/usr.bin.firefox
+# To complain: sudo aa-complain /etc/apparmor.d/usr.bin.firefox
+# =============================================================================
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+@{firefox_home} = @{HOME}/.mozilla
+@{firefox_cache} = @{HOME}/.cache/mozilla
+
+profile firefox /usr/lib/firefox/firefox flags=(complain) {
+  include <abstractions/base>
+  include <abstractions/audio>
+  include <abstractions/dbus-session-strict>
+  include <abstractions/dbus-accessibility-strict>
+  include <abstractions/fonts>
+  include <abstractions/freedesktop.org>
+  include <abstractions/gnome>
+  include <abstractions/mesa>
+  include <abstractions/nameservice>
+  include <abstractions/ssl_certs>
+  include <abstractions/user-download-strict>
+  include <abstractions/vulkan>
+  include <abstractions/wayland>
+
+  # Capabilities
+  capability sys_admin,  # For sandboxing
+  capability sys_chroot, # For sandboxing
+  capability sys_ptrace, # For crash reporter
+
+  # Network access
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+  network netlink raw,
+
+  # Firefox binary and libraries
+  /usr/lib/firefox/** rm,
+  /usr/lib/firefox/firefox ix,
+  /usr/lib/firefox/firefox-bin ix,
+  /usr/lib/firefox/plugin-container ix,
+
+  # Shared libraries
+  /usr/lib/*.so* rm,
+  /usr/lib/**/*.so* rm,
+
+  # System data
+  /usr/share/** r,
+  /etc/firefox/** r,
+  /etc/mime.types r,
+  /etc/mailcap r,
+
+  # User profile
+  owner @{firefox_home}/ rw,
+  owner @{firefox_home}/** rwk,
+
+  # Cache
+  owner @{firefox_cache}/ rw,
+  owner @{firefox_cache}/** rwk,
+
+  # Temp files
+  owner /tmp/firefox*/ rw,
+  owner /tmp/firefox*/** rwk,
+  owner /tmp/mozilla*/ rw,
+  owner /tmp/mozilla*/** rwk,
+  owner /tmp/Temp-*/ rw,
+  owner /tmp/Temp-*/** rwk,
+
+  # Downloads (common locations)
+  owner @{HOME}/Downloads/ rw,
+  owner @{HOME}/Downloads/** rw,
+  owner @{HOME}/Desktop/ r,
+  owner @{HOME}/Desktop/** rw,
+  owner @{HOME}/Documents/ r,
+  owner @{HOME}/Documents/** rw,
+
+  # /proc access for sandbox
+  owner @{PROC}/@{pid}/** r,
+  @{PROC}/sys/kernel/random/uuid r,
+  @{PROC}/sys/fs/inotify/max_user_watches r,
+
+  # /sys access
+  /sys/devices/system/cpu/** r,
+  /sys/devices/pci*/** r,
+  /sys/class/drm/** r,
+
+  # Device access for hardware acceleration
+  /dev/dri/ r,
+  /dev/dri/** rw,
+  /dev/shm/ r,
+  owner /dev/shm/** rw,
+  /dev/video* rw,  # Webcam access
+
+  # D-Bus
+  dbus send bus=session,
+  dbus receive bus=session,
+  dbus send bus=system,
+  dbus receive bus=system,
+
+  # Xdg-portal for file dialogs
+  /usr/libexec/xdg-document-portal ix,
+  /usr/libexec/xdg-desktop-portal* ix,
+
+  # GNOME/KDE integration
+  owner @{HOME}/.local/share/recently-used.xbel* rw,
+  owner @{HOME}/.local/share/applications/ r,
+  owner @{HOME}/.config/gtk-3.0/** r,
+  owner @{HOME}/.config/dconf/user r,
+
+  # Deny sensitive locations
+  deny @{HOME}/.ssh/** rwx,
+  deny @{HOME}/.gnupg/** rwx,
+  deny @{HOME}/.config/keepassxc/** rwx,
+  deny /etc/shadow r,
+  deny /etc/passwd w,
+
+  # Include local customizations
+  include if exists <local/usr.bin.firefox>
+}
