@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from "preact/hooks";
 
 interface Monitor {
   id: string;
@@ -13,13 +13,39 @@ interface Monitor {
 }
 
 const MONITORS: Monitor[] = [
-  { id: '1', name: 'DP-1', width: 3840, height: 2160, refresh: 60, x: 0, y: 0, scale: 1.5, primary: true },
-  { id: '2', name: 'HDMI-A-1', width: 2560, height: 1440, refresh: 144, x: 3840, y: 0, scale: 1.0, primary: false },
+  {
+    id: "1",
+    name: "DP-1",
+    width: 3840,
+    height: 2160,
+    refresh: 60,
+    x: 0,
+    y: 0,
+    scale: 1.5,
+    primary: true,
+  },
+  {
+    id: "2",
+    name: "HDMI-A-1",
+    width: 2560,
+    height: 1440,
+    refresh: 144,
+    x: 3840,
+    y: 0,
+    scale: 1.0,
+    primary: false,
+  },
 ];
 
-const RESOLUTIONS = ['3840x2160', '2560x1440', '1920x1080'];
-const REFRESH_RATES = ['144 Hz', '120 Hz', '60 Hz', '30 Hz'];
-const SCALES = ['1.0 (100%)', '1.25 (125%)', '1.5 (150%)', '1.75 (175%)', '2.0 (200%)'];
+const RESOLUTIONS = ["3840x2160", "2560x1440", "1920x1080"];
+const REFRESH_RATES = ["144 Hz", "120 Hz", "60 Hz", "30 Hz"];
+const SCALES = [
+  "1.0 (100%)",
+  "1.25 (125%)",
+  "1.5 (150%)",
+  "1.75 (175%)",
+  "2.0 (200%)",
+];
 
 export function DisplaysAppMockup() {
   const [selected, setSelected] = useState<Monitor>(MONITORS[0]);
@@ -41,7 +67,7 @@ export function DisplaysAppMockup() {
       ref={containerRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      class={`relative bg-base rounded-2xl border-2 overflow-hidden shadow-2xl transition-all duration-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'} ${isHovered ? 'shadow-blue/30 border-blue/50' : 'border-surface0'}`}
+      class={`relative bg-base rounded-2xl border-2 overflow-hidden shadow-2xl transition-all duration-300 ${animateIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"} ${isHovered ? "shadow-blue/30 border-blue/50" : "border-surface0"}`}
     >
       {/* GTK Header Bar */}
       <div class="bg-crust px-4 py-2.5 flex items-center justify-between border-b border-surface0">
@@ -61,8 +87,8 @@ export function DisplaysAppMockup() {
             onClick={handleApply}
             class={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
               hasChanges
-                ? 'bg-green text-crust hover:bg-teal'
-                : 'bg-surface1 text-overlay0 cursor-not-allowed'
+                ? "bg-green text-crust hover:bg-teal"
+                : "bg-surface1 text-overlay0 cursor-not-allowed"
             }`}
           >
             Apply
@@ -71,12 +97,14 @@ export function DisplaysAppMockup() {
       </div>
 
       {/* Main Content */}
-      <div style={{ height: '320px' }} class="overflow-y-auto p-4">
+      <div style={{ height: "320px" }} class="overflow-y-auto p-4">
         {/* Display arrangement preview */}
         <div class="bg-mantle rounded-xl border border-surface0 p-4 mb-4">
           <div class="flex items-center justify-between mb-3">
             <span class="text-sm font-bold text-text">Display Arrangement</span>
-            <span class="text-[10px] text-overlay0">Click to select, drag to arrange</span>
+            <span class="text-[10px] text-overlay0">
+              Click to select, drag to arrange
+            </span>
           </div>
 
           {/* Monitor preview area */}
@@ -95,10 +123,10 @@ export function DisplaysAppMockup() {
                   }}
                   class={`absolute rounded-lg border-2 flex flex-col items-center justify-center transition-all cursor-pointer hover:scale-105 ${
                     selected.id === mon.id
-                      ? 'bg-surface1 border-mauve shadow-lg'
+                      ? "bg-surface1 border-mauve shadow-lg"
                       : mon.primary
-                        ? 'bg-surface0 border-green'
-                        : 'bg-surface0 border-surface1 hover:border-surface2'
+                        ? "bg-surface0 border-green"
+                        : "bg-surface0 border-surface1 hover:border-surface2"
                   }`}
                   style={{
                     width: `${width}px`,
@@ -107,8 +135,12 @@ export function DisplaysAppMockup() {
                     top: `${mon.y * previewScale + 10}px`,
                   }}
                 >
-                  <span class="text-[10px] font-bold text-text">{mon.name}</span>
-                  <span class="text-[8px] text-overlay0">{mon.width}x{mon.height}</span>
+                  <span class="text-[10px] font-bold text-text">
+                    {mon.name}
+                  </span>
+                  <span class="text-[8px] text-overlay0">
+                    {mon.width}x{mon.height}
+                  </span>
                 </button>
               );
             })}
@@ -120,19 +152,29 @@ export function DisplaysAppMockup() {
           <div class="flex items-center gap-3 mb-4">
             <span class="text-sm font-bold text-text">{selected.name}</span>
             {selected.primary && (
-              <span class="text-[9px] bg-green text-crust font-bold px-2 py-0.5 rounded">PRIMARY</span>
+              <span class="text-[9px] bg-green text-crust font-bold px-2 py-0.5 rounded">
+                PRIMARY
+              </span>
             )}
           </div>
 
           <div class="space-y-3">
             {/* Resolution */}
-            <SettingRow label="Resolution" description="Display resolution in pixels">
+            <SettingRow
+              label="Resolution"
+              description="Display resolution in pixels"
+            >
               <select
                 class="bg-surface0 text-text text-xs rounded-lg px-3 py-1.5 border border-surface1 focus:outline-none focus:border-mauve"
                 onChange={() => setHasChanges(true)}
               >
                 {RESOLUTIONS.map((r) => (
-                  <option key={r} selected={r === `${selected.width}x${selected.height}`}>{r}</option>
+                  <option
+                    key={r}
+                    selected={r === `${selected.width}x${selected.height}`}
+                  >
+                    {r}
+                  </option>
                 ))}
               </select>
             </SettingRow>
@@ -144,7 +186,9 @@ export function DisplaysAppMockup() {
                 onChange={() => setHasChanges(true)}
               >
                 {REFRESH_RATES.map((r) => (
-                  <option key={r} selected={r === `${selected.refresh} Hz`}>{r}</option>
+                  <option key={r} selected={r === `${selected.refresh} Hz`}>
+                    {r}
+                  </option>
                 ))}
               </select>
             </SettingRow>
@@ -156,19 +200,33 @@ export function DisplaysAppMockup() {
                 onChange={() => setHasChanges(true)}
               >
                 {SCALES.map((s) => (
-                  <option key={s} selected={s.startsWith(selected.scale.toString())}>{s}</option>
+                  <option
+                    key={s}
+                    selected={s.startsWith(selected.scale.toString())}
+                  >
+                    {s}
+                  </option>
                 ))}
               </select>
             </SettingRow>
 
             {/* VRR */}
-            <SettingRow label="Variable Refresh Rate" description="FreeSync / G-Sync">
-              <ToggleSwitch defaultChecked={selected.refresh > 60} onChange={() => setHasChanges(true)} />
+            <SettingRow
+              label="Variable Refresh Rate"
+              description="FreeSync / G-Sync"
+            >
+              <ToggleSwitch
+                defaultChecked={selected.refresh > 60}
+                onChange={() => setHasChanges(true)}
+              />
             </SettingRow>
 
             {/* Primary */}
             <SettingRow label="Set as Primary" description="Main display">
-              <ToggleSwitch defaultChecked={selected.primary} onChange={() => setHasChanges(true)} />
+              <ToggleSwitch
+                defaultChecked={selected.primary}
+                onChange={() => setHasChanges(true)}
+              />
             </SettingRow>
           </div>
         </div>
@@ -231,12 +289,12 @@ function ToggleSwitch({
         onChange?.();
       }}
       class={`w-10 h-5 rounded-full transition-colors relative ${
-        checked ? 'bg-mauve' : 'bg-surface1'
+        checked ? "bg-mauve" : "bg-surface1"
       }`}
     >
       <div
         class={`w-4 h-4 bg-text rounded-full absolute top-0.5 transition-all ${
-          checked ? 'left-5' : 'left-0.5'
+          checked ? "left-5" : "left-0.5"
         }`}
       />
     </button>

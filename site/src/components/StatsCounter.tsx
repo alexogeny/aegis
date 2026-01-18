@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from "preact/hooks";
 
 interface Stat {
   value: number;
@@ -8,10 +8,10 @@ interface Stat {
 }
 
 const STATS: Stat[] = [
-  { value: 40, suffix: '+', label: 'VSCode Extensions', color: 'blue' },
-  { value: 80, suffix: '+', label: 'App Routing Rules', color: 'teal' },
-  { value: 6, suffix: '', label: 'Virtual Audio Sinks', color: 'green' },
-  { value: 100, suffix: '%', label: 'Open Source', color: 'mauve' },
+  { value: 40, suffix: "+", label: "VSCode Extensions", color: "blue" },
+  { value: 80, suffix: "+", label: "App Routing Rules", color: "teal" },
+  { value: 6, suffix: "", label: "Virtual Audio Sinks", color: "green" },
+  { value: 100, suffix: "%", label: "Open Source", color: "mauve" },
 ];
 
 export function StatsCounter() {
@@ -25,7 +25,7 @@ export function StatsCounter() {
           setIsVisible(true);
         }
       },
-      { threshold: 0.3 }
+      { threshold: 0.3 },
     );
 
     if (containerRef.current) {
@@ -49,7 +49,15 @@ export function StatsCounter() {
   );
 }
 
-function StatCard({ stat, index, isVisible }: { stat: Stat; index: number; isVisible: boolean }) {
+function StatCard({
+  stat,
+  index,
+  isVisible,
+}: {
+  stat: Stat;
+  index: number;
+  isVisible: boolean;
+}) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -78,12 +86,14 @@ function StatCard({ stat, index, isVisible }: { stat: Stat; index: number; isVis
       class={`
         glass-card rounded-2xl p-6 text-center
         transition-all duration-700 ease-out hover-lift
-        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}
+        ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}
       `}
       style={{ transitionDelay: `${index * 150}ms` }}
     >
       {/* Animated number */}
-      <div class={`text-4xl md:text-5xl font-bold text-${stat.color} mb-2 tabular-nums`}>
+      <div
+        class={`text-4xl md:text-5xl font-bold text-${stat.color} mb-2 tabular-nums`}
+      >
         {count}
         <span class="text-2xl">{stat.suffix}</span>
       </div>
@@ -96,7 +106,7 @@ function StatCard({ stat, index, isVisible }: { stat: Stat; index: number; isVis
         <div
           class={`h-full bg-${stat.color} rounded-full transition-all duration-1000 ease-out`}
           style={{
-            width: isVisible ? '100%' : '0%',
+            width: isVisible ? "100%" : "0%",
             transitionDelay: `${index * 150 + 500}ms`,
           }}
         />

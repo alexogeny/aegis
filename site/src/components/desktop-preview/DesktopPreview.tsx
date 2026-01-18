@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
-import { Waybar } from './Waybar';
-import { Window } from './Window';
-import { Terminal } from './Terminal';
-import { AnyrunSearch } from './AnyrunSearch';
-import { Notification } from './Notification';
-import { VSCodeWindow } from './VSCodeWindow';
+import { useState, useEffect, useRef } from "preact/hooks";
+import { Waybar } from "./Waybar";
+import { Window } from "./Window";
+import { Terminal } from "./Terminal";
+import { AnyrunSearch } from "./AnyrunSearch";
+import { Notification } from "./Notification";
+import { VSCodeWindow } from "./VSCodeWindow";
 
 interface DemoState {
   phase: number;
-  terminalLines: Array<{ type: 'prompt' | 'output'; content: string }>;
+  terminalLines: Array<{ type: "prompt" | "output"; content: string }>;
   terminalInput: string;
   showTerminal: boolean;
   showVSCode: boolean;
@@ -22,11 +22,11 @@ interface DemoState {
 const INITIAL_STATE: DemoState = {
   phase: 0,
   terminalLines: [],
-  terminalInput: '',
+  terminalInput: "",
   showTerminal: false,
   showVSCode: false,
   showAnyrun: false,
-  anyrunQuery: '',
+  anyrunQuery: "",
   anyrunSelected: 0,
   showNotification: false,
   activeWorkspace: 1,
@@ -34,17 +34,29 @@ const INITIAL_STATE: DemoState = {
 
 export function DesktopPreview() {
   const [state, setState] = useState<DemoState>(INITIAL_STATE);
-  const [time, setTime] = useState('12:34');
+  const [time, setTime] = useState("12:34");
   const timeoutRef = useRef<number | null>(null);
 
   // Update time
   useEffect(() => {
     const now = new Date();
-    setTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
+    setTime(
+      now.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }),
+    );
 
     const interval = setInterval(() => {
       const now = new Date();
-      setTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }));
+      setTime(
+        now.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
+      );
     }, 60000);
 
     return () => clearInterval(interval);
@@ -53,9 +65,10 @@ export function DesktopPreview() {
   // Demo sequence
   useEffect(() => {
     const runDemo = async () => {
-      const delay = (ms: number) => new Promise((r) => {
-        timeoutRef.current = setTimeout(r, ms) as unknown as number;
-      });
+      const delay = (ms: number) =>
+        new Promise((r) => {
+          timeoutRef.current = setTimeout(r, ms) as unknown as number;
+        });
 
       const typeText = async (text: string, setter: (t: string) => void) => {
         for (let i = 0; i <= text.length; i++) {
@@ -73,14 +86,19 @@ export function DesktopPreview() {
       await delay(800);
 
       // Phase 2: Type neofetch command
-      await typeText('neofetch', (t) => setState((s) => ({ ...s, terminalInput: t })));
+      await typeText("neofetch", (t) =>
+        setState((s) => ({ ...s, terminalInput: t })),
+      );
       await delay(300);
 
       // Phase 3: Show neofetch output
       setState((s) => ({
         ...s,
-        terminalLines: [{ type: 'prompt', content: 'neofetch' }, { type: 'output', content: 'neofetch' }],
-        terminalInput: '',
+        terminalLines: [
+          { type: "prompt", content: "neofetch" },
+          { type: "output", content: "neofetch" },
+        ],
+        terminalInput: "",
         phase: 3,
       }));
       await delay(2500);
@@ -90,7 +108,9 @@ export function DesktopPreview() {
       await delay(400);
 
       // Phase 5: Type "code" in Anyrun
-      await typeText('code', (t) => setState((s) => ({ ...s, anyrunQuery: t })));
+      await typeText("code", (t) =>
+        setState((s) => ({ ...s, anyrunQuery: t })),
+      );
       await delay(600);
 
       // Phase 6: Select VSCode and close Anyrun
@@ -136,7 +156,8 @@ export function DesktopPreview() {
       <div
         class="absolute inset-0"
         style={{
-          background: 'linear-gradient(135deg, #1e1e2e 0%, #181825 50%, #11111b 100%)',
+          background:
+            "linear-gradient(135deg, #1e1e2e 0%, #181825 50%, #11111b 100%)",
         }}
       />
 
@@ -146,7 +167,7 @@ export function DesktopPreview() {
         style={{
           backgroundImage: `radial-gradient(circle at 25% 25%, #cba6f7 1px, transparent 1px),
                            radial-gradient(circle at 75% 75%, #f5c2e7 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
+          backgroundSize: "60px 60px",
         }}
       />
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from "preact/hooks";
 
 interface Feature {
   icon: string;
@@ -10,46 +10,46 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
-    icon: '🔒',
-    title: 'AppArmor',
-    description: 'Mandatory Access Control',
-    color: 'mauve',
-    details: ['Profile enforcement', 'App sandboxing', 'Zero-day protection'],
+    icon: "🔒",
+    title: "AppArmor",
+    description: "Mandatory Access Control",
+    color: "mauve",
+    details: ["Profile enforcement", "App sandboxing", "Zero-day protection"],
   },
   {
-    icon: '🛡️',
-    title: 'nftables Firewall',
-    description: 'Network Protection',
-    color: 'blue',
-    details: ['Default deny policy', 'Rate limiting', 'Port knocking ready'],
+    icon: "🛡️",
+    title: "nftables Firewall",
+    description: "Network Protection",
+    color: "blue",
+    details: ["Default deny policy", "Rate limiting", "Port knocking ready"],
   },
   {
-    icon: '🦠',
-    title: 'ClamAV',
-    description: 'Antivirus Scanning',
-    color: 'teal',
-    details: ['On-access scanning', 'Auto-updates', 'Low overhead'],
+    icon: "🦠",
+    title: "ClamAV",
+    description: "Antivirus Scanning",
+    color: "teal",
+    details: ["On-access scanning", "Auto-updates", "Low overhead"],
   },
   {
-    icon: '🔐',
-    title: 'LUKS2',
-    description: 'Full Disk Encryption',
-    color: 'green',
-    details: ['AES-256 encryption', 'TPM support', 'Secure boot ready'],
+    icon: "🔐",
+    title: "LUKS2",
+    description: "Full Disk Encryption",
+    color: "green",
+    details: ["AES-256 encryption", "TPM support", "Secure boot ready"],
   },
   {
-    icon: '🧅',
-    title: 'Kernel Hardening',
-    description: 'Exploit Mitigations',
-    color: 'peach',
-    details: ['ASLR/SMEP/SMAP', 'Lockdown mode', 'PTI enabled'],
+    icon: "🧅",
+    title: "Kernel Hardening",
+    description: "Exploit Mitigations",
+    color: "peach",
+    details: ["ASLR/SMEP/SMAP", "Lockdown mode", "PTI enabled"],
   },
   {
-    icon: '🔍',
-    title: 'Audit Framework',
-    description: 'Security Monitoring',
-    color: 'pink',
-    details: ['System auditing', 'Log analysis', 'Intrusion detection'],
+    icon: "🔍",
+    title: "Audit Framework",
+    description: "Security Monitoring",
+    color: "pink",
+    details: ["System auditing", "Log analysis", "Intrusion detection"],
   },
 ];
 
@@ -65,7 +65,7 @@ export function FeatureShowcase() {
           setIsVisible(true);
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (containerRef.current) {
@@ -80,7 +80,10 @@ export function FeatureShowcase() {
       {/* Animated background orbs */}
       <div class="absolute inset-0 overflow-hidden pointer-events-none">
         <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-mauve/10 rounded-full blur-[100px] animate-pulse-glow" />
-        <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue/10 rounded-full blur-[80px] animate-pulse-glow" style={{ animationDelay: '1s' }} />
+        <div
+          class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue/10 rounded-full blur-[80px] animate-pulse-glow"
+          style={{ animationDelay: "1s" }}
+        />
       </div>
 
       {/* Feature grid */}
@@ -108,8 +111,8 @@ export function FeatureShowcase() {
                 key={i}
                 class="absolute w-2 h-2 bg-mauve rounded-full"
                 style={{
-                  top: '50%',
-                  left: '50%',
+                  top: "50%",
+                  left: "50%",
                   transform: `rotate(${i * 60}deg) translateX(60px) translateY(-50%)`,
                 }}
               />
@@ -122,8 +125,14 @@ export function FeatureShowcase() {
           </div>
 
           {/* Pulse rings */}
-          <div class="absolute inset-0 animate-ping rounded-full border border-mauve/20" style={{ animationDuration: '3s' }} />
-          <div class="absolute inset-[-10px] animate-ping rounded-full border border-mauve/10" style={{ animationDuration: '3s', animationDelay: '1s' }} />
+          <div
+            class="absolute inset-0 animate-ping rounded-full border border-mauve/20"
+            style={{ animationDuration: "3s" }}
+          />
+          <div
+            class="absolute inset-[-10px] animate-ping rounded-full border border-mauve/10"
+            style={{ animationDuration: "3s", animationDelay: "1s" }}
+          />
         </div>
       </div>
     </div>
@@ -152,15 +161,19 @@ function FeatureCard({
       class={`
         glass-card rounded-2xl p-5 cursor-pointer
         transition-all duration-500 ease-out
-        ${isActive ? `glow-${feature.color} scale-105` : 'hover:scale-102'}
-        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}
+        ${isActive ? `glow-${feature.color} scale-105` : "hover:scale-102"}
+        ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}
       `}
       style={{ transitionDelay: `${index * 100}ms` }}
     >
       {/* Icon with glow */}
       <div class="relative mb-3">
-        <div class={`absolute inset-0 bg-${feature.color}/20 rounded-xl blur-xl transition-opacity duration-300 ${isActive ? 'opacity-100' : 'opacity-0'}`} />
-        <div class={`relative w-12 h-12 rounded-xl bg-${feature.color}/20 flex items-center justify-center text-2xl transition-transform duration-300 ${isActive ? 'scale-110' : ''}`}>
+        <div
+          class={`absolute inset-0 bg-${feature.color}/20 rounded-xl blur-xl transition-opacity duration-300 ${isActive ? "opacity-100" : "opacity-0"}`}
+        />
+        <div
+          class={`relative w-12 h-12 rounded-xl bg-${feature.color}/20 flex items-center justify-center text-2xl transition-transform duration-300 ${isActive ? "scale-110" : ""}`}
+        >
           {feature.icon}
         </div>
       </div>
@@ -171,14 +184,17 @@ function FeatureCard({
       </h3>
 
       {/* Description */}
-      <p class="text-sm text-subtext0 mb-3">
-        {feature.description}
-      </p>
+      <p class="text-sm text-subtext0 mb-3">{feature.description}</p>
 
       {/* Expandable details */}
-      <div class={`space-y-1 overflow-hidden transition-all duration-300 ${isActive ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0'}`}>
+      <div
+        class={`space-y-1 overflow-hidden transition-all duration-300 ${isActive ? "max-h-32 opacity-100" : "max-h-0 opacity-0"}`}
+      >
         {feature.details.map((detail) => (
-          <div key={detail} class="flex items-center gap-2 text-xs text-overlay0">
+          <div
+            key={detail}
+            class="flex items-center gap-2 text-xs text-overlay0"
+          >
             <span class={`text-${feature.color}`}>✓</span>
             <span>{detail}</span>
           </div>
@@ -187,7 +203,9 @@ function FeatureCard({
 
       {/* Shine effect overlay */}
       <div class="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-        <div class={`absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent transform -skew-x-12 transition-transform duration-700 ${isActive ? 'translate-x-full' : '-translate-x-full'}`} />
+        <div
+          class={`absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent transform -skew-x-12 transition-transform duration-700 ${isActive ? "translate-x-full" : "-translate-x-full"}`}
+        />
       </div>
     </div>
   );

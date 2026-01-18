@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect } from "preact/hooks";
 
 interface SecurityLayer {
   id: string;
@@ -12,49 +12,74 @@ interface SecurityLayer {
 
 const SECURITY_LAYERS: SecurityLayer[] = [
   {
-    id: 'apparmor',
-    name: 'AppArmor',
-    color: 'mauve',
-    icon: '',
-    shortDesc: 'Application Sandboxing',
-    longDesc: 'Each app runs in its own sandbox with strict rules about what files it can read, what network connections it can make, and what other apps it can talk to.',
-    examples: ['Firefox can\'t read your SSH keys', 'Discord can\'t access your Documents folder', 'Untrusted apps are automatically restricted'],
+    id: "apparmor",
+    name: "AppArmor",
+    color: "mauve",
+    icon: "",
+    shortDesc: "Application Sandboxing",
+    longDesc:
+      "Each app runs in its own sandbox with strict rules about what files it can read, what network connections it can make, and what other apps it can talk to.",
+    examples: [
+      "Firefox can't read your SSH keys",
+      "Discord can't access your Documents folder",
+      "Untrusted apps are automatically restricted",
+    ],
   },
   {
-    id: 'nftables',
-    name: 'Firewall',
-    color: 'blue',
-    icon: '',
-    shortDesc: 'Network Protection',
-    longDesc: 'A strict "deny by default" firewall blocks all incoming connections unless you explicitly allow them. Outgoing connections from suspicious apps are also monitored.',
-    examples: ['Blocks port scanning attacks', 'Prevents unauthorized remote access', 'Rate-limits connection attempts'],
+    id: "nftables",
+    name: "Firewall",
+    color: "blue",
+    icon: "",
+    shortDesc: "Network Protection",
+    longDesc:
+      'A strict "deny by default" firewall blocks all incoming connections unless you explicitly allow them. Outgoing connections from suspicious apps are also monitored.',
+    examples: [
+      "Blocks port scanning attacks",
+      "Prevents unauthorized remote access",
+      "Rate-limits connection attempts",
+    ],
   },
   {
-    id: 'kernel',
-    name: 'Kernel Hardening',
-    color: 'green',
-    icon: '',
-    shortDesc: 'Deep System Protection',
-    longDesc: 'The Linux kernel itself is hardened with security features that make it much harder for attackers to exploit vulnerabilities, even if they find one.',
-    examples: ['Memory addresses are randomized (ASLR)', 'Kernel is locked down from tampering', 'Exploit mitigations are enabled'],
+    id: "kernel",
+    name: "Kernel Hardening",
+    color: "green",
+    icon: "",
+    shortDesc: "Deep System Protection",
+    longDesc:
+      "The Linux kernel itself is hardened with security features that make it much harder for attackers to exploit vulnerabilities, even if they find one.",
+    examples: [
+      "Memory addresses are randomized (ASLR)",
+      "Kernel is locked down from tampering",
+      "Exploit mitigations are enabled",
+    ],
   },
   {
-    id: 'clamav',
-    name: 'ClamAV',
-    color: 'teal',
-    icon: '',
-    shortDesc: 'Malware Detection',
-    longDesc: 'Real-time scanning watches for known malware signatures. Downloaded files are automatically scanned before you can open them.',
-    examples: ['Scans downloads automatically', 'Catches known malware signatures', 'Quarantines threats safely'],
+    id: "clamav",
+    name: "ClamAV",
+    color: "teal",
+    icon: "",
+    shortDesc: "Malware Detection",
+    longDesc:
+      "Real-time scanning watches for known malware signatures. Downloaded files are automatically scanned before you can open them.",
+    examples: [
+      "Scans downloads automatically",
+      "Catches known malware signatures",
+      "Quarantines threats safely",
+    ],
   },
   {
-    id: 'luks',
-    name: 'LUKS2 Encryption',
-    color: 'peach',
-    icon: '',
-    shortDesc: 'Disk Encryption',
-    longDesc: 'Your entire disk is encrypted. Even if someone steals your computer, they can\'t read your data without your password.',
-    examples: ['Full disk encryption at boot', 'Protected by strong passphrase', 'Data is unreadable without key'],
+    id: "luks",
+    name: "LUKS2 Encryption",
+    color: "peach",
+    icon: "",
+    shortDesc: "Disk Encryption",
+    longDesc:
+      "Your entire disk is encrypted. Even if someone steals your computer, they can't read your data without your password.",
+    examples: [
+      "Full disk encryption at boot",
+      "Protected by strong passphrase",
+      "Data is unreadable without key",
+    ],
   },
 ];
 
@@ -86,7 +111,9 @@ export function SecurityVisualization() {
     return () => clearInterval(interval);
   }, []);
 
-  const activeLayerData = activeLayer ? SECURITY_LAYERS.find((l) => l.id === activeLayer) : null;
+  const activeLayerData = activeLayer
+    ? SECURITY_LAYERS.find((l) => l.id === activeLayer)
+    : null;
 
   return (
     <div class="bg-base rounded-2xl border-2 border-surface0 overflow-hidden">
@@ -98,9 +125,13 @@ export function SecurityVisualization() {
             <div class="w-3 h-3 rounded-full bg-yellow/80"></div>
             <div class="w-3 h-3 rounded-full bg-green/80"></div>
           </div>
-          <span class="text-sm font-bold text-text ml-2">Aegis Security Layers</span>
+          <span class="text-sm font-bold text-text ml-2">
+            Aegis Security Layers
+          </span>
         </div>
-        <span class="text-xs text-overlay0 bg-surface0 px-2 py-1 rounded">Hover to explore</span>
+        <span class="text-xs text-overlay0 bg-surface0 px-2 py-1 rounded">
+          Hover to explore
+        </span>
       </div>
 
       <div class="p-6 md:p-8">
@@ -124,8 +155,8 @@ export function SecurityVisualization() {
                     key={layer.id}
                     class={`
                       transform transition-all duration-300 cursor-pointer
-                      ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'}
-                      ${isActive ? 'scale-105 -translate-x-1' : ''}
+                      ${isVisible ? "translate-x-0 opacity-100" : "translate-x-8 opacity-0"}
+                      ${isActive ? "scale-105 -translate-x-1" : ""}
                     `}
                     style={{ transitionDelay: `${index * 50}ms` }}
                     onMouseEnter={() => setActiveLayer(layer.id)}
@@ -135,23 +166,29 @@ export function SecurityVisualization() {
                       class={`
                         rounded-xl p-4 border-2 transition-all duration-300
                         bg-${layer.color}/20 border-${layer.color}/40
-                        ${isActive ? `border-${layer.color} shadow-lg shadow-${layer.color}/20` : ''}
-                        ${isPulsing ? 'animate-pulse' : ''}
+                        ${isActive ? `border-${layer.color} shadow-lg shadow-${layer.color}/20` : ""}
+                        ${isPulsing ? "animate-pulse" : ""}
                       `}
                       style={{
-                        backgroundColor: isActive ? `var(--${layer.color}-bg)` : undefined,
+                        backgroundColor: isActive
+                          ? `var(--${layer.color}-bg)`
+                          : undefined,
                       }}
                     >
                       <div class="flex items-center gap-3">
                         <span class="text-2xl">{layer.icon}</span>
                         <div class="flex-1 min-w-0">
-                          <div class={`font-bold text-${layer.color}`}>{layer.name}</div>
-                          <div class="text-subtext0 text-sm truncate">{layer.shortDesc}</div>
+                          <div class={`font-bold text-${layer.color}`}>
+                            {layer.name}
+                          </div>
+                          <div class="text-subtext0 text-sm truncate">
+                            {layer.shortDesc}
+                          </div>
                         </div>
                         <div
                           class={`
                             w-2 h-2 rounded-full transition-all duration-300
-                            bg-${layer.color} ${isActive || isPulsing ? 'animate-ping' : 'opacity-50'}
+                            bg-${layer.color} ${isActive || isPulsing ? "animate-ping" : "opacity-50"}
                           `}
                         />
                       </div>
@@ -172,21 +209,30 @@ export function SecurityVisualization() {
                 <div class="flex items-center gap-3 mb-4">
                   <span class="text-3xl">{activeLayerData.icon}</span>
                   <div>
-                    <h3 class={`text-xl font-bold text-${activeLayerData.color}`}>
+                    <h3
+                      class={`text-xl font-bold text-${activeLayerData.color}`}
+                    >
                       {activeLayerData.name}
                     </h3>
-                    <div class="text-sm text-overlay0">{activeLayerData.shortDesc}</div>
+                    <div class="text-sm text-overlay0">
+                      {activeLayerData.shortDesc}
+                    </div>
                   </div>
                 </div>
 
-                <p class="text-subtext0 mb-6 leading-relaxed">{activeLayerData.longDesc}</p>
+                <p class="text-subtext0 mb-6 leading-relaxed">
+                  {activeLayerData.longDesc}
+                </p>
 
                 <div class="space-y-2">
                   <div class="text-xs font-bold text-overlay0 uppercase tracking-wider mb-2">
                     What this means for you:
                   </div>
                   {activeLayerData.examples.map((example, i) => (
-                    <div key={i} class="flex items-center gap-2 text-sm text-subtext0">
+                    <div
+                      key={i}
+                      class="flex items-center gap-2 text-sm text-subtext0"
+                    >
                       <span class={`text-${activeLayerData.color}`}></span>
                       {example}
                     </div>
@@ -196,9 +242,12 @@ export function SecurityVisualization() {
             ) : (
               <div class="flex-1 flex flex-col items-center justify-center text-center">
                 <div class="text-5xl mb-4 opacity-50"></div>
-                <div class="text-text font-semibold mb-2">5 Layers of Protection</div>
+                <div class="text-text font-semibold mb-2">
+                  5 Layers of Protection
+                </div>
                 <div class="text-subtext0 text-sm max-w-xs">
-                  Hover over each layer to learn how it protects you. All layers work together automatically.
+                  Hover over each layer to learn how it protects you. All layers
+                  work together automatically.
                 </div>
 
                 {/* Mini status indicators */}
@@ -223,9 +272,15 @@ export function SecurityVisualization() {
             <span class="text-green font-semibold">All protections active</span>
           </div>
           <div class="flex flex-wrap gap-3 text-xs text-overlay0">
-            <span class="bg-surface0 px-2 py-1 rounded">1500+ AppArmor profiles</span>
-            <span class="bg-surface0 px-2 py-1 rounded">Firewall: deny by default</span>
-            <span class="bg-surface0 px-2 py-1 rounded">ClamAV signatures: up to date</span>
+            <span class="bg-surface0 px-2 py-1 rounded">
+              1500+ AppArmor profiles
+            </span>
+            <span class="bg-surface0 px-2 py-1 rounded">
+              Firewall: deny by default
+            </span>
+            <span class="bg-surface0 px-2 py-1 rounded">
+              ClamAV signatures: up to date
+            </span>
           </div>
         </div>
       </div>

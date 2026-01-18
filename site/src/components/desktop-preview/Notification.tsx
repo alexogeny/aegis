@@ -5,7 +5,12 @@ interface NotificationProps {
   icon?: string;
 }
 
-export function Notification({ visible, title, body, icon = '' }: NotificationProps) {
+export function Notification({
+  visible,
+  title,
+  body,
+  icon = "",
+}: NotificationProps) {
   if (!visible) return null;
 
   return (

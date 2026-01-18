@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect } from "preact/hooks";
 
 interface MacroButton {
   icon: string;
@@ -9,32 +9,39 @@ interface MacroButton {
 
 const initialButtons: MacroButton[] = [
   // Row 1
-  { icon: '🔴', label: 'LIVE', color: 'red', active: false },
-  { icon: '🎬', label: 'RECORD', color: 'mauve', active: false },
-  { icon: '📷', label: 'SCENE 1', color: 'blue', active: true },
-  { icon: '🎮', label: 'SCENE 2', color: 'teal', active: false },
-  { icon: '💬', label: 'SCENE 3', color: 'peach', active: false },
+  { icon: "🔴", label: "LIVE", color: "red", active: false },
+  { icon: "🎬", label: "RECORD", color: "mauve", active: false },
+  { icon: "📷", label: "SCENE 1", color: "blue", active: true },
+  { icon: "🎮", label: "SCENE 2", color: "teal", active: false },
+  { icon: "💬", label: "SCENE 3", color: "peach", active: false },
   // Row 2
-  { icon: '🎤', label: 'MIC', color: 'green', active: true },
-  { icon: '🔊', label: 'MUSIC', color: 'pink', active: true },
-  { icon: '📺', label: 'GAME', color: 'sky', active: false },
-  { icon: '💡', label: 'LIGHT', color: 'yellow', active: true },
-  { icon: '⚙️', label: 'CONFIG', color: 'surface1', active: false },
+  { icon: "🎤", label: "MIC", color: "green", active: true },
+  { icon: "🔊", label: "MUSIC", color: "pink", active: true },
+  { icon: "📺", label: "GAME", color: "sky", active: false },
+  { icon: "💡", label: "LIGHT", color: "yellow", active: true },
+  { icon: "⚙️", label: "CONFIG", color: "surface1", active: false },
   // Row 3
-  { icon: '🎵', label: 'SFX 1', color: 'lavender', active: false },
-  { icon: '🎶', label: 'SFX 2', color: 'sapphire', active: false },
-  { icon: '👏', label: 'SFX 3', color: 'flamingo', active: false },
-  { icon: '😂', label: 'SFX 4', color: 'rosewater', active: false },
-  { icon: '📱', label: 'PHONE', color: 'maroon', active: false },
+  { icon: "🎵", label: "SFX 1", color: "lavender", active: false },
+  { icon: "🎶", label: "SFX 2", color: "sapphire", active: false },
+  { icon: "👏", label: "SFX 3", color: "flamingo", active: false },
+  { icon: "😂", label: "SFX 4", color: "rosewater", active: false },
+  { icon: "📱", label: "PHONE", color: "maroon", active: false },
 ];
 
-const lightTextColors = ['yellow', 'rosewater', 'flamingo', 'lavender', 'surface1', 'pink'];
+const lightTextColors = [
+  "yellow",
+  "rosewater",
+  "flamingo",
+  "lavender",
+  "surface1",
+  "pink",
+];
 
 export function InteractiveMacropad() {
   const [buttons, setButtons] = useState<MacroButton[]>(initialButtons);
   const [currentPage, setCurrentPage] = useState(1);
   const [pressedIndex, setPressedIndex] = useState<number | null>(null);
-  const [lastAction, setLastAction] = useState<string>('');
+  const [lastAction, setLastAction] = useState<string>("");
 
   // Handle button press
   const handlePress = (index: number) => {
@@ -42,22 +49,26 @@ export function InteractiveMacropad() {
     setPressedIndex(index);
 
     // Toggle active state for toggleable buttons
-    if (['LIVE', 'RECORD', 'MIC', 'MUSIC', 'GAME', 'LIGHT'].includes(btn.label)) {
-      setButtons(prev => prev.map((b, i) =>
-        i === index ? { ...b, active: !b.active } : b
-      ));
-      setLastAction(`${btn.label} ${!btn.active ? 'ON' : 'OFF'}`);
+    if (
+      ["LIVE", "RECORD", "MIC", "MUSIC", "GAME", "LIGHT"].includes(btn.label)
+    ) {
+      setButtons((prev) =>
+        prev.map((b, i) => (i === index ? { ...b, active: !b.active } : b)),
+      );
+      setLastAction(`${btn.label} ${!btn.active ? "ON" : "OFF"}`);
     }
     // Scene buttons - make exclusive
-    else if (btn.label.startsWith('SCENE')) {
-      setButtons(prev => prev.map((b, i) => ({
-        ...b,
-        active: b.label.startsWith('SCENE') ? i === index : b.active
-      })));
+    else if (btn.label.startsWith("SCENE")) {
+      setButtons((prev) =>
+        prev.map((b, i) => ({
+          ...b,
+          active: b.label.startsWith("SCENE") ? i === index : b.active,
+        })),
+      );
       setLastAction(`Switched to ${btn.label}`);
     }
     // SFX buttons - just flash
-    else if (btn.label.startsWith('SFX')) {
+    else if (btn.label.startsWith("SFX")) {
       setLastAction(`Playing ${btn.label}`);
     }
     // Other buttons
@@ -85,7 +96,9 @@ export function InteractiveMacropad() {
             <span class="text-xs text-green">● Connected</span>
           </div>
         </div>
-        <span class="text-[10px] text-overlay0 bg-surface0 px-2 py-0.5 rounded">Click buttons!</span>
+        <span class="text-[10px] text-overlay0 bg-surface0 px-2 py-0.5 rounded">
+          Click buttons!
+        </span>
       </div>
 
       {/* Content */}
@@ -93,7 +106,9 @@ export function InteractiveMacropad() {
         {/* Status bar */}
         <div class="bg-surface0/50 rounded-lg px-3 py-2 mb-4 flex items-center justify-between">
           <span class="text-xs text-overlay0">Last action:</span>
-          <span class="text-xs text-text font-mono">{lastAction || 'None'}</span>
+          <span class="text-xs text-text font-mono">
+            {lastAction || "None"}
+          </span>
         </div>
 
         {/* 5x3 Button Grid */}
@@ -108,27 +123,35 @@ export function InteractiveMacropad() {
                 onClick={() => handlePress(index)}
                 class={`aspect-square rounded-xl flex flex-col items-center justify-center p-1 cursor-pointer transition-all duration-100 border select-none ${
                   isPressed
-                    ? 'scale-90 brightness-125'
-                    : 'hover:scale-105 active:scale-95'
+                    ? "scale-90 brightness-125"
+                    : "hover:scale-105 active:scale-95"
                 } ${
                   btn.active
                     ? `bg-gradient-to-br from-${btn.color} to-${btn.color}/70 shadow-lg shadow-${btn.color}/30 border-${btn.color}/50`
                     : `bg-gradient-to-br from-surface1 to-surface0 border-surface0 opacity-70 hover:opacity-100`
                 }`}
               >
-                <span class={`text-2xl ${isPressed ? 'scale-110' : ''} transition-transform`}>
+                <span
+                  class={`text-2xl ${isPressed ? "scale-110" : ""} transition-transform`}
+                >
                   {btn.icon}
                 </span>
-                <span class={`text-[8px] font-bold mt-0.5 ${
-                  btn.active
-                    ? isLightText ? 'text-crust' : 'text-white'
-                    : 'text-subtext0'
-                }`}>
+                <span
+                  class={`text-[8px] font-bold mt-0.5 ${
+                    btn.active
+                      ? isLightText
+                        ? "text-crust"
+                        : "text-white"
+                      : "text-subtext0"
+                  }`}
+                >
                   {btn.label}
                 </span>
                 {/* Active indicator */}
                 {btn.active && (
-                  <div class={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-white shadow-sm animate-pulse`}></div>
+                  <div
+                    class={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-white shadow-sm animate-pulse`}
+                  ></div>
                 )}
               </button>
             );
@@ -137,14 +160,14 @@ export function InteractiveMacropad() {
 
         {/* Page Indicators */}
         <div class="flex justify-center gap-2 mb-4">
-          {[1, 2, 3].map(page => (
+          {[1, 2, 3].map((page) => (
             <button
               key={page}
               onClick={() => setCurrentPage(page)}
               class={`px-3 py-1 rounded text-xs font-bold transition-all ${
                 currentPage === page
-                  ? 'bg-mauve text-crust'
-                  : 'bg-surface0 text-subtext0 hover:bg-surface1'
+                  ? "bg-mauve text-crust"
+                  : "bg-surface0 text-subtext0 hover:bg-surface1"
               }`}
             >
               {page}
@@ -154,11 +177,21 @@ export function InteractiveMacropad() {
 
         {/* Category Chips */}
         <div class="flex flex-wrap justify-center gap-2 text-xs">
-          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">OBS Scenes</span>
-          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">Audio Sources</span>
-          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">Sound FX</span>
-          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">Lighting</span>
-          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">System</span>
+          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">
+            OBS Scenes
+          </span>
+          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">
+            Audio Sources
+          </span>
+          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">
+            Sound FX
+          </span>
+          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">
+            Lighting
+          </span>
+          <span class="bg-surface0 text-subtext0 px-3 py-1.5 rounded-full hover:bg-surface1 cursor-pointer transition-colors">
+            System
+          </span>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef } from "preact/hooks";
 
 export function AuroraBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -13,7 +13,7 @@ export function AuroraBackground() {
     const animate = () => {
       time += 0.002;
 
-      const blobs = container.querySelectorAll('.aurora-blob');
+      const blobs = container.querySelectorAll(".aurora-blob");
       blobs.forEach((blob, i) => {
         const el = blob as HTMLElement;
         const offset = i * 1.5;
@@ -32,41 +32,48 @@ export function AuroraBackground() {
   }, []);
 
   return (
-    <div ref={containerRef} class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <div
+      ref={containerRef}
+      class="fixed inset-0 overflow-hidden pointer-events-none z-0"
+    >
       {/* Large morphing gradient blobs */}
       <div
         class="aurora-blob absolute w-[800px] h-[800px] rounded-full opacity-20 blur-[100px] morph-blob"
         style={{
-          background: 'radial-gradient(circle, rgba(203, 166, 247, 0.4) 0%, transparent 70%)',
-          top: '-20%',
-          left: '-10%',
+          background:
+            "radial-gradient(circle, rgba(203, 166, 247, 0.4) 0%, transparent 70%)",
+          top: "-20%",
+          left: "-10%",
         }}
       />
       <div
         class="aurora-blob absolute w-[600px] h-[600px] rounded-full opacity-15 blur-[80px] morph-blob"
         style={{
-          background: 'radial-gradient(circle, rgba(137, 180, 250, 0.4) 0%, transparent 70%)',
-          top: '30%',
-          right: '-15%',
-          animationDelay: '-2s',
+          background:
+            "radial-gradient(circle, rgba(137, 180, 250, 0.4) 0%, transparent 70%)",
+          top: "30%",
+          right: "-15%",
+          animationDelay: "-2s",
         }}
       />
       <div
         class="aurora-blob absolute w-[700px] h-[700px] rounded-full opacity-10 blur-[90px] morph-blob"
         style={{
-          background: 'radial-gradient(circle, rgba(245, 194, 231, 0.4) 0%, transparent 70%)',
-          bottom: '-10%',
-          left: '20%',
-          animationDelay: '-4s',
+          background:
+            "radial-gradient(circle, rgba(245, 194, 231, 0.4) 0%, transparent 70%)",
+          bottom: "-10%",
+          left: "20%",
+          animationDelay: "-4s",
         }}
       />
       <div
         class="aurora-blob absolute w-[500px] h-[500px] rounded-full opacity-15 blur-[70px] morph-blob"
         style={{
-          background: 'radial-gradient(circle, rgba(148, 226, 213, 0.3) 0%, transparent 70%)',
-          top: '50%',
-          left: '50%',
-          animationDelay: '-6s',
+          background:
+            "radial-gradient(circle, rgba(148, 226, 213, 0.3) 0%, transparent 70%)",
+          top: "50%",
+          left: "50%",
+          animationDelay: "-6s",
         }}
       />
 
@@ -78,7 +85,7 @@ export function AuroraBackground() {
             linear-gradient(rgba(203, 166, 247, 0.5) 1px, transparent 1px),
             linear-gradient(90deg, rgba(203, 166, 247, 0.5) 1px, transparent 1px)
           `,
-          backgroundSize: '100px 100px',
+          backgroundSize: "100px 100px",
         }}
       />
 

@@ -1,25 +1,30 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from "preact/hooks";
 
-type State = 'checking' | 'updates' | 'updating' | 'done';
+type State = "checking" | "updates" | "updating" | "done";
 
 interface Package {
   name: string;
   current: string;
   new: string;
-  source: 'official' | 'aur';
+  source: "official" | "aur";
 }
 
 const PACKAGES: Package[] = [
-  { name: 'linux', current: '6.7.1', new: '6.7.2', source: 'official' },
-  { name: 'firefox', current: '121.0', new: '122.0', source: 'official' },
-  { name: 'mesa', current: '23.3.3', new: '23.3.4', source: 'official' },
-  { name: 'hyprland', current: '0.34.0', new: '0.35.0', source: 'official' },
-  { name: 'visual-studio-code-bin', current: '1.85.1', new: '1.85.2', source: 'aur' },
-  { name: 'spotify', current: '1.2.28', new: '1.2.30', source: 'aur' },
+  { name: "linux", current: "6.7.1", new: "6.7.2", source: "official" },
+  { name: "firefox", current: "121.0", new: "122.0", source: "official" },
+  { name: "mesa", current: "23.3.3", new: "23.3.4", source: "official" },
+  { name: "hyprland", current: "0.34.0", new: "0.35.0", source: "official" },
+  {
+    name: "visual-studio-code-bin",
+    current: "1.85.1",
+    new: "1.85.2",
+    source: "aur",
+  },
+  { name: "spotify", current: "1.2.28", new: "1.2.30", source: "aur" },
 ];
 
 export function UpdatesAppMockup() {
-  const [state, setState] = useState<State>('updates');
+  const [state, setState] = useState<State>("updates");
   const [progress, setProgress] = useState(0);
   const [animateIn, setAnimateIn] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -30,7 +35,7 @@ export function UpdatesAppMockup() {
   }, []);
 
   const handleUpdate = () => {
-    setState('updating');
+    setState("updating");
     setProgress(0);
 
     // Simulate update progress
@@ -38,7 +43,7 @@ export function UpdatesAppMockup() {
       setProgress((p) => {
         if (p >= 100) {
           clearInterval(interval);
-          setState('done');
+          setState("done");
           return 100;
         }
         return p + Math.random() * 15;
@@ -47,19 +52,19 @@ export function UpdatesAppMockup() {
   };
 
   const handleRefresh = () => {
-    setState('checking');
-    setTimeout(() => setState('updates'), 1500);
+    setState("checking");
+    setTimeout(() => setState("updates"), 1500);
   };
 
-  const officialPkgs = PACKAGES.filter((p) => p.source === 'official');
-  const aurPkgs = PACKAGES.filter((p) => p.source === 'aur');
+  const officialPkgs = PACKAGES.filter((p) => p.source === "official");
+  const aurPkgs = PACKAGES.filter((p) => p.source === "aur");
 
   return (
     <div
       ref={containerRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      class={`relative bg-base rounded-2xl border-2 overflow-hidden shadow-2xl transition-all duration-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'} ${isHovered ? 'shadow-green/30 border-green/50' : 'border-surface0'}`}
+      class={`relative bg-base rounded-2xl border-2 overflow-hidden shadow-2xl transition-all duration-300 ${animateIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"} ${isHovered ? "shadow-green/30 border-green/50" : "border-surface0"}`}
     >
       {/* GTK Header Bar */}
       <div class="bg-crust px-4 py-2.5 flex items-center justify-between border-b border-surface0">
@@ -80,21 +85,25 @@ export function UpdatesAppMockup() {
       </div>
 
       {/* Main Content */}
-      <div style={{ height: '300px' }} class="overflow-y-auto p-4">
-        {state === 'checking' && (
+      <div style={{ height: "300px" }} class="overflow-y-auto p-4">
+        {state === "checking" && (
           <div class="animate-fadeIn flex flex-col items-center justify-center h-full">
             <div class="w-10 h-10 border-3 border-mauve border-t-transparent rounded-full animate-spin mb-4"></div>
-            <div class="text-lg font-bold text-text">Checking for updates...</div>
+            <div class="text-lg font-bold text-text">
+              Checking for updates...
+            </div>
             <div class="text-xs text-subtext0">This may take a moment</div>
           </div>
         )}
 
-        {state === 'updates' && (
+        {state === "updates" && (
           <div class="animate-fadeIn">
             {/* Header */}
             <div class="flex items-center justify-between mb-4">
               <div class="flex items-center gap-3">
-                <span class="text-xl font-bold text-text">Updates Available</span>
+                <span class="text-xl font-bold text-text">
+                  Updates Available
+                </span>
                 <span class="bg-mauve text-crust text-xs font-bold px-2 py-0.5 rounded-full">
                   {PACKAGES.length}
                 </span>
@@ -118,8 +127,12 @@ export function UpdatesAppMockup() {
             {/* Official packages */}
             <div class="bg-mantle rounded-xl border border-surface0 p-3 mb-3">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-bold text-text">Official Repositories</span>
-                <span class="text-[10px] text-overlay0">{officialPkgs.length} packages</span>
+                <span class="text-sm font-bold text-text">
+                  Official Repositories
+                </span>
+                <span class="text-[10px] text-overlay0">
+                  {officialPkgs.length} packages
+                </span>
               </div>
               <div class="space-y-1">
                 {officialPkgs.map((pkg) => (
@@ -132,7 +145,9 @@ export function UpdatesAppMockup() {
             <div class="bg-mantle rounded-xl border border-surface0 p-3">
               <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-bold text-text">AUR Packages</span>
-                <span class="text-[10px] text-overlay0">{aurPkgs.length} packages</span>
+                <span class="text-[10px] text-overlay0">
+                  {aurPkgs.length} packages
+                </span>
               </div>
               <div class="space-y-1">
                 {aurPkgs.map((pkg) => (
@@ -143,11 +158,13 @@ export function UpdatesAppMockup() {
           </div>
         )}
 
-        {state === 'updating' && (
+        {state === "updating" && (
           <div class="animate-fadeIn">
             <div class="flex items-center gap-3 mb-4">
               <div class="w-5 h-5 border-2 border-green border-t-transparent rounded-full animate-spin"></div>
-              <span class="text-lg font-bold text-text">Updating system...</span>
+              <span class="text-lg font-bold text-text">
+                Updating system...
+              </span>
             </div>
 
             {/* Progress bar */}
@@ -160,25 +177,55 @@ export function UpdatesAppMockup() {
 
             {/* Terminal output */}
             <div class="bg-crust rounded-lg p-3 font-mono text-[10px] text-text h-44 overflow-y-auto">
-              <div class="text-green">:: Synchronizing package databases...</div>
+              <div class="text-green">
+                :: Synchronizing package databases...
+              </div>
               <div class="text-subtext0">downloading core.db...</div>
               <div class="text-subtext0">downloading extra.db...</div>
-              <div class="text-green mt-2">:: Starting full system upgrade...</div>
-              {progress > 20 && <div class="text-subtext0">( 1/{PACKAGES.length}) upgrading linux...</div>}
-              {progress > 35 && <div class="text-subtext0">( 2/{PACKAGES.length}) upgrading firefox...</div>}
-              {progress > 50 && <div class="text-subtext0">( 3/{PACKAGES.length}) upgrading mesa...</div>}
-              {progress > 65 && <div class="text-subtext0">( 4/{PACKAGES.length}) upgrading hyprland...</div>}
-              {progress > 80 && <div class="text-subtext0">( 5/{PACKAGES.length}) building visual-studio-code-bin...</div>}
-              {progress > 95 && <div class="text-subtext0">( 6/{PACKAGES.length}) building spotify...</div>}
+              <div class="text-green mt-2">
+                :: Starting full system upgrade...
+              </div>
+              {progress > 20 && (
+                <div class="text-subtext0">
+                  ( 1/{PACKAGES.length}) upgrading linux...
+                </div>
+              )}
+              {progress > 35 && (
+                <div class="text-subtext0">
+                  ( 2/{PACKAGES.length}) upgrading firefox...
+                </div>
+              )}
+              {progress > 50 && (
+                <div class="text-subtext0">
+                  ( 3/{PACKAGES.length}) upgrading mesa...
+                </div>
+              )}
+              {progress > 65 && (
+                <div class="text-subtext0">
+                  ( 4/{PACKAGES.length}) upgrading hyprland...
+                </div>
+              )}
+              {progress > 80 && (
+                <div class="text-subtext0">
+                  ( 5/{PACKAGES.length}) building visual-studio-code-bin...
+                </div>
+              )}
+              {progress > 95 && (
+                <div class="text-subtext0">
+                  ( 6/{PACKAGES.length}) building spotify...
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {state === 'done' && (
+        {state === "done" && (
           <div class="animate-fadeIn flex flex-col items-center justify-center h-full">
             <div class="text-5xl mb-4 text-green">✓</div>
             <div class="text-xl font-bold text-text mb-2">Update Complete!</div>
-            <div class="text-xs text-subtext0 mb-4">All packages updated successfully</div>
+            <div class="text-xs text-subtext0 mb-4">
+              All packages updated successfully
+            </div>
             <button
               onClick={handleRefresh}
               class="bg-surface0 text-text text-xs font-semibold px-4 py-2 rounded-lg hover:bg-surface1 transition-colors"
@@ -222,11 +269,13 @@ function PackageRow({ pkg }: { pkg: Package }) {
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <span class="text-text font-semibold text-xs">{pkg.name}</span>
-          <span class={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
-            pkg.source === 'official'
-              ? 'bg-blue/20 text-blue'
-              : 'bg-peach/20 text-peach'
-          }`}>
+          <span
+            class={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+              pkg.source === "official"
+                ? "bg-blue/20 text-blue"
+                : "bg-peach/20 text-peach"
+            }`}
+          >
             {pkg.source.toUpperCase()}
           </span>
         </div>

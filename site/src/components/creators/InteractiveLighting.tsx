@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef } from "preact/hooks";
 
 interface Preset {
   name: string;
@@ -8,28 +8,30 @@ interface Preset {
 }
 
 const presets: Preset[] = [
-  { name: 'Warm', brightness: 60, temperature: 15, color: 'peach' },
-  { name: 'Studio', brightness: 80, temperature: 40, color: 'yellow' },
-  { name: 'Daylight', brightness: 100, temperature: 75, color: 'sky' },
-  { name: 'Off', brightness: 0, temperature: 50, color: 'surface0' },
+  { name: "Warm", brightness: 60, temperature: 15, color: "peach" },
+  { name: "Studio", brightness: 80, temperature: 40, color: "yellow" },
+  { name: "Daylight", brightness: 100, temperature: 75, color: "sky" },
+  { name: "Off", brightness: 0, temperature: 50, color: "surface0" },
 ];
 
 export function InteractiveLighting() {
   const [power, setPower] = useState(true);
   const [brightness, setBrightness] = useState(20);
   const [temperature, setTemperature] = useState(40);
-  const [activePreset, setActivePreset] = useState<string>('Studio');
-  const [dragging, setDragging] = useState<'brightness' | 'temperature' | null>(null);
+  const [activePreset, setActivePreset] = useState<string>("Studio");
+  const [dragging, setDragging] = useState<"brightness" | "temperature" | null>(
+    null,
+  );
 
   const brightnessRef = useRef<HTMLDivElement | null>(null);
   const temperatureRef = useRef<HTMLDivElement | null>(null);
 
   // Calculate color based on temperature (2900K-7000K)
   const getTemperatureColor = () => {
-    if (temperature < 30) return 'from-peach to-yellow';
-    if (temperature < 50) return 'from-yellow to-yellow';
-    if (temperature < 70) return 'from-yellow to-sky';
-    return 'from-sky to-blue';
+    if (temperature < 30) return "from-peach to-yellow";
+    if (temperature < 50) return "from-yellow to-yellow";
+    if (temperature < 70) return "from-yellow to-sky";
+    return "from-sky to-blue";
   };
 
   const getKelvin = () => {
@@ -38,7 +40,7 @@ export function InteractiveLighting() {
 
   const handlePreset = (preset: Preset) => {
     setActivePreset(preset.name);
-    if (preset.name === 'Off') {
+    if (preset.name === "Off") {
       setPower(false);
     } else {
       setPower(true);
@@ -49,26 +51,29 @@ export function InteractiveLighting() {
 
   const updateSliderValue = (
     e: MouseEvent | Touch,
-    type: 'brightness' | 'temperature'
+    type: "brightness" | "temperature",
   ) => {
-    const ref = type === 'brightness' ? brightnessRef : temperatureRef;
+    const ref = type === "brightness" ? brightnessRef : temperatureRef;
     if (!ref.current) return;
 
     const rect = ref.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
 
-    if (type === 'brightness') {
+    if (type === "brightness") {
       setBrightness(Math.round(percent));
       if (percent > 0 && !power) setPower(true);
       if (percent === 0) setPower(false);
     } else {
       setTemperature(Math.round(percent));
     }
-    setActivePreset('');
+    setActivePreset("");
   };
 
-  const handleMouseDown = (type: 'brightness' | 'temperature', e: MouseEvent) => {
+  const handleMouseDown = (
+    type: "brightness" | "temperature",
+    e: MouseEvent,
+  ) => {
     e.preventDefault();
     setDragging(type);
     updateSliderValue(e, type);
@@ -86,11 +91,11 @@ export function InteractiveLighting() {
     };
 
     if (dragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
       };
     }
   }, [dragging]);
@@ -108,11 +113,11 @@ export function InteractiveLighting() {
     };
 
     if (dragging) {
-      window.addEventListener('touchmove', handleTouchMove, { passive: false });
-      window.addEventListener('touchend', handleTouchEnd);
+      window.addEventListener("touchmove", handleTouchMove, { passive: false });
+      window.addEventListener("touchend", handleTouchEnd);
       return () => {
-        window.removeEventListener('touchmove', handleTouchMove);
-        window.removeEventListener('touchend', handleTouchEnd);
+        window.removeEventListener("touchmove", handleTouchMove);
+        window.removeEventListener("touchend", handleTouchEnd);
       };
     }
   }, [dragging]);
@@ -120,15 +125,20 @@ export function InteractiveLighting() {
   const togglePower = () => {
     setPower(!power);
     if (!power) {
-      setActivePreset('');
+      setActivePreset("");
     } else {
-      setActivePreset('Off');
+      setActivePreset("Off");
     }
   };
 
   // Glow effect intensity based on brightness
   const glowIntensity = power ? brightness / 100 : 0;
-  const glowColor = temperature < 40 ? 'rgba(250, 179, 135,' : temperature < 60 ? 'rgba(249, 226, 175,' : 'rgba(137, 220, 235,';
+  const glowColor =
+    temperature < 40
+      ? "rgba(250, 179, 135,"
+      : temperature < 60
+        ? "rgba(249, 226, 175,"
+        : "rgba(137, 220, 235,";
 
   return (
     <div class="bg-mantle rounded-2xl border-2 border-surface0 overflow-hidden shadow-2xl select-none">
@@ -146,7 +156,9 @@ export function InteractiveLighting() {
             <span class="text-xs text-green">● 192.168.1.42</span>
           </div>
         </div>
-        <span class="text-xs text-overlay0 bg-surface0 px-2 py-0.5 rounded">Super + F10</span>
+        <span class="text-xs text-overlay0 bg-surface0 px-2 py-0.5 rounded">
+          Super + F10
+        </span>
       </div>
 
       {/* Content */}
@@ -157,12 +169,12 @@ export function InteractiveLighting() {
           <button
             onClick={togglePower}
             class={`w-14 h-7 rounded-full flex items-center px-1 cursor-pointer transition-colors duration-200 ${
-              power ? 'bg-green' : 'bg-surface1'
+              power ? "bg-green" : "bg-surface1"
             }`}
           >
             <div
               class={`w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                power ? 'translate-x-7' : 'translate-x-0'
+                power ? "translate-x-7" : "translate-x-0"
               }`}
             ></div>
           </button>
@@ -181,7 +193,9 @@ export function InteractiveLighting() {
           <div class="relative">
             <div
               class={`absolute inset-0 w-20 h-20 rounded-full blur-2xl transition-all duration-200 ${
-                power ? `bg-gradient-to-br ${getTemperatureColor()}` : 'bg-surface0'
+                power
+                  ? `bg-gradient-to-br ${getTemperatureColor()}`
+                  : "bg-surface0"
               }`}
               style={{ opacity: power ? brightness / 100 : 0.1 }}
             ></div>
@@ -189,18 +203,20 @@ export function InteractiveLighting() {
               class={`relative w-20 h-20 rounded-xl flex items-center justify-center shadow-2xl border-4 transition-all duration-200 ${
                 power
                   ? `bg-gradient-to-br ${getTemperatureColor()} border-white/20`
-                  : 'bg-surface1 border-surface0'
+                  : "bg-surface1 border-surface0"
               }`}
             >
-              <span class="text-4xl">{power ? '💡' : '🔌'}</span>
+              <span class="text-4xl">{power ? "💡" : "🔌"}</span>
             </div>
           </div>
           <div class="mt-3 text-center relative z-10">
-            <div class={`text-xl font-bold transition-colors duration-150 ${power ? 'text-text' : 'text-overlay0'}`}>
-              {power ? 'ON' : 'OFF'}
+            <div
+              class={`text-xl font-bold transition-colors duration-150 ${power ? "text-text" : "text-overlay0"}`}
+            >
+              {power ? "ON" : "OFF"}
             </div>
             <div class="text-sm text-overlay0">
-              {power ? `${getKelvin()}K · ${brightness}%` : 'Powered off'}
+              {power ? `${getKelvin()}K · ${brightness}%` : "Powered off"}
             </div>
           </div>
         </div>
@@ -214,29 +230,33 @@ export function InteractiveLighting() {
           <div
             ref={brightnessRef}
             class={`relative h-3 bg-surface0 rounded-full overflow-visible ${
-              dragging === 'brightness' ? 'cursor-grabbing' : 'cursor-pointer'
+              dragging === "brightness" ? "cursor-grabbing" : "cursor-pointer"
             }`}
-            onMouseDown={(e) => handleMouseDown('brightness', e)}
+            onMouseDown={(e) => handleMouseDown("brightness", e)}
             onTouchStart={(e) => {
               e.preventDefault();
-              setDragging('brightness');
-              if (e.touches[0]) updateSliderValue(e.touches[0], 'brightness');
+              setDragging("brightness");
+              if (e.touches[0]) updateSliderValue(e.touches[0], "brightness");
             }}
           >
             <div
               class="absolute inset-y-0 left-0 bg-gradient-to-r from-surface1 to-yellow rounded-full pointer-events-none"
               style={{
                 width: `${brightness}%`,
-                transition: dragging === 'brightness' ? 'none' : 'width 50ms ease-out'
+                transition:
+                  dragging === "brightness" ? "none" : "width 50ms ease-out",
               }}
             ></div>
             <div
               class={`absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-lg border-2 border-yellow pointer-events-none ${
-                dragging === 'brightness' ? 'scale-110' : ''
+                dragging === "brightness" ? "scale-110" : ""
               }`}
               style={{
                 left: `calc(${brightness}% - 10px)`,
-                transition: dragging === 'brightness' ? 'none' : 'left 50ms ease-out, transform 150ms'
+                transition:
+                  dragging === "brightness"
+                    ? "none"
+                    : "left 50ms ease-out, transform 150ms",
               }}
             ></div>
           </div>
@@ -251,22 +271,25 @@ export function InteractiveLighting() {
           <div
             ref={temperatureRef}
             class={`relative h-3 bg-gradient-to-r from-peach via-yellow to-sky rounded-full overflow-visible ${
-              dragging === 'temperature' ? 'cursor-grabbing' : 'cursor-pointer'
+              dragging === "temperature" ? "cursor-grabbing" : "cursor-pointer"
             }`}
-            onMouseDown={(e) => handleMouseDown('temperature', e)}
+            onMouseDown={(e) => handleMouseDown("temperature", e)}
             onTouchStart={(e) => {
               e.preventDefault();
-              setDragging('temperature');
-              if (e.touches[0]) updateSliderValue(e.touches[0], 'temperature');
+              setDragging("temperature");
+              if (e.touches[0]) updateSliderValue(e.touches[0], "temperature");
             }}
           >
             <div
               class={`absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-lg border-2 border-text pointer-events-none ${
-                dragging === 'temperature' ? 'scale-110' : ''
+                dragging === "temperature" ? "scale-110" : ""
               }`}
               style={{
                 left: `calc(${temperature}% - 10px)`,
-                transition: dragging === 'temperature' ? 'none' : 'left 50ms ease-out, transform 150ms'
+                transition:
+                  dragging === "temperature"
+                    ? "none"
+                    : "left 50ms ease-out, transform 150ms",
               }}
             ></div>
           </div>
@@ -285,7 +308,7 @@ export function InteractiveLighting() {
               class={`py-2 px-3 rounded-lg text-xs font-medium transition-all duration-150 ${
                 activePreset === preset.name
                   ? `bg-${preset.color}/30 text-${preset.color} border-2 border-${preset.color}`
-                  : `bg-${preset.color}/20 hover:bg-${preset.color}/30 text-${preset.color === 'surface0' ? 'text' : preset.color} border-2 border-transparent`
+                  : `bg-${preset.color}/20 hover:bg-${preset.color}/30 text-${preset.color === "surface0" ? "text" : preset.color} border-2 border-transparent`
               }`}
             >
               {preset.name}

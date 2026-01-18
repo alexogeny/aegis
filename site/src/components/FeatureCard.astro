@@ -6,23 +6,29 @@ interface Props {
   color?: string;
 }
 
-const { title, description, icon, color = 'mauve' } = Astro.props;
+const { title, description, icon, color = "mauve" } = Astro.props;
 
 const colorClasses: Record<string, string> = {
-  mauve: 'text-mauve bg-mauve/10',
-  pink: 'text-pink bg-pink/10',
-  blue: 'text-blue bg-blue/10',
-  green: 'text-green bg-green/10',
-  teal: 'text-teal bg-teal/10',
-  peach: 'text-peach bg-peach/10',
+  mauve: "text-mauve bg-mauve/10",
+  pink: "text-pink bg-pink/10",
+  blue: "text-blue bg-blue/10",
+  green: "text-green bg-green/10",
+  teal: "text-teal bg-teal/10",
+  peach: "text-peach bg-peach/10",
 };
 ---
 
-<div class="group bg-surface0/50 hover:bg-surface0 border border-surface1 rounded-xl p-6 transition-all duration-300 hover:border-mauve/50">
-  <div class={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl mb-4 ${colorClasses[color]}`}>
+<div
+  class="group bg-surface0/50 hover:bg-surface0 border border-surface1 rounded-xl p-6 transition-all duration-300 hover:border-mauve/50"
+>
+  <div
+    class={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl mb-4 ${colorClasses[color]}`}
+  >
     {icon}
   </div>
-  <h3 class="text-lg font-semibold text-text mb-2 group-hover:text-mauve transition-colors duration-200">
+  <h3
+    class="text-lg font-semibold text-text mb-2 group-hover:text-mauve transition-colors duration-200"
+  >
     {title}
   </h3>
   <p class="text-subtext0 text-sm leading-relaxed">

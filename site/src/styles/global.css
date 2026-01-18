@@ -79,8 +79,12 @@ body {
 
 /* Animation utilities */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
@@ -151,7 +155,8 @@ body {
 
 /* Animated gradient mesh background */
 @keyframes gradient-shift {
-  0%, 100% {
+  0%,
+  100% {
     background-position: 0% 50%;
   }
   50% {
@@ -160,7 +165,8 @@ body {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
@@ -169,7 +175,8 @@ body {
 }
 
 @keyframes float-slow {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -178,7 +185,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.5;
     transform: scale(1);
   }
@@ -216,16 +224,20 @@ body {
 }
 
 @keyframes glow-pulse {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(203, 166, 247, 0.3);
   }
   50% {
-    box-shadow: 0 0 40px rgba(203, 166, 247, 0.6), 0 0 60px rgba(203, 166, 247, 0.3);
+    box-shadow:
+      0 0 40px rgba(203, 166, 247, 0.6),
+      0 0 60px rgba(203, 166, 247, 0.3);
   }
 }
 
 @keyframes border-dance {
-  0%, 100% {
+  0%,
+  100% {
     border-color: var(--color-mauve);
   }
   25% {
@@ -240,7 +252,8 @@ body {
 }
 
 @keyframes text-gradient {
-  0%, 100% {
+  0%,
+  100% {
     background-position: 0% 50%;
   }
   50% {
@@ -286,7 +299,8 @@ body {
 }
 
 @keyframes blink-caret {
-  from, to {
+  from,
+  to {
     border-color: transparent;
   }
   50% {
@@ -385,7 +399,7 @@ body {
 }
 
 .gradient-border::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: -2px;
   border-radius: 18px;
@@ -448,7 +462,7 @@ body {
 }
 
 .noise-overlay::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
@@ -459,7 +473,9 @@ body {
 
 /* Hover lift effect */
 .hover-lift {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .hover-lift:hover {
@@ -475,18 +491,32 @@ body {
 }
 
 /* Stagger animation delays */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
-.stagger-6 { animation-delay: 0.6s; }
+.stagger-1 {
+  animation-delay: 0.1s;
+}
+.stagger-2 {
+  animation-delay: 0.2s;
+}
+.stagger-3 {
+  animation-delay: 0.3s;
+}
+.stagger-4 {
+  animation-delay: 0.4s;
+}
+.stagger-5 {
+  animation-delay: 0.5s;
+}
+.stagger-6 {
+  animation-delay: 0.6s;
+}
 
 /* Reveal on scroll (works with Intersection Observer) */
 .reveal {
   opacity: 0;
   transform: translateY(30px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
 }
 
 .reveal.active {
@@ -519,7 +549,7 @@ body {
 }
 
 .shine-effect::after {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   left: -50%;
@@ -541,7 +571,8 @@ body {
 
 /* Morphing blob animation */
 @keyframes morph {
-  0%, 100% {
+  0%,
+  100% {
     border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
   }
   25% {
@@ -562,10 +593,26 @@ body {
 /* Aurora background effect */
 .aurora-bg {
   background:
-    radial-gradient(ellipse at 20% 20%, rgba(203, 166, 247, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(137, 180, 250, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 40% 60%, rgba(245, 194, 231, 0.1) 0%, transparent 40%),
-    radial-gradient(ellipse at 60% 40%, rgba(148, 226, 213, 0.1) 0%, transparent 40%);
+    radial-gradient(
+      ellipse at 20% 20%,
+      rgba(203, 166, 247, 0.15) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 80% 80%,
+      rgba(137, 180, 250, 0.15) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 40% 60%,
+      rgba(245, 194, 231, 0.1) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      ellipse at 60% 40%,
+      rgba(148, 226, 213, 0.1) 0%,
+      transparent 40%
+    );
 }
 
 /* Spotlight effect on hover */
@@ -575,11 +622,15 @@ body {
 }
 
 .spotlight::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, rgba(203, 166, 247, 0.15) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(203, 166, 247, 0.15) 0%,
+    transparent 70%
+  );
   border-radius: 50%;
   pointer-events: none;
   opacity: 0;

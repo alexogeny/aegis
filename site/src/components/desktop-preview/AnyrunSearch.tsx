@@ -5,12 +5,20 @@ interface AnyrunSearchProps {
 }
 
 const results = [
-  { icon: '', name: 'Visual Studio Code', description: 'Code editing. Redefined.' },
-  { icon: '', name: 'Codium', description: 'Free/Libre VSCode' },
-  { icon: '', name: 'Code - OSS', description: 'Open Source build of VSCode' },
+  {
+    icon: "",
+    name: "Visual Studio Code",
+    description: "Code editing. Redefined.",
+  },
+  { icon: "", name: "Codium", description: "Free/Libre VSCode" },
+  { icon: "", name: "Code - OSS", description: "Open Source build of VSCode" },
 ];
 
-export function AnyrunSearch({ visible, query, selectedIndex }: AnyrunSearchProps) {
+export function AnyrunSearch({
+  visible,
+  query,
+  selectedIndex,
+}: AnyrunSearchProps) {
   const filteredResults = query
     ? results.filter((r) => r.name.toLowerCase().includes(query.toLowerCase()))
     : [];
@@ -43,13 +51,15 @@ export function AnyrunSearch({ visible, query, selectedIndex }: AnyrunSearchProp
                 key={result.name}
                 class={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                   i === selectedIndex
-                    ? 'bg-surface1 border-l-[3px] border-mauve'
-                    : 'hover:bg-surface0'
+                    ? "bg-surface1 border-l-[3px] border-mauve"
+                    : "hover:bg-surface0"
                 }`}
               >
                 <span class="text-xl w-6 text-center">{result.icon}</span>
                 <div>
-                  <div class={`font-medium ${i === selectedIndex ? 'text-mauve' : 'text-text'}`}>
+                  <div
+                    class={`font-medium ${i === selectedIndex ? "text-mauve" : "text-text"}`}
+                  >
                     {result.name}
                   </div>
                   <div class="text-xs text-overlay0">{result.description}</div>

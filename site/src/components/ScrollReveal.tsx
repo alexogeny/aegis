@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
-import type { ComponentChildren } from 'preact';
+import { useEffect, useRef, useState } from "preact/hooks";
+import type { ComponentChildren } from "preact";
 
 interface ScrollRevealProps {
   children: ComponentChildren;
   delay?: number;
-  direction?: 'up' | 'down' | 'left' | 'right' | 'scale';
+  direction?: "up" | "down" | "left" | "right" | "scale";
   duration?: number;
   className?: string;
 }
@@ -12,9 +12,9 @@ interface ScrollRevealProps {
 export function ScrollReveal({
   children,
   delay = 0,
-  direction = 'up',
+  direction = "up",
   duration = 600,
-  className = '',
+  className = "",
 }: ScrollRevealProps) {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -27,7 +27,7 @@ export function ScrollReveal({
           observer.disconnect();
         }
       },
-      { threshold: 0.1, rootMargin: '50px' }
+      { threshold: 0.1, rootMargin: "50px" },
     );
 
     if (ref.current) {
@@ -39,18 +39,18 @@ export function ScrollReveal({
 
   const getInitialTransform = () => {
     switch (direction) {
-      case 'up':
-        return 'translateY(40px)';
-      case 'down':
-        return 'translateY(-40px)';
-      case 'left':
-        return 'translateX(40px)';
-      case 'right':
-        return 'translateX(-40px)';
-      case 'scale':
-        return 'scale(0.9)';
+      case "up":
+        return "translateY(40px)";
+      case "down":
+        return "translateY(-40px)";
+      case "left":
+        return "translateX(40px)";
+      case "right":
+        return "translateX(-40px)";
+      case "scale":
+        return "scale(0.9)";
       default:
-        return 'translateY(40px)';
+        return "translateY(40px)";
     }
   };
 
@@ -60,7 +60,9 @@ export function ScrollReveal({
       class={className}
       style={{
         opacity: isVisible ? 1 : 0,
-        transform: isVisible ? 'translateY(0) translateX(0) scale(1)' : getInitialTransform(),
+        transform: isVisible
+          ? "translateY(0) translateX(0) scale(1)"
+          : getInitialTransform(),
         transition: `opacity ${duration}ms ease-out, transform ${duration}ms ease-out`,
         transitionDelay: `${delay}ms`,
       }}
