@@ -115,36 +115,51 @@ jobs:
 
           # Restore custom calamares configs over package defaults
           if [ -d "/tmp/aegis-calamares-custom" ]; then
-              # Find the airootfs directory (mkarchiso creates it under x86_64/)
+              # mkarchiso creates: work/x86_64/airootfs and work/x86_64/iso
+              # install_dir from profiledef.sh is "aegis"
               AIROOTFS_DIR="$WORK_DIR/x86_64/airootfs"
               ISO_DIR="$WORK_DIR/x86_64/iso"
+              INSTALL_DIR="aegis"
 
-              echo "Copying custom Calamares configs..."
+              echo "=== Debug: Listing work directory structure ==="
+              ls -la "$WORK_DIR/x86_64/" || true
+              ls -la "$ISO_DIR/" 2>/dev/null || echo "iso/ directory not found"
+
+              echo "=== Copying custom Calamares configs ==="
               cp -rf /tmp/aegis-calamares-custom/* "$AIROOTFS_DIR/etc/calamares/"
 
               # Remove old squashfs and ISO to free space before rebuilding
               rm -f "$WORK_DIR/x86_64/airootfs.sfs"
               rm -f "$OUT_DIR"/*.iso
 
-              # Rebuild squashfs with custom configs
-              echo "Rebuilding squashfs..."
+              echo "=== Rebuilding squashfs ==="
               cd "$WORK_DIR/x86_64"
               mksquashfs airootfs airootfs.sfs -comp zstd -Xcompression-level 12 -b 1M
 
-              # Find where the squashfs should go in the ISO staging area
-              # mkarchiso uses iso/LABEL/x86_64/ structure
-              LABEL=$(grep -oP 'iso_label="\K[^"]+' /tmp/aegis-profile/profiledef.sh 2>/dev/null || echo "AEGIS")
-              SFS_DEST="$ISO_DIR/$LABEL/x86_64"
+              # The squashfs goes in iso/<install_dir>/x86_64/
+              SFS_DEST="$ISO_DIR/$INSTALL_DIR/x86_64"
+              echo "=== Copying squashfs to $SFS_DEST ==="
 
-              echo "Copying squashfs to $SFS_DEST..."
-              mkdir -p "$SFS_DEST"
-              cp airootfs.sfs "$SFS_DEST/"
+              if [ -d "$SFS_DEST" ]; then
+                  cp airootfs.sfs "$SFS_DEST/"
+              else
+                  echo "Expected path not found, searching for correct location..."
+                  find "$ISO_DIR" -type d -name "x86_64" 2>/dev/null
+                  # Try to find any x86_64 directory under iso/
+                  FOUND_DIR=$(find "$ISO_DIR" -type d -name "x86_64" | head -1)
+                  if [ -n "$FOUND_DIR" ]; then
+                      echo "Found: $FOUND_DIR"
+                      cp airootfs.sfs "$FOUND_DIR/"
+                  else
+                      echo "ERROR: Cannot find squashfs destination!"
+                      exit 1
+                  fi
+              fi
 
-              # Rebuild ISO
-              echo "Rebuilding ISO..."
+              echo "=== Rebuilding ISO ==="
               xorriso -as mkisofs \
                   -iso-level 3 -full-iso9660-filenames -joliet -joliet-long -rational-rock \
-                  -volid "${LABEL}_$(date +%Y%m)" \
+                  -volid "AEGIS_$(date +%Y%m)" \
                   -appid "Aegis Linux Live/Installer" \
                   -publisher "Aegis Linux <https://github.com/aegis-linux>" \
                   -preparer "mkarchiso" \
