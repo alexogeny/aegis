@@ -7,7 +7,7 @@ Configure AppArmor profiles, firewall rules, and system hardening.
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, GLib, Gio, Pango
+from gi.repository import Gtk, Adw, Gio
 import subprocess
 import json
 import os
@@ -95,54 +95,8 @@ APP_CSS = f"""
 .rule-deny {{
     border-left: 4px solid {COLORS['red']};
 }}
-.add-button {{
-    background-color: {COLORS['blue']};
-    color: {COLORS['crust']};
-    border-radius: 8px;
-    padding: 8px 16px;
-}}
-.add-button:hover {{
-    background-color: {COLORS['sapphire']};
-}}
-.danger-button {{
-    background-color: {COLORS['red']};
-    color: {COLORS['crust']};
-    border-radius: 8px;
-    padding: 8px 16px;
-}}
-.danger-button:hover {{
-    background-color: {COLORS['maroon']};
-}}
-.sidebar {{
-    background-color: {COLORS['mantle']};
-    border-right: 1px solid {COLORS['surface0']};
-}}
-.sidebar-item {{
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin: 4px 8px;
-}}
-.sidebar-item:hover {{
-    background-color: {COLORS['surface0']};
-}}
-.sidebar-item.active {{
-    background-color: {COLORS['mauve']};
-    color: {COLORS['crust']};
-}}
 .section-icon {{
     font-size: 24px;
-}}
-.info-banner {{
-    background-color: {COLORS['blue']}/20;
-    border: 1px solid {COLORS['blue']}/40;
-    border-radius: 8px;
-    padding: 12px;
-}}
-.warning-banner {{
-    background-color: {COLORS['yellow']}/20;
-    border: 1px solid {COLORS['yellow']}/40;
-    border-radius: 8px;
-    padding: 12px;
 }}
 """
 

@@ -7,36 +7,18 @@ A friendly GUI for pacman and yay with Catppuccin theming.
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, GLib, Gio, Pango
+from gi.repository import Gtk, Adw, GLib, Gio
 import subprocess
 import threading
 import os
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import List
 from enum import Enum
 
 from aegis_gtk import COLORS, setup_css
 
 # App-specific CSS (extends base theme)
 APP_CSS = f"""
-.status-card {{
-    background-color: {COLORS['mantle']};
-    border-radius: 16px;
-    padding: 24px;
-    border: 2px solid {COLORS['surface0']};
-}}
-.status-icon {{
-    font-size: 48px;
-}}
-.status-title {{
-    font-size: 24px;
-    font-weight: bold;
-    color: {COLORS['text']};
-}}
-.status-subtitle {{
-    font-size: 14px;
-    color: {COLORS['subtext0']};
-}}
 .update-card {{
     background-color: {COLORS['mantle']};
     border-radius: 16px;
@@ -136,24 +118,6 @@ APP_CSS = f"""
 .progress-bar progress {{
     background-color: {COLORS['green']};
     border-radius: 8px;
-}}
-.info-banner {{
-    background-color: {COLORS['blue']}20;
-    border: 1px solid {COLORS['blue']}40;
-    border-radius: 12px;
-    padding: 16px;
-}}
-.warning-banner {{
-    background-color: {COLORS['yellow']}20;
-    border: 1px solid {COLORS['yellow']}40;
-    border-radius: 12px;
-    padding: 16px;
-}}
-.success-banner {{
-    background-color: {COLORS['green']}20;
-    border: 1px solid {COLORS['green']}40;
-    border-radius: 12px;
-    padding: 16px;
 }}
 .tab-bar {{
     background-color: {COLORS['mantle']};

@@ -395,6 +395,107 @@ window {{
     background-color: {c['mauve']};
     color: {c['crust']};
 }}
+
+/* === Banners & Alerts === */
+.info-banner {{
+    background-color: {c['blue']}20;
+    border: 1px solid {c['blue']}40;
+    border-radius: 12px;
+    padding: 16px;
+}}
+
+.warning-banner {{
+    background-color: {c['yellow']}20;
+    border: 1px solid {c['yellow']}40;
+    border-radius: 12px;
+    padding: 16px;
+}}
+
+.success-banner {{
+    background-color: {c['green']}20;
+    border: 1px solid {c['green']}40;
+    border-radius: 12px;
+    padding: 16px;
+}}
+
+.error-banner {{
+    background-color: {c['red']}20;
+    border: 1px solid {c['red']}40;
+    border-radius: 12px;
+    padding: 16px;
+}}
+
+/* === Status Cards === */
+.status-card {{
+    background-color: {c['mantle']};
+    border-radius: 16px;
+    padding: 24px;
+    border: 2px solid {c['surface0']};
+}}
+
+.status-icon {{
+    font-size: 48px;
+}}
+
+.status-title {{
+    font-size: 20px;
+    font-weight: bold;
+    color: {c['text']};
+}}
+
+.status-subtitle {{
+    font-size: 13px;
+    color: {c['subtext0']};
+}}
+
+/* === Settings Rows === */
+.settings-row {{
+    padding: 12px 0;
+    border-bottom: 1px solid {c['surface0']};
+}}
+
+.settings-row:last-child {{
+    border-bottom: none;
+}}
+
+.settings-label {{
+    color: {c['text']};
+    font-weight: bold;
+}}
+
+.settings-description {{
+    color: {c['overlay0']};
+    font-size: 11px;
+}}
+
+/* === Action Buttons === */
+.add-button {{
+    background-color: {c['blue']};
+    color: {c['crust']};
+    border-radius: 8px;
+    padding: 8px 16px;
+}}
+
+.add-button:hover {{
+    background-color: {c['sapphire']};
+}}
+
+.danger-button {{
+    background-color: {c['red']};
+    color: {c['crust']};
+    border-radius: 8px;
+    padding: 8px 16px;
+}}
+
+.danger-button:hover {{
+    background-color: {c['maroon']};
+}}
+
+/* === Main Container === */
+.main-container {{
+    background-color: {c['base']};
+    padding: 24px;
+}}
 """
 
 

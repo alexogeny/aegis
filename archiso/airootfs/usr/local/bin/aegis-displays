@@ -62,21 +62,6 @@ APP_CSS = f"""
     font-size: 12px;
     color: {COLORS['overlay0']};
 }}
-.setting-row {{
-    padding: 12px 0;
-    border-bottom: 1px solid {COLORS['surface0']};
-}}
-.setting-row:last-child {{
-    border-bottom: none;
-}}
-.setting-label {{
-    color: {COLORS['text']};
-    font-weight: bold;
-}}
-.setting-description {{
-    color: {COLORS['overlay0']};
-    font-size: 11px;
-}}
 .apply-button {{
     background-color: {COLORS['green']};
     color: {COLORS['crust']};
@@ -109,18 +94,6 @@ APP_CSS = f"""
     padding: 2px 8px;
     font-size: 10px;
     font-weight: bold;
-}}
-.info-banner {{
-    background-color: {COLORS['blue']}20;
-    border: 1px solid {COLORS['blue']}40;
-    border-radius: 12px;
-    padding: 16px;
-}}
-.warning-banner {{
-    background-color: {COLORS['yellow']}20;
-    border: 1px solid {COLORS['yellow']}40;
-    border-radius: 12px;
-    padding: 16px;
 }}
 """
 
@@ -350,19 +323,19 @@ class DisplaysWindow(Adw.ApplicationWindow):
 
     def _create_setting_row(self, label: str, description: str) -> Gtk.Box:
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        row.add_css_class('setting-row')
+        row.add_css_class('settings-row')
 
         info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         info_box.set_hexpand(True)
         row.append(info_box)
 
         label_widget = Gtk.Label(label=label)
-        label_widget.add_css_class('setting-label')
+        label_widget.add_css_class('settings-label')
         label_widget.set_halign(Gtk.Align.START)
         info_box.append(label_widget)
 
         desc_widget = Gtk.Label(label=description)
-        desc_widget.add_css_class('setting-description')
+        desc_widget.add_css_class('settings-description')
         desc_widget.set_halign(Gtk.Align.START)
         info_box.append(desc_widget)
 
