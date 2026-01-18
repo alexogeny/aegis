@@ -39,13 +39,9 @@ jobs:
 
       - name: Set up EndeavourOS repository (for calamares)
         run: |
-          pacman-key --recv-key A3B0A6DF16E00CCA --keyserver keyserver.ubuntu.com
-          pacman-key --lsign-key A3B0A6DF16E00CCA
-          cat > /etc/pacman.d/endeavouros-mirrorlist << 'EOF'
-          Server = https://mirror.alpix.eu/endeavouros/repo/$repo/$arch
-          Server = https://mirrors.gigenet.com/endeavouros/repo/$repo/$arch
-          Server = https://endeavouros.luzea.de/repo/$repo/$arch
-          EOF
+          # Install keyring and mirrorlist packages directly (avoids keyserver issues)
+          pacman -U --noconfirm "https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64/endeavouros-keyring-20231222-1-any.pkg.tar.zst"
+          pacman -U --noconfirm "https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64/endeavouros-mirrorlist-26-1-any.pkg.tar.zst"
           echo "" >> /etc/pacman.conf
           echo "[endeavouros]" >> /etc/pacman.conf
           echo "SigLevel = PackageRequired" >> /etc/pacman.conf
