@@ -1,4 +1,4 @@
-# Aegis Linux
+# Aegis
 
 A security-focused Arch Linux distribution designed for privacy enthusiasts who want comprehensive protection without extensive manual configuration.
 
@@ -36,7 +36,7 @@ A security-focused Arch Linux distribution designed for privacy enthusiasts who 
 
 ```bash
 # Clone the repository
-git clone https://github.com/aegis-linux/aegis.git
+git clone https://github.com/alexogeny/aegis.git
 cd aegis
 
 # Build the ISO (requires root)
@@ -49,7 +49,7 @@ sudo ./scripts/build-iso.sh
 ### Installation
 
 1. Boot from the ISO
-2. Click "Install Aegis Linux" on the desktop
+2. Click "Install Aegis" on the desktop
 3. Follow the Calamares installer
 4. Select encryption options (LUKS recommended)
 5. Reboot and enjoy!
@@ -130,8 +130,24 @@ aegis/
 │   ├── packages.x86_64# Package list
 │   └── airootfs/      # Root filesystem overlay
 ├── scripts/           # Build and test scripts
-├── pkgbuilds/         # Custom packages
-└── docs/              # Documentation
+├── site/              # Website (Astro)
+└── tests/             # Test suite
+```
+
+## Development
+
+```bash
+# Install dependencies
+uv pip install --system pytest
+
+# Run tests
+uv run pytest tests/ -v
+
+# Lint Python
+uv tool run ruff check archiso/airootfs/usr/local/lib/python3/dist-packages/aegis_gtk/
+
+# Lint frontend
+cd site && bun run format:check
 ```
 
 ## Contributing
