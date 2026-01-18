@@ -62,7 +62,6 @@ xorg-xwayland
 wayland-protocols
 qt5-wayland
 qt6-wayland
-wlroots
 hypridle
 hyprlock
 hyprpaper
@@ -76,7 +75,7 @@ fuzzel
 wofi
 
 # Global Search (Spotlight-like)
-anyrun-git
+anyrun
 
 # -----------------------------------------------------------------------------
 # Notifications
@@ -131,8 +130,9 @@ texinfo
 # -----------------------------------------------------------------------------
 # Catppuccin Theming (from Chaotic-AUR)
 # -----------------------------------------------------------------------------
-catppuccin-gtk-theme-mocha
+colloid-catppuccin-gtk-theme-git
 catppuccin-cursors-mocha
+catppuccin-mocha-grub-theme-git
 papirus-icon-theme
 
 # -----------------------------------------------------------------------------
@@ -264,7 +264,8 @@ qt5-quickcontrols2
 qt5-svg
 qt6-svg
 qt6-declarative
-sddm-catppuccin-git
+# SDDM theme - will use default or configure post-install
+# sddm-theme-catppuccin
 
 # -----------------------------------------------------------------------------
 # System Utilities
@@ -281,17 +282,26 @@ xdg-user-dirs
 xdg-utils
 reflector
 zram-generator
-systemd-oomd
+# systemd-oomd is part of systemd package
 
 # -----------------------------------------------------------------------------
-# Calamares Installer
+# Installer
 # -----------------------------------------------------------------------------
-calamares
+# archinstall as fallback CLI installer (always works)
+archinstall
+
+# Calamares dependencies (calamares built during ISO creation)
 ckbcomp
-mkinitcpio-openswap
 kpmcore
 yaml-cpp
 boost-libs
+polkit-qt6
+qt6-base
+qt6-declarative
+qt6-tools
+qt6-translations
+libpwquality
+icu
 
 # -----------------------------------------------------------------------------
 # Development Tools
@@ -334,7 +344,7 @@ jq
 yq
 httpie
 lazygit
-delta
+git-delta
 tokei
 hyperfine
 difftastic
@@ -356,7 +366,7 @@ redis
 # API & Network dev
 curlie
 xh
-grpcurl
+# grpcurl - install from AUR if needed
 websocat
 
 # Container & K8s
