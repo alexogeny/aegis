@@ -1,0 +1,196 @@
+# Aegis Linux - Optional Package Groups
+# These packages are installed from repositories during the installation process.
+
+- name: "Graphics Drivers"
+  description: "GPU drivers for hardware acceleration"
+  critical: false
+  expanded: true
+  subgroups:
+    - name: "NVIDIA (Proprietary)"
+      description: "NVIDIA open kernel modules - recommended for RTX 20/30/40 series"
+      critical: false
+      selected: false
+      packages:
+        - nvidia-open-dkms
+        - nvidia-utils
+        - nvidia-settings
+        - lib32-nvidia-utils
+        - libva-nvidia-driver
+        - egl-wayland
+
+    - name: "NVIDIA (Legacy)"
+      description: "NVIDIA proprietary drivers - for GTX 900/1000 series"
+      critical: false
+      selected: false
+      packages:
+        - nvidia-dkms
+        - nvidia-utils
+        - nvidia-settings
+        - lib32-nvidia-utils
+
+    - name: "AMD (Open Source)"
+      description: "Mesa RADV drivers - already included, select for VA-API"
+      critical: false
+      selected: false
+      packages:
+        - libva-mesa-driver
+        - lib32-libva-mesa-driver
+        - vulkan-radeon
+        - lib32-vulkan-radeon
+
+    - name: "Intel (Open Source)"
+      description: "Intel graphics drivers and VA-API support"
+      critical: false
+      selected: false
+      packages:
+        - intel-media-driver
+        - libva-intel-driver
+        - vulkan-intel
+        - lib32-vulkan-intel
+
+- name: "Development Tools"
+  description: "Programming languages and development utilities"
+  critical: false
+  expanded: false
+  subgroups:
+    - name: "Rust Development"
+      description: "Rust compiler, cargo, and rust-analyzer"
+      critical: false
+      selected: true
+      packages:
+        - rust
+        - rust-src
+        - rust-analyzer
+
+    - name: "Go Development"
+      description: "Go programming language"
+      critical: false
+      selected: true
+      packages:
+        - go
+
+    - name: "C/C++ Development"
+      description: "GCC, Clang, and build tools"
+      critical: false
+      selected: true
+      packages:
+        - gcc
+        - clang
+        - llvm
+        - cmake
+        - ninja
+
+    - name: "Python Development"
+      description: "Python with uv package manager"
+      critical: false
+      selected: true
+      packages:
+        - python
+        - python-pip
+        - uv
+
+    - name: "JavaScript/TypeScript"
+      description: "Bun runtime and package manager"
+      critical: false
+      selected: true
+      packages:
+        - bun
+
+- name: "Containers & Kubernetes"
+  description: "Container runtimes and orchestration tools"
+  critical: false
+  expanded: false
+  subgroups:
+    - name: "Docker"
+      description: "Docker container runtime"
+      critical: false
+      selected: false
+      packages:
+        - docker
+        - docker-compose
+        - docker-buildx
+
+    - name: "Podman"
+      description: "Rootless container runtime"
+      critical: false
+      selected: true
+      packages:
+        - podman
+
+    - name: "Kubernetes Tools"
+      description: "kubectl, k9s, and helm"
+      critical: false
+      selected: false
+      packages:
+        - kubectl
+        - k9s
+        - helm
+
+- name: "Content Creation"
+  description: "Streaming, recording, and media production"
+  critical: false
+  expanded: false
+  subgroups:
+    - name: "OBS Studio"
+      description: "Open Broadcaster Software for streaming/recording"
+      critical: false
+      selected: false
+      packages:
+        - obs-studio
+
+    - name: "Audio Production"
+      description: "EasyEffects, LSP plugins, and Calf"
+      critical: false
+      selected: true
+      packages:
+        - easyeffects
+        - lsp-plugins
+        - calf
+
+- name: "Gaming"
+  description: "Gaming platforms and compatibility tools"
+  critical: false
+  expanded: false
+  subgroups:
+    - name: "Steam"
+      description: "Steam gaming platform"
+      critical: false
+      selected: false
+      packages:
+        - steam
+
+    - name: "Wine & Proton"
+      description: "Windows compatibility layer"
+      critical: false
+      selected: false
+      packages:
+        - wine
+        - winetricks
+
+    - name: "Gamepad Support"
+      description: "Controller drivers and configuration"
+      critical: false
+      selected: false
+      packages:
+        - game-devices-udev
+        - antimicrox
+
+- name: "Office & Productivity"
+  description: "Office suites and productivity applications"
+  critical: false
+  expanded: false
+  subgroups:
+    - name: "LibreOffice"
+      description: "Full office suite"
+      critical: false
+      selected: false
+      packages:
+        - libreoffice-fresh
+
+    - name: "PDF Tools"
+      description: "PDF viewer and editor"
+      critical: false
+      selected: false
+      packages:
+        - evince
+        - pdfarranger

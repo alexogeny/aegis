@@ -9,7 +9,8 @@
       "Bash(uv tool install:*)",
       "Bash(tree:*)",
       "Bash(uv tool run ruff check:*)",
-      "Bash(du:*)"
+      "Bash(du:*)",
+      "Bash(bunx prettier:*)"
     ]
   }
 }

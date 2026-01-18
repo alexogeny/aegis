@@ -50,6 +50,16 @@ from .lighting import (
     PRESETS_PATH,
     LIGHTING_CONFIG_DIR,
 )
+from .db_widgets import (
+    EditConfirmDialog,
+    EntityView,
+    RowDetailView,
+    SchemaNode,
+    SchemaTree,
+    SyntaxHighlightedEditor,
+    VirtualScrollingTable,
+    get_db_widgets_css,
+)
 
 __version__ = '1.0.0'
 __all__ = [
@@ -95,4 +105,13 @@ __all__ = [
     'PRESETS_PATH',
     'PresetManager',
     'SmartLight',
+    # Database widgets
+    'EditConfirmDialog',
+    'EntityView',
+    'RowDetailView',
+    'SchemaNode',
+    'SchemaTree',
+    'SyntaxHighlightedEditor',
+    'VirtualScrollingTable',
+    'get_db_widgets_css',
 ]

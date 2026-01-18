@@ -51,6 +51,7 @@ from aegis_gtk.db_widgets import (
     SchemaTree,
     SchemaNode,
     EntityView,
+    RowDetailView,
     get_db_widgets_css,
 )
 
@@ -383,7 +384,7 @@ class ConnectionDialog(Adw.Window):
         driver_model = Gtk.StringList()
         drivers = get_available_drivers()
         for driver_cls in drivers:
-            driver_model.append(f"{driver_cls.icon} {driver_cls.display_name}")
+            driver_model.append(f'{driver_cls.icon} {driver_cls.display_name}')
         self.driver_dropdown.set_model(driver_model)
         self.driver_dropdown.connect('notify::selected', self._on_driver_changed)
 
@@ -610,11 +611,11 @@ class ConnectionDialog(Adw.Window):
 
     def _show_test_result(self, success: bool, message: str):
         if success:
-            self.test_result.set_text(f"✓ {message}")
+            self.test_result.set_text(f'✓ {message}')
             self.test_result.add_css_class('status-success')
             self.test_result.remove_css_class('status-error')
         else:
-            self.test_result.set_text(f"✗ {message}")
+            self.test_result.set_text(f'✗ {message}')
             self.test_result.add_css_class('status-error')
             self.test_result.remove_css_class('status-success')
 
@@ -842,13 +843,21 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         # Keep reference to buffer for compatibility
         self.query_editor = self.syntax_editor.editor
 
-        # Results view with virtual scrolling
+        # Results view with virtual scrolling and row detail panel
+        results_paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        results_paned.set_vexpand(True)
+        query_paned.set_end_child(results_paned)
+
+        # Left side: Results table
         results_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        query_paned.set_end_child(results_box)
+        results_box.set_hexpand(True)
+        results_paned.set_start_child(results_box)
+        results_paned.set_shrink_start_child(False)
 
         # Virtual scrolling table for results
         self.results_table = VirtualScrollingTable(
             on_cell_edit=self._on_cell_edited,
+            on_row_click=self._on_row_selected,
             editable=False,  # Start with editing disabled
         )
         self.results_table.set_vexpand(True)
@@ -875,11 +884,22 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         empty_label = Gtk.Label(label='Run a query to see results')
         empty.append(empty_label)
 
-        hint_label = Gtk.Label(label='Tip: Press Ctrl+Enter to run')
+        hint_label = Gtk.Label(label='Tip: Press Ctrl+Enter to run, click row to view details')
         hint_label.add_css_class('subtitle')
         empty.append(hint_label)
 
         self.results_view.append(empty)
+
+        # Right side: Row detail view (initially hidden)
+        self.row_detail_view = RowDetailView(
+            on_close=self._on_row_detail_close,
+            on_edit=self._on_row_detail_edit,
+        )
+        self.row_detail_view.set_size_request(350, -1)
+        self.row_detail_view.set_visible(False)
+        results_paned.set_end_child(self.row_detail_view)
+        results_paned.set_shrink_end_child(False)
+        results_paned.set_resize_end_child(False)
 
         query_paned.set_position(200)
 
@@ -1193,7 +1213,7 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
                             'is_pk': col.is_primary_key,
                             'is_fk': col.is_foreign_key,
                             'default': col.default_value,
-                        }
+                        },
                     )
                     column_nodes.append(col_node)
 
@@ -1204,7 +1224,7 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
                     metadata={
                         'row_count': table.row_count,
                         'schema': schema,
-                    }
+                    },
                 )
                 table_nodes.append(table_node)
 
@@ -1216,10 +1236,7 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         """Populate the schema tree widget with tables and columns."""
         # Create a schema node that contains all tables
         schema_node = SchemaNode(
-            name=schema,
-            node_type='schema',
-            children=table_nodes,
-            metadata={'table_count': len(table_nodes)}
+            name=schema, node_type='schema', children=table_nodes, metadata={'table_count': len(table_nodes)}
         )
 
         # Set the tree data
@@ -1277,6 +1294,9 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         """Display query results using virtual scrolling for large datasets."""
         self.run_btn.set_sensitive(True)
         self.stop_btn.set_visible(False)
+
+        # Hide and clear row detail view when new results come in
+        self.row_detail_view.set_visible(False)
 
         # Clear previous fallback results view
         while True:
@@ -1356,6 +1376,7 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
             file = dialog.save_finish(result)
             if file:
                 from pathlib import Path
+
                 path = Path(file.get_path())
 
                 # Determine format from extension
@@ -1539,15 +1560,14 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
                         # Execute the update
                         # Note: In production, this would need proper primary key handling
                         result = await self.query_executor.execute(
-                            f"-- Edit: {col_name} = {repr(new_val)}\n"
-                            f"-- Row: {edit['row_idx']}"
+                            f'-- Edit: {col_name} = {repr(new_val)}\n-- Row: {edit["row_idx"]}'
                         )
                         if result.error:
-                            errors.append(f"Row {edit['row_idx']}: {result.error}")
+                            errors.append(f'Row {edit["row_idx"]}: {result.error}')
                         else:
                             success_count += 1
                     except Exception as e:
-                        errors.append(f"Row {edit['row_idx']}: {str(e)}")
+                        errors.append(f'Row {edit["row_idx"]}: {str(e)}')
 
             GLib.idle_add(self._on_edits_complete, success_count, errors)
 
@@ -1568,6 +1588,51 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
 
         # Refresh the query to show updated data
         self._on_run_query(None)
+
+    # === Row Detail View ===
+
+    def _on_row_selected(self, row_idx: int, row_data: tuple):
+        """Handle row selection - show detail view."""
+        if not hasattr(self, '_last_result') or not self._last_result:
+            return
+
+        # Get column names
+        columns = [col.name for col in self._last_result.columns]
+
+        # Show the detail view
+        self.row_detail_view.show_row(columns, row_data, row_idx)
+        self.row_detail_view.set_visible(True)
+
+    def _on_row_detail_close(self):
+        """Handle closing the row detail view."""
+        self.row_detail_view.set_visible(False)
+        # Deselect the row in the table
+        self.results_table.select_row(None)
+
+    def _on_row_detail_edit(self, column: str, old_value, new_value):
+        """Handle field edit from row detail view."""
+        if not hasattr(self, '_last_result') or not self._last_result:
+            return
+
+        # Find the column index
+        col_idx = None
+        for i, col in enumerate(self._last_result.columns):
+            if col.name == column:
+                col_idx = i
+                break
+
+        if col_idx is None:
+            return
+
+        # Get the currently selected row
+        selected = self.results_table.get_selected_row()
+        if selected is None:
+            return
+
+        row_idx, _ = selected
+
+        # Use the existing cell edit handler
+        self._on_cell_edited(row_idx, col_idx, old_value, new_value)
 
 
 class DatabaseViewerApp(Adw.Application):

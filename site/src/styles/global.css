@@ -121,6 +121,19 @@ body {
   animation: popin 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
 @keyframes slide-in-right {
   from {
     opacity: 0;

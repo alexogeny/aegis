@@ -431,6 +431,7 @@ class VirtualScrollingTable(Gtk.Box):
     def __init__(
         self,
         on_cell_edit: Callable[[int, int, Any, Any], None] | None = None,
+        on_row_click: Callable[[int, tuple], None] | None = None,
         editable: bool = False,
     ):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -438,10 +439,12 @@ class VirtualScrollingTable(Gtk.Box):
         self.columns: list = []
         self.rows: list[tuple] = []
         self.on_cell_edit = on_cell_edit
+        self.on_row_click = on_row_click
         self.editable = editable
         self._visible_range = (0, 0)
         self._row_widgets: dict[int, Gtk.Box] = {}
         self._editing_cell: tuple[int, int] | None = None
+        self._selected_row: int | None = None
 
         # Header
         self.header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
@@ -553,9 +556,17 @@ class VirtualScrollingTable(Gtk.Box):
         row_box.add_css_class('results-row')
         if row_idx % 2 == 1:
             row_box.add_css_class('results-row-alt')
+        if self._selected_row == row_idx:
+            row_box.add_css_class('results-row-selected')
 
         # Position row absolutely
         row_box.set_margin_top(row_idx * self.ROW_HEIGHT)
+
+        # Add row click handler
+        row_click = Gtk.GestureClick()
+        row_click.set_button(1)
+        row_click.connect('released', self._on_row_clicked, row_idx)
+        row_box.add_controller(row_click)
 
         for col_idx, value in enumerate(row_data):
             cell = self._create_cell(row_idx, col_idx, value)
@@ -700,6 +711,31 @@ class VirtualScrollingTable(Gtk.Box):
             self._clear_rows()
             self._visible_range = old_range
             self._update_visible_rows()
+
+    def _on_row_clicked(self, gesture, n_press, x, y, row_idx: int):
+        """Handle row click - select row and notify callback."""
+        if n_press == 1:
+            self.select_row(row_idx)
+            if self.on_row_click and row_idx < len(self.rows):
+                self.on_row_click(row_idx, self.rows[row_idx])
+
+    def select_row(self, row_idx: int | None):
+        """Select a row visually."""
+        # Deselect previous row
+        if self._selected_row is not None and self._selected_row in self._row_widgets:
+            self._row_widgets[self._selected_row].remove_css_class('results-row-selected')
+
+        self._selected_row = row_idx
+
+        # Select new row
+        if row_idx is not None and row_idx in self._row_widgets:
+            self._row_widgets[row_idx].add_css_class('results-row-selected')
+
+    def get_selected_row(self) -> tuple[int, tuple] | None:
+        """Get the currently selected row index and data."""
+        if self._selected_row is not None and self._selected_row < len(self.rows):
+            return (self._selected_row, self.rows[self._selected_row])
+        return None
 
 
 class EditConfirmDialog(Adw.Window):
@@ -1314,6 +1350,312 @@ class EntityView(Gtk.Box):
             self.on_query(f'SELECT COUNT(*) FROM {table_name};')
 
 
+class RowDetailView(Gtk.Box):
+    """
+    Expanded detail view for a single database row.
+    Shows data in multiple formats: field list, JSON, and raw values.
+    """
+
+    def __init__(
+        self,
+        on_close: Callable[[], None] | None = None,
+        on_edit: Callable[[str, Any, Any], None] | None = None,
+    ):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.add_css_class('row-detail-view')
+
+        self.on_close = on_close
+        self.on_edit = on_edit
+        self._columns: list[str] = []
+        self._row_data: dict = {}
+        self._view_mode = 'fields'  # 'fields', 'json', 'raw'
+
+        # Header with close button
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        header.add_css_class('row-detail-header')
+        header.set_margin_start(12)
+        header.set_margin_end(12)
+        header.set_margin_top(8)
+        header.set_margin_bottom(8)
+        self.append(header)
+
+        self.title_label = Gtk.Label(label='Row Details')
+        self.title_label.set_halign(Gtk.Align.START)
+        self.title_label.set_hexpand(True)
+        self.title_label.add_css_class('row-detail-title')
+        header.append(self.title_label)
+
+        # View mode toggle buttons
+        mode_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        mode_box.add_css_class('linked')
+        header.append(mode_box)
+
+        self.fields_btn = Gtk.ToggleButton(label='Fields')
+        self.fields_btn.set_active(True)
+        self.fields_btn.connect('toggled', self._on_mode_changed, 'fields')
+        mode_box.append(self.fields_btn)
+
+        self.json_btn = Gtk.ToggleButton(label='JSON')
+        self.json_btn.connect('toggled', self._on_mode_changed, 'json')
+        mode_box.append(self.json_btn)
+
+        self.raw_btn = Gtk.ToggleButton(label='Raw')
+        self.raw_btn.connect('toggled', self._on_mode_changed, 'raw')
+        mode_box.append(self.raw_btn)
+
+        # Close button
+        close_btn = Gtk.Button()
+        close_btn.set_icon_name('window-close-symbolic')
+        close_btn.add_css_class('flat')
+        close_btn.connect('clicked', self._on_close_clicked)
+        header.append(close_btn)
+
+        # Content area
+        self.content_scroll = Gtk.ScrolledWindow()
+        self.content_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.content_scroll.set_vexpand(True)
+        self.append(self.content_scroll)
+
+        self.content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.content_box.set_margin_start(12)
+        self.content_box.set_margin_end(12)
+        self.content_box.set_margin_top(8)
+        self.content_box.set_margin_bottom(12)
+        self.content_scroll.set_child(self.content_box)
+
+    def show_row(self, columns: list[str], row_data: tuple | dict, row_index: int | None = None):
+        """Display a row's data in the detail view."""
+        self._columns = columns
+
+        # Convert tuple to dict if needed
+        if isinstance(row_data, tuple):
+            self._row_data = dict(zip(columns, row_data, strict=False))
+        else:
+            self._row_data = dict(row_data)
+
+        # Update title
+        if row_index is not None:
+            self.title_label.set_label(f'Row {row_index + 1}')
+        else:
+            self.title_label.set_label('Row Details')
+
+        self._rebuild_content()
+
+    def _on_mode_changed(self, button, mode: str):
+        """Handle view mode toggle."""
+        if not button.get_active():
+            return
+
+        self._view_mode = mode
+
+        # Update toggle states
+        if mode != 'fields':
+            self.fields_btn.set_active(False)
+        if mode != 'json':
+            self.json_btn.set_active(False)
+        if mode != 'raw':
+            self.raw_btn.set_active(False)
+
+        self._rebuild_content()
+
+    def _rebuild_content(self):
+        """Rebuild the content based on current view mode."""
+        # Clear existing content
+        while True:
+            child = self.content_box.get_first_child()
+            if child is None:
+                break
+            self.content_box.remove(child)
+
+        if self._view_mode == 'fields':
+            self._build_fields_view()
+        elif self._view_mode == 'json':
+            self._build_json_view()
+        elif self._view_mode == 'raw':
+            self._build_raw_view()
+
+    def _build_fields_view(self):
+        """Build field-by-field view with type indicators."""
+        for col in self._columns:
+            value = self._row_data.get(col)
+
+            field_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            field_row.add_css_class('row-detail-field')
+            field_row.set_margin_top(4)
+            field_row.set_margin_bottom(4)
+
+            # Field name
+            name_label = Gtk.Label(label=col)
+            name_label.set_halign(Gtk.Align.START)
+            name_label.set_size_request(120, -1)
+            name_label.add_css_class('row-detail-field-name')
+            field_row.append(name_label)
+
+            # Type indicator
+            type_str = self._get_type_string(value)
+            type_label = Gtk.Label(label=type_str)
+            type_label.set_size_request(60, -1)
+            type_label.add_css_class('row-detail-field-type')
+            field_row.append(type_label)
+
+            # Value display
+            value_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            value_container.set_hexpand(True)
+            field_row.append(value_container)
+
+            if self._is_complex_value(value):
+                # Show expandable view for complex values (JSON, arrays)
+                self._build_complex_value_view(value_container, value)
+            else:
+                # Simple value display
+                value_label = Gtk.Label(label=self._format_value(value))
+                value_label.set_halign(Gtk.Align.START)
+                value_label.set_selectable(True)
+                value_label.set_wrap(True)
+                value_label.add_css_class('row-detail-field-value')
+                if value is None:
+                    value_label.add_css_class('row-detail-null')
+                value_container.append(value_label)
+
+            self.content_box.append(field_row)
+
+    def _build_json_view(self):
+        """Build JSON representation view."""
+        import json
+
+        try:
+            json_str = json.dumps(self._row_data, indent=2, default=str)
+        except (TypeError, ValueError):
+            json_str = str(self._row_data)
+
+        # Use a text view for JSON with syntax highlighting style
+        json_frame = Gtk.Frame()
+        json_frame.add_css_class('row-detail-json-frame')
+
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_monospace(True)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.add_css_class('row-detail-json')
+        text_view.get_buffer().set_text(json_str)
+
+        json_frame.set_child(text_view)
+        self.content_box.append(json_frame)
+
+        # Copy button
+        copy_btn = Gtk.Button(label='Copy JSON')
+        copy_btn.set_halign(Gtk.Align.START)
+        copy_btn.set_margin_top(8)
+        copy_btn.connect('clicked', self._on_copy_json, json_str)
+        self.content_box.append(copy_btn)
+
+    def _build_raw_view(self):
+        """Build raw values view (comma-separated)."""
+        raw_values = []
+        for col in self._columns:
+            value = self._row_data.get(col)
+            raw_values.append(repr(value))
+
+        raw_str = ', '.join(raw_values)
+
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_monospace(True)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.add_css_class('row-detail-raw')
+        text_view.get_buffer().set_text(f'({raw_str})')
+
+        self.content_box.append(text_view)
+
+    def _build_complex_value_view(self, container: Gtk.Box, value: Any):
+        """Build an expandable view for complex values like JSON objects."""
+        import json
+
+        # Try to format as JSON
+        try:
+            if isinstance(value, str):
+                # Try to parse as JSON string
+                parsed = json.loads(value)
+                formatted = json.dumps(parsed, indent=2)
+            else:
+                formatted = json.dumps(value, indent=2, default=str)
+        except (json.JSONDecodeError, TypeError):
+            formatted = str(value)
+
+        # Expandable text view
+        expander = Gtk.Expander(label='View data...')
+        expander.add_css_class('row-detail-expander')
+
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_monospace(True)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.add_css_class('row-detail-complex-value')
+        text_view.get_buffer().set_text(formatted)
+
+        expander.set_child(text_view)
+        container.append(expander)
+
+    def _get_type_string(self, value: Any) -> str:
+        """Get a short type indicator string."""
+        if value is None:
+            return 'null'
+        elif isinstance(value, bool):
+            return 'bool'
+        elif isinstance(value, int):
+            return 'int'
+        elif isinstance(value, float):
+            return 'float'
+        elif isinstance(value, str):
+            # Check if it looks like JSON
+            if value.startswith(('{', '[')):
+                return 'json?'
+            return 'str'
+        elif isinstance(value, (list, tuple)):
+            return 'array'
+        elif isinstance(value, dict):
+            return 'object'
+        else:
+            return type(value).__name__[:6]
+
+    def _is_complex_value(self, value: Any) -> bool:
+        """Check if a value should be shown in expandable view."""
+        if isinstance(value, (dict, list, tuple)):
+            return True
+        if isinstance(value, str):
+            # Long strings or JSON-like strings
+            if len(value) > 100:
+                return True
+            if value.startswith(('{', '[')):
+                return True
+        return False
+
+    def _format_value(self, value: Any) -> str:
+        """Format a value for display."""
+        if value is None:
+            return 'NULL'
+        elif isinstance(value, bool):
+            return 'true' if value else 'false'
+        elif isinstance(value, str):
+            return value
+        else:
+            return str(value)
+
+    def _on_copy_json(self, button, json_str: str):
+        """Copy JSON to clipboard."""
+        clipboard = Gdk.Display.get_default().get_clipboard()
+        clipboard.set(json_str)
+
+        # Show feedback
+        button.set_label('Copied!')
+        GLib.timeout_add(1500, lambda: button.set_label('Copy JSON') or False)
+
+    def _on_close_clicked(self, button):
+        """Handle close button click."""
+        if self.on_close:
+            self.on_close()
+
+
 # Additional CSS for the new widgets
 DB_WIDGETS_CSS = f"""
 /* === Syntax Editor === */
@@ -1359,6 +1701,16 @@ DB_WIDGETS_CSS = f"""
 
 .results-row:hover {{
     background-color: {COLORS['surface0']}40;
+    cursor: pointer;
+}}
+
+.results-row-selected {{
+    background-color: {COLORS['mauve']}30;
+    border-left: 3px solid {COLORS['mauve']};
+}}
+
+.results-row-selected:hover {{
+    background-color: {COLORS['mauve']}40;
 }}
 
 .editable-cell {{
@@ -1589,6 +1941,89 @@ DB_WIDGETS_CSS = f"""
     padding: 8px;
     background-color: {COLORS['crust']};
     border-radius: 4px;
+}}
+
+/* === Row Detail View === */
+.row-detail-view {{
+    background-color: {COLORS['base']};
+    border-left: 1px solid {COLORS['surface0']};
+}}
+
+.row-detail-header {{
+    background-color: {COLORS['mantle']};
+    border-bottom: 1px solid {COLORS['surface0']};
+    padding: 8px 12px;
+}}
+
+.row-detail-title {{
+    font-size: 14px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+
+.row-detail-field {{
+    padding: 8px 12px;
+    border-radius: 6px;
+    background-color: {COLORS['surface0']}20;
+}}
+
+.row-detail-field:hover {{
+    background-color: {COLORS['surface0']}40;
+}}
+
+.row-detail-field-name {{
+    font-weight: bold;
+    color: {COLORS['blue']};
+    font-family: monospace;
+}}
+
+.row-detail-field-type {{
+    color: {COLORS['overlay0']};
+    font-size: 11px;
+    font-family: monospace;
+    background-color: {COLORS['surface0']};
+    padding: 2px 6px;
+    border-radius: 4px;
+}}
+
+.row-detail-field-value {{
+    color: {COLORS['text']};
+    font-family: monospace;
+}}
+
+.row-detail-null {{
+    color: {COLORS['overlay0']};
+    font-style: italic;
+}}
+
+.row-detail-json-frame {{
+    background-color: {COLORS['crust']};
+    border-radius: 8px;
+    padding: 12px;
+}}
+
+.row-detail-json text {{
+    color: {COLORS['text']};
+    background-color: {COLORS['crust']};
+    font-size: 12px;
+}}
+
+.row-detail-raw text {{
+    color: {COLORS['subtext0']};
+    background-color: {COLORS['mantle']};
+    font-size: 12px;
+    padding: 12px;
+}}
+
+.row-detail-expander {{
+    color: {COLORS['mauve']};
+}}
+
+.row-detail-complex-value text {{
+    color: {COLORS['text']};
+    background-color: {COLORS['crust']};
+    font-size: 11px;
+    padding: 8px;
 }}
 """
 

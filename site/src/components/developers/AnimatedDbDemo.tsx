@@ -1,5 +1,37 @@
 import { useState, useEffect, useRef } from "react";
 
+// Click indicator component - shows a ripple effect at click position
+// x and y are percentages of the container dimensions
+function ClickIndicator({
+  x,
+  y,
+  visible,
+}: {
+  x: number;
+  y: number;
+  visible: boolean;
+}) {
+  if (!visible) return null;
+
+  return (
+    <div
+      className="absolute pointer-events-none z-50"
+      style={{
+        left: `${x}%`,
+        top: `${y}%`,
+        transform: "translate(-50%, -50%)",
+      }}
+    >
+      {/* Outer ripple - expanding ring */}
+      <div className="absolute w-10 h-10 -ml-5 -mt-5 rounded-full border-2 border-mauve/60 animate-ping" />
+      {/* Inner glow */}
+      <div className="absolute w-6 h-6 -ml-3 -mt-3 rounded-full bg-mauve/40 animate-pulse" />
+      {/* Center dot */}
+      <div className="absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full bg-mauve shadow-lg shadow-mauve/50" />
+    </div>
+  );
+}
+
 // Schema tree data structure
 interface SchemaNode {
   name: string;
@@ -141,25 +173,58 @@ interface AnimationStep {
     | "run"
     | "showResults"
     | "selectTable"
+    | "click"
+    | "expandRow"
     | "wait";
   target?: string;
   delay: number;
+  // Click position as percentage of container (for click action)
+  clickX?: number;
+  clickY?: number;
 }
 
+// Click positions are percentages of container dimensions
+// Layout at typical width (~900px) and height (~496px):
+// - Title bar: 0-9% height (~44px)
+// - Left panel (w-56=224px): 0-25% width
+// - Middle panel (w-52=208px): 25-48% width
+// - Right panel (flex-1): 48-100% width
+// - Status bar: 93-100% height (~32px)
+//
+// Left panel internal layout:
+// - Header "Schema Browser": 9-13% height
+// - Search input: 13-17% height
+// - Tree starts: ~18% height, each item ~5% height
 const animationSequence: AnimationStep[] = [
   { action: "wait", delay: 500 },
+  // Click on public schema to expand (left panel, first tree item at ~20%)
+  { action: "click", clickX: 10, clickY: 20, delay: 400 },
   { action: "expand", target: "public", delay: 300 },
   { action: "wait", delay: 200 },
+  // Click on users table (indented, second item at ~25%)
+  { action: "click", clickX: 12, clickY: 25, delay: 400 },
   { action: "selectTable", target: "users", delay: 400 },
   { action: "wait", delay: 600 },
+  // Click to expand users (click the arrow area at left edge)
+  { action: "click", clickX: 5, clickY: 25, delay: 400 },
   { action: "expand", target: "users", delay: 300 },
   { action: "wait", delay: 400 },
+  // Click on email column (indented more, ~35% down)
+  { action: "click", clickX: 14, clickY: 35, delay: 400 },
   { action: "select", target: "users/email", delay: 300 },
   { action: "wait", delay: 800 },
   { action: "type", delay: 50 }, // Type query character by character
   { action: "wait", delay: 300 },
+  // Click Run button (right panel starts at 48%, button in toolbar ~12% height)
+  { action: "click", clickX: 52, clickY: 12, delay: 400 },
   { action: "run", delay: 500 },
   { action: "showResults", delay: 100 },
+  { action: "wait", delay: 1500 },
+  // Click on third result row (Carol White) - right panel ~65%, third data row ~60% height
+  // Results area starts at ~40% height, header row ~45%, each data row is ~5% tall
+  // Row 0 (Alice): ~50%, Row 1 (Bob): ~55%, Row 2 (Carol): ~60%
+  { action: "click", clickX: 65, clickY: 60, delay: 400 },
+  { action: "expandRow", target: "2", delay: 100 },
   { action: "wait", delay: 3000 },
 ];
 
@@ -354,7 +419,14 @@ export function AnimatedDbDemo() {
   const [executionTime, setExecutionTime] = useState<number | null>(null);
   const [animationStep, setAnimationStep] = useState(0);
   const [isAnimating, setIsAnimating] = useState(true);
+  const [clickIndicator, setClickIndicator] = useState<{
+    x: number;
+    y: number;
+    visible: boolean;
+  }>({ x: 0, y: 0, visible: false });
+  const [expandedRowIndex, setExpandedRowIndex] = useState<number | null>(null);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Run animation sequence
   useEffect(() => {
@@ -370,6 +442,26 @@ export function AnimatedDbDemo() {
         await new Promise((resolve) => setTimeout(resolve, step.delay));
 
         switch (step.action) {
+          case "click":
+            // Show click indicator at the specified position
+            if (step.clickX !== undefined && step.clickY !== undefined) {
+              setClickIndicator({
+                x: step.clickX,
+                y: step.clickY,
+                visible: true,
+              });
+              // Hide after animation completes
+              setTimeout(() => {
+                setClickIndicator(
+                  (prev: { x: number; y: number; visible: boolean }) => ({
+                    ...prev,
+                    visible: false,
+                  }),
+                );
+              }, 600);
+            }
+            break;
+
           case "expand":
             setExpandedNodes((prev) => new Set([...prev, step.target!]));
             break;
@@ -407,6 +499,12 @@ export function AnimatedDbDemo() {
             setResults(mockResults);
             break;
 
+          case "expandRow":
+            if (step.target !== undefined) {
+              setExpandedRowIndex(parseInt(step.target, 10));
+            }
+            break;
+
           case "wait":
             break;
         }
@@ -422,6 +520,8 @@ export function AnimatedDbDemo() {
         setResults([]);
         setExecutionTime(null);
         setIsRunning(false);
+        setClickIndicator({ x: 0, y: 0, visible: false });
+        setExpandedRowIndex(null);
         runAnimation();
       }
     };
@@ -457,7 +557,17 @@ export function AnimatedDbDemo() {
   };
 
   return (
-    <div className="bg-mantle rounded-xl border-2 border-surface0 overflow-hidden shadow-2xl">
+    <div
+      ref={containerRef}
+      className="bg-mantle rounded-xl border-2 border-surface0 overflow-hidden shadow-2xl relative"
+    >
+      {/* Click Indicator */}
+      <ClickIndicator
+        x={clickIndicator.x}
+        y={clickIndicator.y}
+        visible={clickIndicator.visible}
+      />
+
       {/* Title Bar */}
       <div className="bg-crust px-4 py-3 flex items-center justify-between border-b border-surface0">
         <div className="flex items-center gap-2">
@@ -628,50 +738,162 @@ export function AnimatedDbDemo() {
             </div>
           </div>
 
-          {/* Results */}
-          <div className="flex-1 overflow-auto bg-base">
-            {results.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-overlay0">
-                <span className="text-2xl mb-2">📊</span>
-                <span className="text-xs">Run a query to see results</span>
-              </div>
-            ) : (
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-mantle">
-                  <tr>
-                    {["id", "name", "email", "status"].map((col) => (
-                      <th
-                        key={col}
-                        className="text-left px-3 py-2 text-text font-bold border-b-2 border-surface0"
-                      >
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((row, idx) => (
-                    <tr
-                      key={row.id}
-                      className={`border-b border-surface0/30 animate-fadeIn ${idx % 2 === 1 ? "bg-surface0/10" : ""}`}
-                      style={{ animationDelay: `${idx * 50}ms` }}
-                    >
-                      <td className="px-3 py-2 font-mono text-overlay0">
-                        {row.id}
-                      </td>
-                      <td className="px-3 py-2 text-text">{row.name}</td>
-                      <td className="px-3 py-2 font-mono text-subtext0">
-                        {row.email}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
-                          {row.status}
-                        </span>
-                      </td>
+          {/* Results with Row Detail Panel */}
+          <div className="flex-1 flex overflow-hidden bg-base">
+            {/* Results Table */}
+            <div
+              className={`${expandedRowIndex !== null ? "w-1/2" : "flex-1"} overflow-auto transition-all duration-300`}
+            >
+              {results.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-overlay0">
+                  <span className="text-2xl mb-2">📊</span>
+                  <span className="text-xs">Run a query to see results</span>
+                </div>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-mantle">
+                    <tr>
+                      {["id", "name", "email", "status"].map((col) => (
+                        <th
+                          key={col}
+                          className="text-left px-3 py-2 text-text font-bold border-b-2 border-surface0"
+                        >
+                          {col}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {results.map(
+                      (row: (typeof mockResults)[number], idx: number) => (
+                        <tr
+                          key={row.id}
+                          className={`border-b border-surface0/30 animate-fadeIn cursor-pointer transition-colors ${
+                            expandedRowIndex === idx
+                              ? "bg-mauve/20 border-l-2 border-l-mauve"
+                              : idx % 2 === 1
+                                ? "bg-surface0/10 hover:bg-surface0/30"
+                                : "hover:bg-surface0/30"
+                          }`}
+                          style={{ animationDelay: `${idx * 50}ms` }}
+                          onClick={() => {
+                            setIsAnimating(false);
+                            setExpandedRowIndex(
+                              expandedRowIndex === idx ? null : idx,
+                            );
+                          }}
+                        >
+                          <td className="px-3 py-2 font-mono text-overlay0">
+                            {row.id}
+                          </td>
+                          <td className="px-3 py-2 text-text">{row.name}</td>
+                          <td className="px-3 py-2 font-mono text-subtext0">
+                            {row.email}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
+                              {row.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Row Detail Panel */}
+            {expandedRowIndex !== null && results[expandedRowIndex] && (
+              <div className="w-1/2 border-l border-surface0 bg-mantle flex flex-col animate-slide-in-right">
+                {/* Header */}
+                <div className="px-3 py-2 border-b border-surface0 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">📋</span>
+                    <span className="text-xs font-bold text-text">
+                      Row Details
+                    </span>
+                    <span className="text-[10px] text-overlay0 font-mono">
+                      #Row {expandedRowIndex + 1}
+                    </span>
+                  </div>
+                  {/* View mode toggle */}
+                  <div className="flex items-center gap-1">
+                    <button className="px-2 py-1 text-[10px] bg-mauve text-crust rounded font-medium">
+                      Fields
+                    </button>
+                    <button className="px-2 py-1 text-[10px] bg-surface0 text-overlay0 rounded hover:text-text transition-colors">
+                      JSON
+                    </button>
+                    <button
+                      className="ml-2 px-1.5 py-1 text-xs text-overlay0 hover:text-text transition-colors"
+                      onClick={() => setExpandedRowIndex(null)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                {/* Fields View */}
+                <div className="flex-1 overflow-auto p-3 space-y-2">
+                  {Object.entries(results[expandedRowIndex]).map(
+                    ([key, value]) => (
+                      <div
+                        key={key}
+                        className="bg-surface0/30 rounded-lg p-2.5 border border-surface0"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px]">
+                            {key === "id"
+                              ? "🔑"
+                              : key === "email"
+                                ? "📧"
+                                : key === "status"
+                                  ? "🏷️"
+                                  : "📊"}
+                          </span>
+                          <span className="text-[10px] text-overlay0 uppercase tracking-wide font-medium">
+                            {key}
+                          </span>
+                          <span className="text-[10px] text-yellow font-mono ml-auto">
+                            {typeof value === "number"
+                              ? "integer"
+                              : typeof value}
+                          </span>
+                        </div>
+                        <div className="text-xs text-text font-mono pl-5">
+                          {key === "status" ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
+                              {String(value)}
+                            </span>
+                          ) : (
+                            String(value)
+                          )}
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
+
+                {/* JSON Preview (collapsed) */}
+                <div className="px-3 py-2 border-t border-surface0 bg-crust/50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-overlay0 uppercase">
+                      JSON
+                    </span>
+                    <button className="text-[10px] text-mauve hover:text-pink transition-colors">
+                      Copy
+                    </button>
+                  </div>
+                  <pre className="text-[10px] text-subtext0 font-mono mt-1 whitespace-pre-wrap">
+                    {JSON.stringify(results[expandedRowIndex], null, 2)
+                      .split("\n")
+                      .slice(0, 3)
+                      .join("\n")}
+                    ...
+                  </pre>
+                </div>
+              </div>
             )}
           </div>
         </div>

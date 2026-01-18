@@ -47,13 +47,13 @@ memtest86+-efi
 syslinux
 
 # -----------------------------------------------------------------------------
-# NVIDIA Drivers (Open Kernel Modules)
+# GPU Drivers - Selected via Calamares netinstall
 # -----------------------------------------------------------------------------
-nvidia-open-dkms
-nvidia-utils
-nvidia-settings
-lib32-nvidia-utils
-libva-nvidia-driver
+# NVIDIA, AMD, and Intel drivers are now optional and installed during
+# the Calamares installation process based on user selection.
+# This significantly reduces ISO size (~500MB).
+#
+# The egl-wayland package is still needed for Wayland compatibility
 egl-wayland
 
 # -----------------------------------------------------------------------------
