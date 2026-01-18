@@ -163,13 +163,11 @@ ls -lh /aegis/out/*.iso
 '
 
 # Run the build
-$RUNTIME run -it --rm \
+if $RUNTIME run -it --rm \
     --privileged \
     -v "$PROJECT_DIR:/aegis:z" \
     archlinux:latest \
-    /bin/bash -c "$BUILD_CMD"
-
-if [[ $? -eq 0 ]]; then
+    /bin/bash -c "$BUILD_CMD"; then
     log_success "Build completed!"
     log_info "ISO location: $OUTPUT_DIR/"
     ls -lh "$OUTPUT_DIR"/*.iso 2>/dev/null || log_warn "No ISO found - check build output"

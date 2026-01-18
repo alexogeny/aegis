@@ -142,24 +142,22 @@ build_iso() {
         -o "$OUTPUT_DIR" \
         "$PROFILE_DIR"
 
-    if [[ $? -eq 0 ]]; then
-        local iso_file
-        iso_file=$(ls -t "$OUTPUT_DIR"/aegis-*.iso 2>/dev/null | head -1)
+    local iso_file
+    iso_file=$(find "$OUTPUT_DIR" -maxdepth 1 -name 'aegis-*.iso' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
 
-        if [[ -n "$iso_file" ]]; then
-            print_msg "$GREEN" "Build successful!"
-            print_msg "$GREEN" "ISO: $iso_file"
-            print_msg "$GREEN" "Size: $(du -h "$iso_file" | cut -f1)"
+    if [[ -n "$iso_file" ]]; then
+        print_msg "$GREEN" "Build successful!"
+        print_msg "$GREEN" "ISO: $iso_file"
+        print_msg "$GREEN" "Size: $(du -h "$iso_file" | cut -f1)"
 
-            # Generate checksums
-            print_msg "$BLUE" "Generating checksums..."
-            cd "$OUTPUT_DIR"
-            sha256sum "$(basename "$iso_file")" > "$(basename "$iso_file").sha256"
-            b2sum "$(basename "$iso_file")" > "$(basename "$iso_file").b2sum"
-            print_msg "$GREEN" "Checksums generated"
-        fi
+        # Generate checksums
+        print_msg "$BLUE" "Generating checksums..."
+        cd "$OUTPUT_DIR"
+        sha256sum "$(basename "$iso_file")" > "$(basename "$iso_file").sha256"
+        b2sum "$(basename "$iso_file")" > "$(basename "$iso_file").b2sum"
+        print_msg "$GREEN" "Checksums generated"
     else
-        print_msg "$RED" "Build failed!"
+        print_msg "$RED" "Build failed - no ISO found!"
         exit 1
     fi
 }

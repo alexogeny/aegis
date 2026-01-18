@@ -11,7 +11,11 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="$PROJECT_ROOT/out"
 
 # Find the latest ISO
-ISO_PATH="${1:-$(ls -t "$OUTPUT_DIR"/aegis-*.iso 2>/dev/null | head -1)}"
+if [[ -n "${1:-}" ]]; then
+    ISO_PATH="$1"
+else
+    ISO_PATH=$(find "$OUTPUT_DIR" -maxdepth 1 -name 'aegis-*.iso' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+fi
 
 if [[ ! -f "$ISO_PATH" ]]; then
     echo "Error: No ISO found. Build one first with: sudo ./scripts/build-iso.sh"
@@ -48,11 +52,11 @@ QEMU_ARGS=(
     -enable-kvm
     -m 8G
     -cpu host
-    -smp 4,sockets=1,cores=4,threads=1
+    -smp "4,sockets=1,cores=4,threads=1"
     -drive "file=$ISO_PATH,media=cdrom,readonly=on"
     -drive "file=$TEST_DISK,if=virtio,format=qcow2"
-    -device virtio-net-pci,netdev=net0
-    -netdev user,id=net0,hostfwd=tcp::2222-:22
+    -device "virtio-net-pci,netdev=net0"
+    -netdev "user,id=net0,hostfwd=tcp::2222-:22"
     -device ich9-intel-hda
     -device hda-duplex
     -usb
@@ -73,7 +77,7 @@ if [[ "${DISPLAY:-}" ]]; then
     # GUI mode with virtio-vga-gl for better performance
     QEMU_ARGS+=(
         -device virtio-vga-gl
-        -display gtk,gl=on
+        -display "gtk,gl=on"
     )
 else
     # Headless mode with VNC
