@@ -55,7 +55,7 @@ export function AnimatedHero() {
         class={`flex flex-col sm:flex-row items-center justify-center gap-4 transition-all duration-1000 delay-500 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
       >
         <a
-          href="/download"
+          href={import.meta.env.BASE_URL + "download"}
           class="group relative bg-mauve hover:bg-pink text-crust font-semibold px-8 py-4 rounded-xl transition-all duration-300 text-lg overflow-hidden glow-mauve hover:glow-pink shine-effect"
         >
           <span class="relative z-10 flex items-center gap-2">

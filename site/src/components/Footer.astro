@@ -1,4 +1,6 @@
 ---
+const base = import.meta.env.BASE_URL;
+
 const socialLinks = [
   {
     href: "https://github.com/alexogeny/aegis",
@@ -8,9 +10,9 @@ const socialLinks = [
 ];
 
 const footerLinks = [
-  { href: "/developers", label: "Developers" },
-  { href: "/creators", label: "Creators" },
-  { href: "/download", label: "Download" },
+  { href: `${base}developers`, label: "Developers" },
+  { href: `${base}creators`, label: "Creators" },
+  { href: `${base}download`, label: "Download" },
 ];
 ---
 
@@ -26,7 +28,7 @@ const footerLinks = [
       <!-- Logo & Tagline -->
       <div class="text-center md:text-left">
         <a
-          href="/"
+          href={base}
           class="group inline-flex items-center gap-2 text-mauve font-bold text-xl font-mono"
         >
           <div class="relative">

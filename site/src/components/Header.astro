@@ -1,8 +1,9 @@
 ---
+const base = import.meta.env.BASE_URL;
 const navLinks = [
-  { href: "/#features", label: "Features" },
-  { href: "/developers", label: "Developers" },
-  { href: "/creators", label: "Creators" },
+  { href: `${base}#features`, label: "Features" },
+  { href: `${base}developers`, label: "Developers" },
+  { href: `${base}creators`, label: "Creators" },
 ];
 ---
 
@@ -12,7 +13,7 @@ const navLinks = [
   >
     <!-- Logo -->
     <a
-      href="/"
+      href={base}
       class="group flex items-center gap-2 text-mauve font-bold text-xl font-mono"
     >
       <div class="relative">
@@ -65,7 +66,7 @@ const navLinks = [
 
     <!-- CTA -->
     <a
-      href="/download"
+      href={`${base}download`}
       class="group relative bg-mauve hover:bg-pink text-crust font-semibold px-5 py-2 rounded-lg transition-all duration-300 overflow-hidden hover:shadow-lg hover:shadow-mauve/30 hover:-translate-y-0.5"
     >
       <span class="relative z-10 flex items-center gap-1">

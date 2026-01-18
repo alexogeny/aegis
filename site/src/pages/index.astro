@@ -13,6 +13,8 @@ import { ParticleField } from "../components/ParticleField";
 import { FeatureShowcase } from "../components/FeatureShowcase";
 import { StatsCounter } from "../components/StatsCounter";
 import { TiltCard } from "../components/TiltCard";
+
+const base = import.meta.env.BASE_URL;
 ---
 
 <BaseLayout>
@@ -60,7 +62,7 @@ import { TiltCard } from "../components/TiltCard";
           class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
         >
           <a
-            href="/download"
+            href={`${base}download`}
             class="group relative bg-mauve hover:bg-pink text-crust font-semibold px-8 py-4 rounded-xl transition-all duration-300 text-lg overflow-hidden glow-mauve hover:glow-pink shine-effect hover-lift"
           >
             <span class="relative z-10 flex items-center gap-2">
@@ -532,7 +534,7 @@ import { TiltCard } from "../components/TiltCard";
         <div class="grid md:grid-cols-2 gap-8">
           <TiltCard
             client:visible
-            href="/developers"
+            href={`${base}developers`}
             title="For Developers"
             description="Rust, Python, Go, TypeScript. Docker, Kubernetes, and a terminal setup that just works. 40+ VSCode extensions pre-configured."
             icon=""
@@ -549,7 +551,7 @@ import { TiltCard } from "../components/TiltCard";
 
           <TiltCard
             client:visible
-            href="/creators"
+            href={`${base}creators`}
             title="For Creators"
             description="Stream and record with OBS Studio. Professional audio with EasyEffects. Elgato hardware integration built-in."
             icon=""
@@ -715,7 +717,7 @@ import { TiltCard } from "../components/TiltCard";
             minutes.
           </p>
           <a
-            href="/download"
+            href={`${base}download`}
             class="group inline-flex items-center gap-3 bg-gradient-to-r from-mauve to-pink text-crust font-bold px-12 py-5 rounded-2xl transition-all duration-300 text-xl glow-mauve hover:glow-pink hover-lift shine-effect"
           >
             <span>Download Now</span>
