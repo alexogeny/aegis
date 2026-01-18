@@ -26,6 +26,10 @@ on:
 env:
   ISO_NAME: aegis
 
+# Required for creating releases
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build ISO
