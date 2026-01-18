@@ -27,3 +27,6 @@ Thumbs.db
 *.log
 /pkg/
 /src/
+
+# Build artifacts
+*.pkg.tar.zst
