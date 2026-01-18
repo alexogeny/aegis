@@ -70,6 +70,8 @@ jobs:
           echo "calamares" >> /tmp/aegis-profile/packages.x86_64
           # Remove custom .desktop to avoid conflict with package
           rm -f /tmp/aegis-profile/airootfs/usr/share/applications/calamares.desktop
+          # Sync pacman database with all repos
+          pacman -Sy
 
       - name: Build ISO
         run: |
