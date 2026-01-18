@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Aegis Backup
+Comment=Create and restore system snapshots
+GenericName=Backup and Restore
+Exec=aegis-backup
+Icon=drive-harddisk
+Terminal=false
+Type=Application
+Categories=System;Utility;Archiving;
+Keywords=backup;restore;snapshot;timeshift;snapper;recovery;
+StartupNotify=true

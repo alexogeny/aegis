@@ -25,5 +25,5 @@ Thumbs.db
 # Package build artifacts
 *.pkg.tar.*
 *.log
-pkg/
-src/
+/pkg/
+/src/

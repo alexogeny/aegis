@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Aegis Displays
+Comment=Configure monitors and display settings
+GenericName=Display Configuration
+Exec=aegis-displays
+Icon=preferences-desktop-display
+Terminal=false
+Type=Application
+Categories=System;Settings;HardwareSettings;
+Keywords=display;monitor;screen;resolution;refresh;scale;arrangement;
+StartupNotify=true

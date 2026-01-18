@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Aegis Welcome
+Comment=Get started with Aegis Linux
+GenericName=Welcome Wizard
+Exec=aegis-welcome
+Icon=system-help
+Terminal=false
+Type=Application
+Categories=System;Utility;
+Keywords=welcome;onboarding;setup;first-run;getting-started;
+StartupNotify=true

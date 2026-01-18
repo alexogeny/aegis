@@ -1,0 +1,203 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+const currentVersion = '2026.01';
+const releaseDate = 'January 2026';
+const isoSize = '~3.5 GB';
+---
+
+<BaseLayout
+  title="Download - Aegis Linux"
+  description="Download Aegis Linux ISO. A security-focused Arch Linux distribution with Hyprland desktop."
+>
+  <Header />
+
+  <main class="pt-24">
+    <!-- Hero -->
+    <section class="px-4 py-16 md:py-24">
+      <div class="mx-auto max-w-4xl text-center">
+        <div class="text-6xl mb-6"></div>
+        <h1 class="text-4xl md:text-5xl font-bold text-text mb-4">
+          Download <span class="text-mauve">Aegis Linux</span>
+        </h1>
+        <p class="text-xl text-subtext0">
+          Version {currentVersion} &bull; Released {releaseDate}
+        </p>
+      </div>
+    </section>
+
+    <!-- Download Card -->
+    <section class="px-4 pb-16">
+      <div class="mx-auto max-w-2xl">
+        <div class="bg-surface0/50 border border-surface1 rounded-2xl p-8">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold text-text">Aegis Linux {currentVersion}</h2>
+              <p class="text-subtext0">64-bit ISO ({isoSize})</p>
+            </div>
+            <div class="text-4xl"></div>
+          </div>
+
+          <a
+            href="https://github.com/alexogeny/aegis/releases/latest/download/aegis-linux.iso"
+            class="block w-full bg-mauve hover:bg-pink text-crust font-semibold py-4 rounded-xl transition-colors duration-200 text-center text-lg mb-4"
+          >
+            Download ISO
+          </a>
+
+          <div class="flex gap-4 text-sm">
+            <a
+              href="https://github.com/alexogeny/aegis/releases/latest/download/aegis-linux.iso.sha256"
+              class="flex-1 bg-surface1 hover:bg-surface2 text-subtext1 py-3 rounded-lg transition-colors text-center"
+            >
+               SHA256
+            </a>
+            <a
+              href="https://github.com/alexogeny/aegis/releases/latest"
+              class="flex-1 bg-surface1 hover:bg-surface2 text-subtext1 py-3 rounded-lg transition-colors text-center"
+            >
+               Release Notes
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Verification -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-4xl">
+        <h2 class="text-2xl font-bold text-text mb-6 text-center">Verify Your Download</h2>
+
+        <div class="bg-base rounded-xl border border-surface0 p-6 font-mono text-sm">
+          <div class="text-overlay0 mb-2"># Download the checksum file</div>
+          <div class="text-text mb-4">
+            $ <span class="text-green">curl</span> -LO https://github.com/alexogeny/aegis/releases/latest/download/aegis-linux.iso.sha256
+          </div>
+
+          <div class="text-overlay0 mb-2"># Verify the ISO</div>
+          <div class="text-text">
+            $ <span class="text-green">sha256sum</span> -c aegis-linux.iso.sha256
+          </div>
+          <div class="text-green mt-2">aegis-linux.iso: OK</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Installation -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-4xl">
+        <h2 class="text-2xl font-bold text-text mb-8 text-center">Quick Install Guide</h2>
+
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="bg-surface0/30 rounded-xl p-6 text-center">
+            <div class="text-3xl mb-4 text-mauve">1</div>
+            <h3 class="font-bold text-text mb-2">Create Bootable USB</h3>
+            <p class="text-subtext0 text-sm">
+              Use <code class="bg-surface1 px-1 rounded">dd</code>, Ventoy, or Etcher to write the ISO to a USB drive.
+            </p>
+          </div>
+
+          <div class="bg-surface0/30 rounded-xl p-6 text-center">
+            <div class="text-3xl mb-4 text-mauve">2</div>
+            <h3 class="font-bold text-text mb-2">Boot & Install</h3>
+            <p class="text-subtext0 text-sm">
+              Boot from USB and click the Calamares installer icon on the desktop.
+            </p>
+          </div>
+
+          <div class="bg-surface0/30 rounded-xl p-6 text-center">
+            <div class="text-3xl mb-4 text-mauve">3</div>
+            <h3 class="font-bold text-text mb-2">Start Using</h3>
+            <p class="text-subtext0 text-sm">
+              Reboot into your new system. Everything is ready to go.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USB Creation -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-4xl">
+        <h2 class="text-2xl font-bold text-text mb-6 text-center">Create Bootable USB</h2>
+
+        <div class="bg-base rounded-xl border border-surface0 p-6 font-mono text-sm">
+          <div class="text-overlay0 mb-2"># Find your USB device (usually /dev/sdX or /dev/nvmeXn1)</div>
+          <div class="text-text mb-4">$ <span class="text-green">lsblk</span></div>
+
+          <div class="text-overlay0 mb-2"># Write the ISO (replace /dev/sdX with your device)</div>
+          <div class="text-text mb-2">
+            $ <span class="text-green">sudo</span> dd if=aegis-linux.iso of=/dev/sdX bs=4M status=progress oflag=sync
+          </div>
+
+          <div class="text-yellow mt-4 text-xs">
+             Warning: Double-check the device path. dd will overwrite the target drive.
+          </div>
+        </div>
+
+        <div class="mt-6 text-center text-subtext0">
+          <p>Or use <a href="https://www.ventoy.net" class="text-blue hover:underline">Ventoy</a> for a multi-ISO USB.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- System Requirements -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-4xl">
+        <h2 class="text-2xl font-bold text-text mb-8 text-center">System Requirements</h2>
+
+        <div class="grid md:grid-cols-2 gap-8">
+          <div class="bg-surface0/30 rounded-xl p-6">
+            <h3 class="font-bold text-text mb-4 flex items-center gap-2">
+              <span class="text-green"></span>
+              Minimum
+            </h3>
+            <ul class="space-y-2 text-subtext0 text-sm">
+              <li>64-bit x86 processor</li>
+              <li>2 GB RAM</li>
+              <li>20 GB storage</li>
+              <li>UEFI or BIOS boot</li>
+            </ul>
+          </div>
+
+          <div class="bg-surface0/30 rounded-xl p-6">
+            <h3 class="font-bold text-text mb-4 flex items-center gap-2">
+              <span class="text-mauve"></span>
+              Recommended
+            </h3>
+            <ul class="space-y-2 text-subtext0 text-sm">
+              <li>Modern multi-core processor</li>
+              <li>8 GB+ RAM</li>
+              <li>50 GB+ SSD storage</li>
+              <li>NVIDIA GPU (open kernel modules supported)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mirrors -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-4xl text-center">
+        <h2 class="text-2xl font-bold text-text mb-4">Alternative Downloads</h2>
+        <p class="text-subtext0 mb-8">
+          All releases are hosted on GitHub. For older versions, check the releases page.
+        </p>
+
+        <a
+          href="https://github.com/alexogeny/aegis/releases"
+          class="inline-flex items-center gap-2 bg-surface1 hover:bg-surface2 text-text font-semibold px-6 py-3 rounded-lg transition-colors"
+        >
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          All Releases on GitHub
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>

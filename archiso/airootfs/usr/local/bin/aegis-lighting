@@ -1,0 +1,938 @@
+#!/usr/bin/env python3
+"""
+Aegis Lighting - GTK4 GUI Application
+Smart lighting control with a modern Catppuccin-themed interface.
+Supports network-connected lights like Elgato Key Light devices.
+Features user-definable presets with save/edit/delete functionality.
+"""
+
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Gtk, Adw, GLib, Gio
+import json
+import subprocess
+from pathlib import Path
+from typing import Optional, Dict
+
+# Import shared Aegis GTK library
+from aegis_gtk import (
+    COLORS,
+    setup_css,
+    run_in_thread,
+    LightingPreset,
+    PresetManager,
+    SmartLight,
+    BUILTIN_PRESETS,
+    DEVICES_PATH,
+    PRESETS_PATH,
+    ColorPickerRow,
+    EmojiPicker,
+    SliderRow,
+)
+
+# App-specific CSS additions
+APP_CSS = f"""
+.preset-row {{
+    background-color: {COLORS['surface0']};
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 2px 0;
+}}
+.preset-row:hover {{
+    background-color: {COLORS['surface1']};
+}}
+.preset-row.active {{
+    background-color: {COLORS['mauve']};
+}}
+.preset-row.active .preset-name {{
+    color: {COLORS['crust']};
+}}
+.preset-row.active .preset-info {{
+    color: {COLORS['crust']};
+}}
+.preset-icon {{
+    font-size: 18px;
+}}
+.preset-name {{
+    color: {COLORS['text']};
+    font-weight: 500;
+    font-size: 13px;
+}}
+.preset-info {{
+    color: {COLORS['subtext0']};
+    font-size: 11px;
+}}
+.preset-btn {{
+    background-color: transparent;
+    border: none;
+    padding: 4px;
+    border-radius: 4px;
+    min-width: 24px;
+    min-height: 24px;
+}}
+.preset-btn:hover {{
+    background-color: {COLORS['surface1']};
+}}
+.preset-btn.delete:hover {{
+    background-color: rgba(243, 139, 168, 0.3);
+}}
+.add-preset-btn {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['text']};
+    border-radius: 8px;
+    padding: 8px 16px;
+    border: 1px dashed {COLORS['surface1']};
+}}
+.add-preset-btn:hover {{
+    background-color: {COLORS['surface1']};
+    border-color: {COLORS['mauve']};
+}}
+.power-toggle {{
+    min-width: 48px;
+    min-height: 24px;
+}}
+.add-button {{
+    background-color: {COLORS['blue']};
+    color: {COLORS['crust']};
+    border-radius: 8px;
+    padding: 8px 16px;
+}}
+.add-button:hover {{
+    background-color: {COLORS['sky']};
+}}
+.export-import-btn {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['text']};
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+}}
+.export-import-btn:hover {{
+    background-color: {COLORS['surface1']};
+}}
+"""
+
+
+class PresetEditorDialog(Adw.Window):
+    """Dialog for creating/editing lighting presets."""
+
+    EMOJI_CATEGORIES = {
+        "Lighting": ["💡", "🔆", "🌅", "☀️", "🌙", "✨", "🌟", "⚡"],
+        "Studio": ["🎬", "📷", "🎥", "📺", "🖥️", "💻", "🎮", "🎧"],
+        "Nature": ["🌈", "🔥", "❄️", "🌊", "🌴", "🌸", "🍃", "🌺"],
+    }
+
+    COLOR_OPTIONS = ["peach", "yellow", "sky", "mauve", "blue", "teal", "green", "pink", "red", "surface1"]
+
+    def __init__(self, parent, preset: Optional[LightingPreset] = None,
+                 current_temp: int = 4500, current_brightness: int = 50):
+        super().__init__(transient_for=parent, modal=True)
+        self.set_title("Edit Preset" if preset else "New Preset")
+        self.set_default_size(400, 550)
+
+        self.preset = preset
+        self.selected_icon = preset.icon if preset else "💡"
+        self.selected_color = preset.color if preset else "yellow"
+        self.result: Optional[Dict] = None
+
+        self._build_ui(current_temp, current_brightness)
+
+    def _build_ui(self, current_temp: int, current_brightness: int):
+        setup_css(self)
+
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect('clicked', lambda b: self.close())
+        header.pack_start(cancel_btn)
+
+        save_btn = Gtk.Button(label="Save")
+        save_btn.add_css_class('primary-button')
+        save_btn.connect('clicked', self._on_save)
+        header.pack_end(save_btn)
+
+        main_box.append(header)
+
+        # Scrollable content
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        main_box.append(scroll)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        content.add_css_class('dialog-content')
+        scroll.set_child(content)
+
+        # Name entry
+        name_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.append(name_box)
+
+        name_label = Gtk.Label(label="Preset Name")
+        name_label.add_css_class('section-title')
+        name_label.set_halign(Gtk.Align.START)
+        name_box.append(name_label)
+
+        self.name_entry = Gtk.Entry()
+        self.name_entry.set_placeholder_text("My Preset")
+        if self.preset:
+            self.name_entry.set_text(self.preset.name)
+        name_box.append(self.name_entry)
+
+        # Icon picker using shared widget
+        icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.append(icon_box)
+
+        icon_label = Gtk.Label(label="Icon")
+        icon_label.add_css_class('section-title')
+        icon_label.set_halign(Gtk.Align.START)
+        icon_box.append(icon_label)
+
+        self.emoji_picker = EmojiPicker(
+            selected_emoji=self.selected_icon,
+            categories=self.EMOJI_CATEGORIES,
+            on_change=self._on_emoji_change
+        )
+        icon_box.append(self.emoji_picker)
+
+        # Color picker using shared widget
+        color_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.append(color_box)
+
+        color_label = Gtk.Label(label="Color")
+        color_label.add_css_class('section-title')
+        color_label.set_halign(Gtk.Align.START)
+        color_box.append(color_label)
+
+        self.color_picker = ColorPickerRow(
+            selected_color=self.selected_color,
+            colors=self.COLOR_OPTIONS,
+            on_change=self._on_color_change
+        )
+        color_box.append(self.color_picker)
+
+        # Temperature slider
+        self.temp_slider = SliderRow(
+            label="Temperature",
+            min_val=2900,
+            max_val=7000,
+            step=100,
+            value=self.preset.temperature if self.preset else current_temp,
+            format_func=lambda v: f"{int(v)}K"
+        )
+        content.append(self.temp_slider)
+
+        # Brightness slider
+        self.bright_slider = SliderRow(
+            label="Brightness",
+            min_val=0,
+            max_val=100,
+            step=1,
+            value=self.preset.brightness if self.preset else current_brightness,
+            format_func=lambda v: f"{int(v)}%"
+        )
+        content.append(self.bright_slider)
+
+        # Power toggle
+        power_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        power_box.set_margin_top(8)
+        content.append(power_box)
+
+        power_label = Gtk.Label(label="Turn On Light")
+        power_label.add_css_class('section-title')
+        power_label.set_hexpand(True)
+        power_label.set_halign(Gtk.Align.START)
+        power_box.append(power_label)
+
+        self.power_switch = Gtk.Switch()
+        self.power_switch.set_active(self.preset.power if self.preset else True)
+        power_box.append(self.power_switch)
+
+    def _on_emoji_change(self, emoji: str):
+        self.selected_icon = emoji
+
+    def _on_color_change(self, color: str):
+        self.selected_color = color
+
+    def _on_save(self, button):
+        name = self.name_entry.get_text().strip()
+        if not name:
+            name = "Unnamed Preset"
+
+        self.result = {
+            'name': name,
+            'icon': self.selected_icon,
+            'color': self.selected_color,
+            'temperature': int(self.temp_slider.get_value()),
+            'brightness': int(self.bright_slider.get_value()),
+            'power': self.power_switch.get_active()
+        }
+        self.close()
+
+
+class LightingWindow(Adw.ApplicationWindow):
+    """Main application window."""
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.set_title("Aegis Lighting")
+        self.set_default_size(420, 700)
+
+        self.lights: list[SmartLight] = []
+        self.current_light: Optional[SmartLight] = None
+
+        self.preset_manager = PresetManager(PRESETS_PATH)
+        self.preset_rows: Dict[str, Gtk.Box] = {}
+
+        setup_css(self, APP_CSS)
+        self._build_ui()
+        self._load_config()
+
+        # Auto-refresh status every 5 seconds
+        GLib.timeout_add_seconds(5, self._refresh_status)
+
+    def _build_ui(self):
+        """Build the user interface."""
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+
+        # Add device button
+        add_btn = Gtk.Button(label="Add Device")
+        add_btn.add_css_class('add-button')
+        add_btn.connect('clicked', self._on_add_device)
+        header.pack_start(add_btn)
+
+        # Discover button
+        discover_btn = Gtk.Button(icon_name="view-refresh-symbolic")
+        discover_btn.set_tooltip_text("Discover devices on network")
+        discover_btn.connect('clicked', self._on_discover)
+        header.pack_end(discover_btn)
+
+        main_box.append(header)
+
+        # Scrollable content
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        main_box.append(scroll)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        content.set_margin_top(16)
+        content.set_margin_bottom(16)
+        content.set_margin_start(16)
+        content.set_margin_end(16)
+        scroll.set_child(content)
+
+        # Device selector (if multiple devices)
+        self.device_combo = Gtk.DropDown()
+        self.device_combo.set_visible(False)
+        self.device_combo.connect('notify::selected', self._on_device_selected)
+        content.append(self.device_combo)
+
+        # Light control card
+        self.control_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        self.control_card.add_css_class('card')
+        content.append(self.control_card)
+
+        # Device header
+        device_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.control_card.append(device_header)
+
+        device_info = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        device_info.set_hexpand(True)
+        device_header.append(device_info)
+
+        self.device_name_label = Gtk.Label(label="Smart Light")
+        self.device_name_label.add_css_class('title')
+        self.device_name_label.set_halign(Gtk.Align.START)
+        device_info.append(self.device_name_label)
+
+        self.device_status_label = Gtk.Label(label="● Connected")
+        self.device_status_label.add_css_class('status-connected')
+        self.device_status_label.set_halign(Gtk.Align.START)
+        device_info.append(self.device_status_label)
+
+        # Power toggle
+        self.power_switch = Gtk.Switch()
+        self.power_switch.add_css_class('power-toggle')
+        self.power_switch.set_valign(Gtk.Align.CENTER)
+        self.power_switch.connect('state-set', self._on_power_toggle)
+        device_header.append(self.power_switch)
+
+        # Light preview
+        preview_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        preview_box.set_halign(Gtk.Align.CENTER)
+        preview_box.set_margin_top(16)
+        preview_box.set_margin_bottom(16)
+        self.control_card.append(preview_box)
+
+        self.light_preview = Gtk.Box()
+        self.light_preview.add_css_class('light-preview')
+        self.light_preview.set_size_request(120, 120)
+        preview_box.append(self.light_preview)
+
+        self.status_label = Gtk.Label(label="ON")
+        self.status_label.add_css_class('title')
+        preview_box.append(self.status_label)
+
+        self.temp_brightness_label = Gtk.Label(label="4500K · 50%")
+        self.temp_brightness_label.add_css_class('subtitle')
+        preview_box.append(self.temp_brightness_label)
+
+        # Brightness slider
+        self.brightness_slider = SliderRow(
+            label="Brightness",
+            min_val=0,
+            max_val=100,
+            step=1,
+            value=50,
+            format_func=lambda v: f"{int(v)}%",
+            on_change=self._on_brightness_changed
+        )
+        self.control_card.append(self.brightness_slider)
+
+        # Temperature slider
+        temp_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.control_card.append(temp_container)
+
+        self.temp_slider = SliderRow(
+            label="Temperature",
+            min_val=2900,
+            max_val=7000,
+            step=100,
+            value=4500,
+            format_func=lambda v: f"{int(v)}K",
+            on_change=self._on_temp_changed
+        )
+        temp_container.append(self.temp_slider)
+
+        temp_labels = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        temp_container.append(temp_labels)
+
+        warm_label = Gtk.Label(label="Warm")
+        warm_label.add_css_class('subtitle')
+        warm_label.set_hexpand(True)
+        warm_label.set_halign(Gtk.Align.START)
+        temp_labels.append(warm_label)
+
+        cool_label = Gtk.Label(label="Cool")
+        cool_label.add_css_class('subtitle')
+        cool_label.set_halign(Gtk.Align.END)
+        temp_labels.append(cool_label)
+
+        # Presets section
+        presets_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        presets_header.set_margin_top(8)
+        self.control_card.append(presets_header)
+
+        presets_label = Gtk.Label(label="Presets")
+        presets_label.add_css_class('section-title')
+        presets_label.set_hexpand(True)
+        presets_label.set_halign(Gtk.Align.START)
+        presets_header.append(presets_label)
+
+        save_preset_btn = Gtk.Button(icon_name="list-add-symbolic")
+        save_preset_btn.set_tooltip_text("Save current as preset")
+        save_preset_btn.add_css_class('preset-btn')
+        save_preset_btn.connect('clicked', self._on_save_preset)
+        presets_header.append(save_preset_btn)
+
+        # Presets list
+        self.presets_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.control_card.append(self.presets_box)
+
+        self._populate_presets()
+
+        # Import/Export buttons
+        io_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        io_box.set_halign(Gtk.Align.CENTER)
+        io_box.set_margin_top(8)
+        self.control_card.append(io_box)
+
+        import_btn = Gtk.Button(label="Import")
+        import_btn.add_css_class('export-import-btn')
+        import_btn.connect('clicked', self._on_import_presets)
+        io_box.append(import_btn)
+
+        export_btn = Gtk.Button(label="Export")
+        export_btn.add_css_class('export-import-btn')
+        export_btn.connect('clicked', self._on_export_presets)
+        io_box.append(export_btn)
+
+        # No devices message
+        self.no_devices_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        self.no_devices_box.set_halign(Gtk.Align.CENTER)
+        self.no_devices_box.set_valign(Gtk.Align.CENTER)
+        self.no_devices_box.set_vexpand(True)
+        self.no_devices_box.set_visible(True)
+        content.append(self.no_devices_box)
+
+        no_devices_icon = Gtk.Image.new_from_icon_name("dialog-information-symbolic")
+        no_devices_icon.set_pixel_size(48)
+        self.no_devices_box.append(no_devices_icon)
+
+        no_devices_label = Gtk.Label(label="No lights configured")
+        no_devices_label.add_css_class('title')
+        self.no_devices_box.append(no_devices_label)
+
+        no_devices_hint = Gtk.Label(label="Click 'Add Device' or discover devices on your network")
+        no_devices_hint.add_css_class('subtitle')
+        self.no_devices_box.append(no_devices_hint)
+
+        # Initially hide controls
+        self.control_card.set_visible(False)
+
+    def _populate_presets(self):
+        """Populate the presets list."""
+        # Clear existing
+        while True:
+            child = self.presets_box.get_first_child()
+            if child is None:
+                break
+            self.presets_box.remove(child)
+
+        self.preset_rows.clear()
+
+        for preset in self.preset_manager.presets:
+            row = self._create_preset_row(preset)
+            self.presets_box.append(row)
+            self.preset_rows[preset.id] = row
+
+    def _create_preset_row(self, preset: LightingPreset) -> Gtk.Box:
+        """Create a single preset row."""
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.add_css_class('preset-row')
+
+        # Icon
+        icon = Gtk.Label(label=preset.icon)
+        icon.add_css_class('preset-icon')
+        row.append(icon)
+
+        # Name and info
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        info_box.set_hexpand(True)
+        row.append(info_box)
+
+        name = Gtk.Label(label=preset.name)
+        name.add_css_class('preset-name')
+        name.set_halign(Gtk.Align.START)
+        info_box.append(name)
+
+        if preset.power:
+            info_text = f"{preset.temperature}K · {preset.brightness}%"
+        else:
+            info_text = "Light Off"
+        info = Gtk.Label(label=info_text)
+        info.add_css_class('preset-info')
+        info.set_halign(Gtk.Align.START)
+        info_box.append(info)
+
+        # Edit button (only for non-builtin)
+        if not preset.is_builtin:
+            edit_btn = Gtk.Button(icon_name="document-edit-symbolic")
+            edit_btn.add_css_class('preset-btn')
+            edit_btn.set_tooltip_text("Edit preset")
+            edit_btn.connect('clicked', self._on_edit_preset, preset.id)
+            row.append(edit_btn)
+
+            delete_btn = Gtk.Button(icon_name="user-trash-symbolic")
+            delete_btn.add_css_class('preset-btn')
+            delete_btn.add_css_class('delete')
+            delete_btn.set_tooltip_text("Delete preset")
+            delete_btn.connect('clicked', self._on_delete_preset, preset.id)
+            row.append(delete_btn)
+
+        # Make the row clickable
+        click_controller = Gtk.GestureClick()
+        click_controller.connect('released', self._on_preset_clicked, preset.id)
+        row.add_controller(click_controller)
+
+        return row
+
+    def _on_preset_clicked(self, gesture, n_press, x, y, preset_id):
+        """Apply a preset when clicked."""
+        preset = self.preset_manager.get_preset(preset_id)
+        if preset and self.current_light:
+            # Update active state
+            self.preset_manager.active_preset_id = preset_id
+            self._update_preset_active_states()
+
+            # Apply preset
+            self.brightness_slider.set_value(preset.brightness, emit_signal=False)
+            self.temp_slider.set_value(preset.temperature, emit_signal=False)
+
+            run_in_thread(
+                self.current_light.set_state,
+                on=preset.power,
+                brightness=preset.brightness,
+                temperature=preset.temperature
+            )
+            GLib.timeout_add(100, self._update_ui_from_device)
+
+    def _update_preset_active_states(self):
+        """Update visual active state of preset rows."""
+        for preset_id, row in self.preset_rows.items():
+            if preset_id == self.preset_manager.active_preset_id:
+                row.add_css_class('active')
+            else:
+                row.remove_css_class('active')
+
+    def _on_save_preset(self, button):
+        """Open dialog to save current settings as a new preset."""
+        dialog = PresetEditorDialog(
+            self,
+            preset=None,
+            current_temp=int(self.temp_slider.get_value()),
+            current_brightness=int(self.brightness_slider.get_value())
+        )
+        dialog.connect('close-request', self._on_save_preset_dialog_closed)
+        dialog.present()
+
+    def _on_save_preset_dialog_closed(self, dialog):
+        if dialog.result:
+            self.preset_manager.create_from_current(
+                name=dialog.result['name'],
+                icon=dialog.result['icon'],
+                color=dialog.result['color'],
+                temperature=dialog.result['temperature'],
+                brightness=dialog.result['brightness'],
+                power=dialog.result['power']
+            )
+            self._populate_presets()
+        return False
+
+    def _on_edit_preset(self, button, preset_id):
+        """Edit an existing preset."""
+        preset = self.preset_manager.get_preset(preset_id)
+        if preset and not preset.is_builtin:
+            dialog = PresetEditorDialog(self, preset=preset)
+            dialog.connect('close-request', lambda d: self._on_edit_preset_dialog_closed(d, preset_id))
+            dialog.present()
+
+    def _on_edit_preset_dialog_closed(self, dialog, preset_id):
+        if dialog.result:
+            self.preset_manager.update_preset(
+                preset_id,
+                name=dialog.result['name'],
+                icon=dialog.result['icon'],
+                color=dialog.result['color'],
+                temperature=dialog.result['temperature'],
+                brightness=dialog.result['brightness'],
+                power=dialog.result['power']
+            )
+            self._populate_presets()
+        return False
+
+    def _on_delete_preset(self, button, preset_id):
+        """Delete a preset after confirmation."""
+        preset = self.preset_manager.get_preset(preset_id)
+        if preset and not preset.is_builtin:
+            dialog = Adw.MessageDialog(
+                transient_for=self,
+                heading="Delete Preset?",
+                body=f"Are you sure you want to delete '{preset.name}'?"
+            )
+            dialog.add_response("cancel", "Cancel")
+            dialog.add_response("delete", "Delete")
+            dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
+            dialog.connect('response', self._on_delete_confirmed, preset_id)
+            dialog.present()
+
+    def _on_delete_confirmed(self, dialog, response, preset_id):
+        if response == "delete":
+            self.preset_manager.remove_preset(preset_id)
+            self._populate_presets()
+
+    def _on_import_presets(self, button):
+        """Import presets from a file."""
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Import Presets")
+
+        filter_json = Gtk.FileFilter()
+        filter_json.add_pattern("*.json")
+        filter_json.set_name("JSON files")
+
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(filter_json)
+        dialog.set_filters(filters)
+
+        dialog.open(self, None, self._on_import_file_selected)
+
+    def _on_import_file_selected(self, dialog, result):
+        try:
+            file = dialog.open_finish(result)
+            if file:
+                path = Path(file.get_path())
+                count = self.preset_manager.import_presets(path)
+                if count > 0:
+                    self._populate_presets()
+                    self._show_toast(f"Imported {count} preset(s)")
+                else:
+                    self._show_toast("No presets found in file")
+        except Exception:
+            pass
+
+    def _on_export_presets(self, button):
+        """Export presets to a file."""
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Export Presets")
+        dialog.set_initial_name("lighting-presets.json")
+        dialog.save(self, None, self._on_export_file_selected)
+
+    def _on_export_file_selected(self, dialog, result):
+        try:
+            file = dialog.save_finish(result)
+            if file:
+                path = Path(file.get_path())
+                if self.preset_manager.export_presets(path):
+                    self._show_toast("Presets exported successfully")
+                else:
+                    self._show_toast("Failed to export presets")
+        except Exception:
+            pass
+
+    def _show_toast(self, message: str):
+        """Show a toast notification."""
+        print(message)
+
+    def _load_config(self):
+        """Load saved device configuration."""
+        try:
+            if DEVICES_PATH.exists():
+                with open(DEVICES_PATH) as f:
+                    config = json.load(f)
+                    for light_data in config.get('keylights', []):
+                        light = SmartLight(light_data['ip'], light_data.get('name', 'Smart Light'))
+                        self.lights.append(light)
+        except Exception:
+            pass
+
+        self._update_device_list()
+
+    def _save_config(self):
+        """Save device configuration."""
+        try:
+            DEVICES_PATH.parent.mkdir(parents=True, exist_ok=True)
+            config = {
+                'keylights': [{'ip': l.ip, 'name': l.name} for l in self.lights],
+                'default_brightness': 50,
+                'default_temperature': 4500
+            }
+            with open(DEVICES_PATH, 'w') as f:
+                json.dump(config, f, indent=2)
+        except Exception:
+            pass
+
+    def _update_device_list(self):
+        """Update the UI based on available devices."""
+        has_devices = len(self.lights) > 0
+
+        self.no_devices_box.set_visible(not has_devices)
+        self.control_card.set_visible(has_devices)
+        self.device_combo.set_visible(len(self.lights) > 1)
+
+        if has_devices:
+            # Update dropdown
+            model = Gtk.StringList()
+            for light in self.lights:
+                model.append(f"{light.name} ({light.ip})")
+            self.device_combo.set_model(model)
+
+            if self.current_light is None:
+                self.current_light = self.lights[0]
+
+            self._refresh_current_device()
+
+    def _refresh_status(self) -> bool:
+        """Refresh status of all devices."""
+        if self.current_light:
+            run_in_thread(self._fetch_status_async)
+        return True  # Continue the timeout
+
+    def _fetch_status_async(self):
+        """Fetch status in background thread."""
+        if self.current_light:
+            self.current_light.fetch_status()
+            GLib.idle_add(self._update_ui_from_device)
+
+    def _refresh_current_device(self):
+        """Refresh the current device status."""
+        if self.current_light:
+            run_in_thread(self._fetch_status_async)
+
+    def _update_ui_from_device(self):
+        """Update UI to reflect device state."""
+        if not self.current_light:
+            return
+
+        light = self.current_light
+
+        # Update name and status
+        self.device_name_label.set_text(light.name)
+        if light.connected:
+            self.device_status_label.set_text(f"● {light.ip}:{light.port}")
+            self.device_status_label.remove_css_class('status-disconnected')
+            self.device_status_label.add_css_class('status-connected')
+        else:
+            self.device_status_label.set_text("● Disconnected")
+            self.device_status_label.remove_css_class('status-connected')
+            self.device_status_label.add_css_class('status-disconnected')
+
+        # Update power switch (without triggering callback)
+        self.power_switch.handler_block_by_func(self._on_power_toggle)
+        self.power_switch.set_active(light.on)
+        self.power_switch.handler_unblock_by_func(self._on_power_toggle)
+
+        # Update preview
+        if light.on:
+            self.light_preview.remove_css_class('light-preview-off')
+            self.light_preview.add_css_class('light-preview')
+            self.status_label.set_text("ON")
+        else:
+            self.light_preview.remove_css_class('light-preview')
+            self.light_preview.add_css_class('light-preview-off')
+            self.status_label.set_text("OFF")
+
+        self.temp_brightness_label.set_text(f"{light.temperature}K · {light.brightness}%")
+
+        # Update sliders
+        self.brightness_slider.set_value(light.brightness, emit_signal=False)
+        self.temp_slider.set_value(light.temperature, emit_signal=False)
+
+    def _on_device_selected(self, dropdown, _):
+        """Handle device selection change."""
+        idx = dropdown.get_selected()
+        if 0 <= idx < len(self.lights):
+            self.current_light = self.lights[idx]
+            self._refresh_current_device()
+
+    def _on_power_toggle(self, switch, state):
+        """Handle power toggle."""
+        if self.current_light:
+            run_in_thread(self.current_light.set_state, on=state)
+            GLib.timeout_add(100, self._update_ui_from_device)
+        return False
+
+    def _on_brightness_changed(self, value):
+        """Handle brightness slider change."""
+        value = int(value)
+        if self.current_light:
+            self.temp_brightness_label.set_text(f"{self.current_light.temperature}K · {value}%")
+            run_in_thread(self.current_light.set_state, brightness=value)
+
+    def _on_temp_changed(self, value):
+        """Handle temperature slider change."""
+        value = int(value)
+        if self.current_light:
+            self.temp_brightness_label.set_text(f"{value}K · {self.current_light.brightness}%")
+            run_in_thread(self.current_light.set_state, temperature=value)
+
+    def _on_add_device(self, button):
+        """Show dialog to add a device manually."""
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading="Add Light",
+            body="Enter the IP address of your smart light"
+        )
+
+        entry = Gtk.Entry()
+        entry.set_placeholder_text("192.168.1.100")
+        dialog.set_extra_child(entry)
+
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("add", "Add")
+        dialog.set_response_appearance("add", Adw.ResponseAppearance.SUGGESTED)
+
+        dialog.connect('response', self._on_add_dialog_response, entry)
+        dialog.present()
+
+    def _on_add_dialog_response(self, dialog, response, entry):
+        """Handle add device dialog response."""
+        if response == "add":
+            ip = entry.get_text().strip()
+            if ip:
+                light = SmartLight(ip)
+                if light.fetch_status():
+                    self.lights.append(light)
+                    self._save_config()
+                    self._update_device_list()
+                else:
+                    # Show error
+                    error_dialog = Adw.MessageDialog(
+                        transient_for=self,
+                        heading="Connection Failed",
+                        body=f"Could not connect to light at {ip}:9123"
+                    )
+                    error_dialog.add_response("ok", "OK")
+                    error_dialog.present()
+
+    def _on_discover(self, button):
+        """Discover devices on the network."""
+        run_in_thread(self._discover_async)
+
+    def _discover_async(self):
+        """Run discovery in background."""
+        try:
+            result = subprocess.run(
+                ['avahi-browse', '-rpt', '_elg._tcp'],
+                capture_output=True, text=True, timeout=5
+            )
+
+            found = []
+            for line in result.stdout.split('\n'):
+                if line.startswith('='):
+                    parts = line.split(';')
+                    if len(parts) >= 8:
+                        name = parts[3]
+                        ip = parts[7]
+                        if ip and ip not in [l.ip for l in self.lights]:
+                            found.append((ip, name))
+
+            if found:
+                GLib.idle_add(self._add_discovered_devices, found)
+        except Exception:
+            pass
+
+    def _add_discovered_devices(self, devices):
+        """Add discovered devices to the list."""
+        for ip, name in devices:
+            light = SmartLight(ip, name)
+            if light.fetch_status():
+                self.lights.append(light)
+
+        if devices:
+            self._save_config()
+            self._update_device_list()
+
+
+class LightingApp(Adw.Application):
+    """Main application class."""
+
+    def __init__(self):
+        super().__init__(
+            application_id='com.aegis.lighting',
+            flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
+
+    def do_activate(self):
+        win = LightingWindow(self)
+        win.present()
+
+
+def main():
+    app = LightingApp()
+    app.run()
+
+
+if __name__ == '__main__':
+    main()

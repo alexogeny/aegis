@@ -1,0 +1,692 @@
+#!/usr/bin/env python3
+"""
+Aegis Welcome - GTK4/Libadwaita First-Run Onboarding
+A beautiful welcome wizard to help new users get started with Aegis Linux.
+"""
+
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Gtk, Adw, GLib, Gio
+import subprocess
+import os
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Optional, List, Callable
+
+from aegis_gtk import COLORS, setup_css
+
+# App-specific CSS (extends base theme)
+APP_CSS = f"""
+.welcome-title {{
+    font-size: 36px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.welcome-subtitle {{
+    font-size: 16px;
+    color: {COLORS['subtext0']};
+}}
+.page-title {{
+    font-size: 24px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.page-description {{
+    font-size: 14px;
+    color: {COLORS['subtext0']};
+}}
+.feature-card {{
+    background-color: {COLORS['mantle']};
+    border-radius: 16px;
+    padding: 20px;
+    border: 2px solid {COLORS['surface0']};
+}}
+.feature-card:hover {{
+    border-color: {COLORS['surface1']};
+}}
+.feature-icon {{
+    font-size: 32px;
+}}
+.feature-title {{
+    font-size: 16px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.feature-description {{
+    font-size: 12px;
+    color: {COLORS['overlay0']};
+}}
+.nav-button {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['text']};
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: bold;
+}}
+.nav-button:hover {{
+    background-color: {COLORS['surface1']};
+}}
+.primary-button {{
+    background-color: {COLORS['mauve']};
+    color: {COLORS['crust']};
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: bold;
+}}
+.primary-button:hover {{
+    background-color: {COLORS['pink']};
+}}
+.success-button {{
+    background-color: {COLORS['green']};
+    color: {COLORS['crust']};
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: bold;
+}}
+.success-button:hover {{
+    background-color: {COLORS['teal']};
+}}
+.checkbox-row {{
+    background-color: {COLORS['mantle']};
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 8px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.checkbox-row:hover {{
+    border-color: {COLORS['surface1']};
+}}
+.checkbox-title {{
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.checkbox-description {{
+    font-size: 12px;
+    color: {COLORS['overlay0']};
+}}
+.progress-dot {{
+    min-width: 12px;
+    min-height: 12px;
+    border-radius: 6px;
+    background-color: {COLORS['surface0']};
+}}
+.progress-dot.active {{
+    background-color: {COLORS['mauve']};
+}}
+.progress-dot.completed {{
+    background-color: {COLORS['green']};
+}}
+.hero-gradient {{
+    background: linear-gradient(135deg, {COLORS['mauve']}20, {COLORS['blue']}20);
+    border-radius: 24px;
+    padding: 48px;
+}}
+.shortcut-key {{
+    background-color: {COLORS['surface0']};
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-family: monospace;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.shortcut-row {{
+    padding: 8px 0;
+}}
+.app-row {{
+    background-color: {COLORS['mantle']};
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.app-icon {{
+    font-size: 24px;
+}}
+.app-name {{
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.app-description {{
+    font-size: 11px;
+    color: {COLORS['overlay0']};
+}}
+.launch-button {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['text']};
+    border-radius: 6px;
+    padding: 6px 12px;
+}}
+.launch-button:hover {{
+    background-color: {COLORS['blue']};
+    color: {COLORS['crust']};
+}}
+"""
+
+
+@dataclass
+class WelcomePage:
+    id: str
+    title: str
+    build_func: Callable
+
+
+class WelcomeWindow(Adw.ApplicationWindow):
+    """Main welcome wizard window."""
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.set_title("Welcome to Aegis Linux")
+        self.set_default_size(800, 600)
+        self.set_resizable(False)
+
+        self.current_page = 0
+        self.pages = [
+            WelcomePage("welcome", "Welcome", self._build_welcome_page),
+            WelcomePage("features", "Features", self._build_features_page),
+            WelcomePage("shortcuts", "Shortcuts", self._build_shortcuts_page),
+            WelcomePage("apps", "Apps", self._build_apps_page),
+            WelcomePage("setup", "Setup", self._build_setup_page),
+            WelcomePage("finish", "Finish", self._build_finish_page),
+        ]
+
+        self._setup_css()
+        self._build_ui()
+
+    def _setup_css(self):
+        setup_css(self, APP_CSS)
+
+    def _build_ui(self):
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+        main_box.append(header)
+
+        # Content stack
+        self.content_stack = Gtk.Stack()
+        self.content_stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        self.content_stack.set_transition_duration(300)
+        self.content_stack.set_vexpand(True)
+        main_box.append(self.content_stack)
+
+        # Build all pages
+        for page in self.pages:
+            page_widget = page.build_func()
+            self.content_stack.add_named(page_widget, page.id)
+
+        # Bottom navigation
+        nav_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        nav_box.set_margin_start(24)
+        nav_box.set_margin_end(24)
+        nav_box.set_margin_top(16)
+        nav_box.set_margin_bottom(24)
+        main_box.append(nav_box)
+
+        # Back button
+        self.back_btn = Gtk.Button(label="Back")
+        self.back_btn.add_css_class('nav-button')
+        self.back_btn.connect('clicked', self._on_back)
+        self.back_btn.set_sensitive(False)
+        nav_box.append(self.back_btn)
+
+        # Progress dots
+        self.progress_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.progress_box.set_halign(Gtk.Align.CENTER)
+        self.progress_box.set_hexpand(True)
+        nav_box.append(self.progress_box)
+
+        self.progress_dots = []
+        for i, page in enumerate(self.pages):
+            dot = Gtk.Box()
+            dot.add_css_class('progress-dot')
+            if i == 0:
+                dot.add_css_class('active')
+            self.progress_dots.append(dot)
+            self.progress_box.append(dot)
+
+        # Next/Finish button
+        self.next_btn = Gtk.Button(label="Next")
+        self.next_btn.add_css_class('primary-button')
+        self.next_btn.connect('clicked', self._on_next)
+        nav_box.append(self.next_btn)
+
+    def _build_welcome_page(self) -> Gtk.Widget:
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        page.set_valign(Gtk.Align.CENTER)
+        page.set_margin_start(48)
+        page.set_margin_end(48)
+        scroll.set_child(page)
+
+        # Hero section
+        hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        hero.add_css_class('hero-gradient')
+        hero.set_halign(Gtk.Align.CENTER)
+        page.append(hero)
+
+        # Logo/Icon
+        logo = Gtk.Label(label="🛡️")
+        logo.set_markup('<span size="72000">🛡️</span>')
+        hero.append(logo)
+
+        # Title
+        title = Gtk.Label(label="Welcome to Aegis Linux")
+        title.add_css_class('welcome-title')
+        hero.append(title)
+
+        # Subtitle
+        subtitle = Gtk.Label(label="Security by Default. Beauty by Design.")
+        subtitle.add_css_class('welcome-subtitle')
+        hero.append(subtitle)
+
+        # Brief intro
+        intro = Gtk.Label()
+        intro.set_markup(f'<span foreground="{COLORS["subtext0"]}">Let\'s get you set up with your new secure, beautiful desktop.\nThis wizard will guide you through the basics in just a few steps.</span>')
+        intro.set_justify(Gtk.Justification.CENTER)
+        intro.set_margin_top(16)
+        hero.append(intro)
+
+        return scroll
+
+    def _build_features_page(self) -> Gtk.Widget:
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
+        page.set_margin_top(32)
+        page.set_margin_bottom(32)
+        page.set_margin_start(48)
+        page.set_margin_end(48)
+        scroll.set_child(page)
+
+        # Header
+        title = Gtk.Label(label="What Makes Aegis Special")
+        title.add_css_class('page-title')
+        title.set_halign(Gtk.Align.START)
+        page.append(title)
+
+        desc = Gtk.Label(label="Aegis Linux comes with security and productivity features out of the box.")
+        desc.add_css_class('page-description')
+        desc.set_halign(Gtk.Align.START)
+        page.append(desc)
+
+        # Features grid
+        grid = Gtk.Grid()
+        grid.set_row_spacing(16)
+        grid.set_column_spacing(16)
+        page.append(grid)
+
+        features = [
+            ("🔒", "AppArmor", "App sandboxing protects your system", "mauve"),
+            ("🛡️", "Firewall", "nftables blocks unwanted connections", "blue"),
+            ("🦠", "ClamAV", "On-access antivirus scanning", "teal"),
+            ("💾", "Full Disk Encryption", "LUKS2 encryption support", "green"),
+            ("🎨", "Hyprland", "Smooth Wayland compositor", "pink"),
+            ("⚡", "Catppuccin", "Beautiful dark theme everywhere", "peach"),
+        ]
+
+        for i, (icon, name, desc, color) in enumerate(features):
+            card = self._create_feature_card(icon, name, desc, color)
+            grid.attach(card, i % 2, i // 2, 1, 1)
+
+        return scroll
+
+    def _create_feature_card(self, icon: str, name: str, desc: str, color: str) -> Gtk.Widget:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.add_css_class('feature-card')
+        card.set_hexpand(True)
+
+        icon_label = Gtk.Label(label=icon)
+        icon_label.add_css_class('feature-icon')
+        icon_label.set_halign(Gtk.Align.START)
+        card.append(icon_label)
+
+        name_label = Gtk.Label(label=name)
+        name_label.set_markup(f'<span weight="bold" foreground="{COLORS[color]}">{name}</span>')
+        name_label.set_halign(Gtk.Align.START)
+        card.append(name_label)
+
+        desc_label = Gtk.Label(label=desc)
+        desc_label.add_css_class('feature-description')
+        desc_label.set_halign(Gtk.Align.START)
+        desc_label.set_wrap(True)
+        card.append(desc_label)
+
+        return card
+
+    def _build_shortcuts_page(self) -> Gtk.Widget:
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
+        page.set_margin_top(32)
+        page.set_margin_bottom(32)
+        page.set_margin_start(48)
+        page.set_margin_end(48)
+        scroll.set_child(page)
+
+        # Header
+        title = Gtk.Label(label="Essential Keyboard Shortcuts")
+        title.add_css_class('page-title')
+        title.set_halign(Gtk.Align.START)
+        page.append(title)
+
+        desc = Gtk.Label(label="Hyprland uses Super (Windows key) for most shortcuts. Here are the essentials:")
+        desc.add_css_class('page-description')
+        desc.set_halign(Gtk.Align.START)
+        page.append(desc)
+
+        # Shortcuts list
+        shortcuts_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        shortcuts_card.add_css_class('feature-card')
+        page.append(shortcuts_card)
+
+        shortcuts = [
+            ("Super + Return", "Open terminal (Kitty)"),
+            ("Super + Space", "App launcher (Anyrun)"),
+            ("Super + Q", "Close window"),
+            ("Super + 1-9", "Switch workspace"),
+            ("Super + Shift + 1-9", "Move window to workspace"),
+            ("Super + E", "File manager (Nautilus)"),
+            ("Super + B", "Web browser (Firefox)"),
+            ("Super + L", "Lock screen"),
+            ("Super + M", "Notification center"),
+            ("Super + Arrow", "Move focus"),
+        ]
+
+        for key, action in shortcuts:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            row.add_css_class('shortcut-row')
+            shortcuts_card.append(row)
+
+            key_label = Gtk.Label(label=key)
+            key_label.add_css_class('shortcut-key')
+            key_label.set_size_request(180, -1)
+            key_label.set_halign(Gtk.Align.START)
+            row.append(key_label)
+
+            action_label = Gtk.Label(label=action)
+            action_label.set_markup(f'<span foreground="{COLORS["text"]}">{action}</span>')
+            action_label.set_halign(Gtk.Align.START)
+            row.append(action_label)
+
+        return scroll
+
+    def _build_apps_page(self) -> Gtk.Widget:
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
+        page.set_margin_top(32)
+        page.set_margin_bottom(32)
+        page.set_margin_start(48)
+        page.set_margin_end(48)
+        scroll.set_child(page)
+
+        # Header
+        title = Gtk.Label(label="Recommended Apps")
+        title.add_css_class('page-title')
+        title.set_halign(Gtk.Align.START)
+        page.append(title)
+
+        desc = Gtk.Label(label="These Aegis tools help you manage your system:")
+        desc.add_css_class('page-description')
+        desc.set_halign(Gtk.Align.START)
+        page.append(desc)
+
+        # Apps list
+        apps = [
+            ("🛡️", "Aegis Armor", "Configure security settings", "aegis-armor"),
+            ("🎚️", "Aegis Mixer", "Virtual audio mixer", "aegis-mixer"),
+            ("📦", "Aegis Updates", "System updates", "aegis-updates"),
+            ("💾", "Aegis Backup", "Backup and restore", "aegis-backup"),
+            ("🖥️", "Aegis Displays", "Monitor configuration", "aegis-displays"),
+        ]
+
+        for icon, name, desc_text, cmd in apps:
+            row = self._create_app_row(icon, name, desc_text, cmd)
+            page.append(row)
+
+        return scroll
+
+    def _create_app_row(self, icon: str, name: str, desc: str, cmd: str) -> Gtk.Widget:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.add_css_class('app-row')
+
+        icon_label = Gtk.Label(label=icon)
+        icon_label.add_css_class('app-icon')
+        row.append(icon_label)
+
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        info_box.set_hexpand(True)
+        row.append(info_box)
+
+        name_label = Gtk.Label(label=name)
+        name_label.add_css_class('app-name')
+        name_label.set_halign(Gtk.Align.START)
+        info_box.append(name_label)
+
+        desc_label = Gtk.Label(label=desc)
+        desc_label.add_css_class('app-description')
+        desc_label.set_halign(Gtk.Align.START)
+        info_box.append(desc_label)
+
+        launch_btn = Gtk.Button(label="Launch")
+        launch_btn.add_css_class('launch-button')
+        launch_btn.connect('clicked', self._on_launch_app, cmd)
+        row.append(launch_btn)
+
+        return row
+
+    def _build_setup_page(self) -> Gtk.Widget:
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
+        page.set_margin_top(32)
+        page.set_margin_bottom(32)
+        page.set_margin_start(48)
+        page.set_margin_end(48)
+        scroll.set_child(page)
+
+        # Header
+        title = Gtk.Label(label="Quick Setup")
+        title.add_css_class('page-title')
+        title.set_halign(Gtk.Align.START)
+        page.append(title)
+
+        desc = Gtk.Label(label="Configure some common options (you can change these later):")
+        desc.add_css_class('page-description')
+        desc.set_halign(Gtk.Align.START)
+        page.append(desc)
+
+        # Setup options
+        self.setup_options = {}
+
+        options = [
+            ("autostart", "Start Aegis Welcome on login", "Show this wizard when you log in", False),
+            ("dark_theme", "Use dark theme everywhere", "Apply Catppuccin Mocha to all apps", True),
+            ("auto_updates", "Enable automatic security updates", "Keep your system secure automatically", True),
+            ("analytics", "Help improve Aegis (anonymous)", "Share anonymous usage statistics", False),
+        ]
+
+        for opt_id, title, desc, default in options:
+            row = self._create_checkbox_row(opt_id, title, desc, default)
+            page.append(row)
+
+        return scroll
+
+    def _create_checkbox_row(self, opt_id: str, title: str, desc: str, default: bool) -> Gtk.Widget:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.add_css_class('checkbox-row')
+
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        info_box.set_hexpand(True)
+        row.append(info_box)
+
+        title_label = Gtk.Label(label=title)
+        title_label.add_css_class('checkbox-title')
+        title_label.set_halign(Gtk.Align.START)
+        info_box.append(title_label)
+
+        desc_label = Gtk.Label(label=desc)
+        desc_label.add_css_class('checkbox-description')
+        desc_label.set_halign(Gtk.Align.START)
+        info_box.append(desc_label)
+
+        switch = Gtk.Switch()
+        switch.set_active(default)
+        switch.set_valign(Gtk.Align.CENTER)
+        self.setup_options[opt_id] = switch
+        row.append(switch)
+
+        return row
+
+    def _build_finish_page(self) -> Gtk.Widget:
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        page.set_valign(Gtk.Align.CENTER)
+        page.set_margin_start(48)
+        page.set_margin_end(48)
+        scroll.set_child(page)
+
+        # Hero section
+        hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        hero.add_css_class('hero-gradient')
+        hero.set_halign(Gtk.Align.CENTER)
+        page.append(hero)
+
+        # Checkmark
+        check = Gtk.Label()
+        check.set_markup(f'<span size="72000" foreground="{COLORS["green"]}">✓</span>')
+        hero.append(check)
+
+        # Title
+        title = Gtk.Label(label="You're All Set!")
+        title.add_css_class('welcome-title')
+        hero.append(title)
+
+        # Subtitle
+        subtitle = Gtk.Label(label="Aegis Linux is ready to use.")
+        subtitle.add_css_class('welcome-subtitle')
+        hero.append(subtitle)
+
+        # Tips
+        tips = Gtk.Label()
+        tips.set_markup(f'''<span foreground="{COLORS["subtext0"]}">
+Press <b>Super + Space</b> to launch apps
+Press <b>Super + Return</b> for terminal
+Visit <b>aegis.computer</b> for documentation
+</span>''')
+        tips.set_justify(Gtk.Justification.CENTER)
+        tips.set_margin_top(24)
+        hero.append(tips)
+
+        return scroll
+
+    def _on_back(self, button):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self._update_navigation()
+
+    def _on_next(self, button):
+        if self.current_page < len(self.pages) - 1:
+            self.current_page += 1
+            self._update_navigation()
+        else:
+            # Finish - apply settings and close
+            self._apply_settings()
+            self.close()
+
+    def _update_navigation(self):
+        # Update stack
+        self.content_stack.set_visible_child_name(self.pages[self.current_page].id)
+
+        # Update back button
+        self.back_btn.set_sensitive(self.current_page > 0)
+
+        # Update next button
+        if self.current_page == len(self.pages) - 1:
+            self.next_btn.set_label("Get Started")
+            self.next_btn.remove_css_class('primary-button')
+            self.next_btn.add_css_class('success-button')
+        else:
+            self.next_btn.set_label("Next")
+            self.next_btn.remove_css_class('success-button')
+            self.next_btn.add_css_class('primary-button')
+
+        # Update progress dots
+        for i, dot in enumerate(self.progress_dots):
+            dot.remove_css_class('active')
+            dot.remove_css_class('completed')
+            if i == self.current_page:
+                dot.add_css_class('active')
+            elif i < self.current_page:
+                dot.add_css_class('completed')
+
+    def _on_launch_app(self, button, cmd):
+        try:
+            subprocess.Popen([cmd])
+        except Exception:
+            pass
+
+    def _apply_settings(self):
+        """Apply the selected setup options."""
+        config_dir = Path.home() / '.config' / 'aegis'
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Handle autostart
+        autostart_dir = Path.home() / '.config' / 'autostart'
+        autostart_file = autostart_dir / 'aegis-welcome.desktop'
+
+        if self.setup_options.get('autostart') and self.setup_options['autostart'].get_active():
+            autostart_dir.mkdir(parents=True, exist_ok=True)
+            autostart_file.write_text("""[Desktop Entry]
+Name=Aegis Welcome
+Exec=aegis-welcome
+Type=Application
+X-GNOME-Autostart-enabled=true
+""")
+        elif autostart_file.exists():
+            autostart_file.unlink()
+
+        # Save other preferences
+        import json
+        prefs = {
+            'dark_theme': self.setup_options.get('dark_theme', Gtk.Switch()).get_active(),
+            'auto_updates': self.setup_options.get('auto_updates', Gtk.Switch()).get_active(),
+            'analytics': self.setup_options.get('analytics', Gtk.Switch()).get_active(),
+            'setup_complete': True,
+        }
+
+        prefs_file = config_dir / 'welcome.json'
+        prefs_file.write_text(json.dumps(prefs, indent=2))
+
+
+class WelcomeApp(Adw.Application):
+    def __init__(self):
+        super().__init__(
+            application_id='com.aegis.welcome',
+            flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
+
+    def do_activate(self):
+        win = WelcomeWindow(self)
+        win.present()
+
+
+def main():
+    app = WelcomeApp()
+    app.run()
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,199 @@
+name: Build Aegis Linux ISO
+
+on:
+  # Manual trigger with options
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a GitHub release'
+        required: false
+        default: 'false'
+        type: boolean
+      release_tag:
+        description: 'Release tag (e.g., v2026.01.18)'
+        required: false
+        type: string
+
+  # Automatic build on tags
+  push:
+    tags:
+      - 'v*.*.*'
+
+  # Optional: build on schedule (weekly)
+  # schedule:
+  #   - cron: '0 0 * * 0'  # Every Sunday at midnight UTC
+
+env:
+  ISO_NAME: aegis
+
+jobs:
+  build:
+    name: Build ISO
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize pacman keyring
+        run: |
+          pacman-key --init
+          pacman-key --populate archlinux
+
+      - name: Update system and install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed archiso git base-devel
+
+      - name: Setup Chaotic-AUR repository
+        run: |
+          # Import and sign the key
+          pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+          pacman-key --lsign-key 3056513887B78AEB
+
+          # Install chaotic-keyring and mirrorlist
+          pacman -U --noconfirm "https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst"
+          pacman -U --noconfirm "https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst"
+
+          # Add chaotic-aur to pacman.conf
+          echo "" >> /etc/pacman.conf
+          echo "[chaotic-aur]" >> /etc/pacman.conf
+          echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
+
+      - name: Setup ArchZFS repository
+        run: |
+          # Import archzfs key
+          pacman-key --recv-keys DDF7DB817396A49B2A2723F7403BD972F75D9D76 --keyserver keyserver.ubuntu.com
+          pacman-key --lsign-key DDF7DB817396A49B2A2723F7403BD972F75D9D76
+
+          # Add archzfs mirrorlist
+          cat > /etc/pacman.d/archzfs-mirrorlist << 'EOF'
+          Server = https://archzfs.com/$repo/$arch
+          Server = https://mirror.sum7.eu/archlinux/archzfs/$repo/$arch
+          Server = https://mirror.biocrafting.net/archlinux/archzfs/$repo/$arch
+          EOF
+
+          # Add archzfs to pacman.conf
+          echo "" >> /etc/pacman.conf
+          echo "[archzfs]" >> /etc/pacman.conf
+          echo "Include = /etc/pacman.d/archzfs-mirrorlist" >> /etc/pacman.conf
+
+          # Refresh package databases
+          pacman -Sy
+
+      - name: Build Calamares from AUR
+        id: calamares
+        run: |
+          # Create a build user (makepkg cannot run as root)
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+          # Install calamares build dependencies
+          pacman -S --noconfirm --needed cmake extra-cmake-modules qt6-base qt6-declarative qt6-tools \
+              qt6-translations kpmcore yaml-cpp boost libpwquality icu polkit-qt6 \
+              kconfig kcoreaddons ki18n kiconthemes kio kparts kservice kwidgetsaddons \
+              python squashfs-tools appstream-qt plasma5support
+
+          # Build calamares as builder user
+          cd /tmp
+          sudo -u builder git clone https://aur.archlinux.org/calamares.git
+          cd calamares
+          sudo -u builder makepkg -s --noconfirm || echo "Calamares build failed, will use archinstall as fallback"
+
+          # Install if built successfully
+          if ls *.pkg.tar.zst 1>/dev/null 2>&1; then
+              pacman -U --noconfirm *.pkg.tar.zst
+              mkdir -p /tmp/localrepo
+              cp *.pkg.tar.zst /tmp/localrepo/
+              cd /tmp/localrepo
+              repo-add localrepo.db.tar.gz *.pkg.tar.zst
+              echo "calamares_built=true" >> $GITHUB_OUTPUT
+          else
+              echo "calamares_built=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare ISO profile
+        run: |
+          # Create a working copy of the archiso profile
+          cp -r archiso /tmp/aegis-profile
+
+          # If calamares was built, add local repo
+          if [ "${{ steps.calamares.outputs.calamares_built }}" = "true" ]; then
+              echo "" >> /tmp/aegis-profile/pacman.conf
+              echo "[localrepo]" >> /tmp/aegis-profile/pacman.conf
+              echo "SigLevel = Optional TrustAll" >> /tmp/aegis-profile/pacman.conf
+              echo "Server = file:///tmp/localrepo" >> /tmp/aegis-profile/pacman.conf
+              echo "calamares" >> /tmp/aegis-profile/packages.x86_64
+          fi
+
+      - name: Build ISO
+        run: |
+          mkdir -p /tmp/aegis-work out
+          mkarchiso -v -w /tmp/aegis-work -o out /tmp/aegis-profile
+
+      - name: Generate checksums
+        run: |
+          cd out
+          for iso in *.iso; do
+            sha256sum "$iso" > "${iso}.sha256"
+            b2sum "$iso" > "${iso}.b2sum"
+          done
+          ls -lh
+
+      # Note: Skipping artifact upload - ISOs are too large for free tier (500MB limit)
+      # The ISO will be uploaded directly to GitHub Releases instead
+
+      - name: Get ISO filename
+        id: iso_info
+        run: |
+          ISO_FILE=$(ls out/*.iso | head -1)
+          ISO_NAME=$(basename "$ISO_FILE")
+          ISO_SIZE=$(du -h "$ISO_FILE" | cut -f1)
+          echo "iso_file=$ISO_FILE" >> $GITHUB_OUTPUT
+          echo "iso_name=$ISO_NAME" >> $GITHUB_OUTPUT
+          echo "iso_size=$ISO_SIZE" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || inputs.release_tag || format('v{0}', github.run_id) }}
+          name: Aegis Linux ${{ github.ref_name || inputs.release_tag || format('Build {0}', github.run_id) }}
+          draft: false
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          generate_release_notes: true
+          body: |
+            ## Aegis Linux ISO Release
+
+            **ISO:** `${{ steps.iso_info.outputs.iso_name }}`
+            **Size:** ${{ steps.iso_info.outputs.iso_size }}
+
+            ### Features
+            - Security-focused Arch Linux with AppArmor and kernel hardening
+            - Hyprland Wayland compositor with Catppuccin Mocha theme
+            - Developer tools: Rust, Python, Go, Docker, K8s
+            - Content creator ready: OBS, EasyEffects, Elgato support
+
+            ### Verification
+            ```bash
+            # SHA256
+            sha256sum -c ${{ steps.iso_info.outputs.iso_name }}.sha256
+
+            # BLAKE2
+            b2sum -c ${{ steps.iso_info.outputs.iso_name }}.b2sum
+            ```
+
+            ### Installation
+            1. Write to USB: `sudo dd if=${{ steps.iso_info.outputs.iso_name }} of=/dev/sdX bs=4M status=progress`
+            2. Boot from USB and follow the Calamares installer
+
+            Built with GitHub Actions on ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+          files: |
+            out/*.iso
+            out/*.sha256
+            out/*.b2sum
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

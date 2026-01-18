@@ -403,16 +403,24 @@ baobab
 dconf-editor
 
 # -----------------------------------------------------------------------------
-# Elgato Stream Deck & Key Light Control
+# Aegis GTK4/Libadwaita Apps
+# - aegis-mixer: Virtual audio mixer for PipeWire
+# - aegis-macropad: Macro button controller (works with Stream Deck)
+# - aegis-lighting: Smart light controller (works with Elgato Key Light)
+# - aegis-armor: Security configuration (AppArmor, firewall, hardening)
 # -----------------------------------------------------------------------------
+libadwaita
+python-gobject
 python-pydantic
 python-pillow
-python-hidapi
 python-requests
-python-websocket-client
 
-# -----------------------------------------------------------------------------
-# AUR Packages (handled by chaotic-aur)
-# -----------------------------------------------------------------------------
-# streamdeck-ui (Stream Deck control)
-# python-elgato (Key Light control)
+# Stream Deck HID support
+python-hidapi
+
+# mDNS for Elgato device discovery
+avahi
+nss-mdns
+
+# PipeWire routing (for advanced users)
+qpwgraph

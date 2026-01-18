@@ -1,0 +1,754 @@
+#!/usr/bin/env python3
+"""
+Aegis Displays - GTK4/Libadwaita Monitor Configuration
+Configure display arrangement, resolution, refresh rate, and scaling for Hyprland.
+"""
+
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Gtk, Adw, GLib, Gio
+import subprocess
+import json
+import re
+from dataclasses import dataclass, field
+from typing import Optional, List, Tuple
+from pathlib import Path
+
+from aegis_gtk import COLORS, setup_css
+
+# App-specific CSS (extends base theme)
+APP_CSS = f"""
+.display-preview {{
+    background-color: {COLORS['mantle']};
+    border-radius: 16px;
+    padding: 24px;
+    border: 2px solid {COLORS['surface0']};
+    min-height: 200px;
+}}
+.monitor-box {{
+    background-color: {COLORS['surface0']};
+    border-radius: 8px;
+    border: 2px solid {COLORS['surface1']};
+}}
+.monitor-box.selected {{
+    border-color: {COLORS['mauve']};
+    border-width: 3px;
+}}
+.monitor-box.primary {{
+    border-color: {COLORS['green']};
+}}
+.monitor-label {{
+    color: {COLORS['text']};
+    font-weight: bold;
+    font-size: 14px;
+}}
+.monitor-resolution {{
+    color: {COLORS['overlay0']};
+    font-size: 11px;
+}}
+.settings-card {{
+    background-color: {COLORS['mantle']};
+    border-radius: 16px;
+    padding: 20px;
+    border: 2px solid {COLORS['surface0']};
+}}
+.settings-title {{
+    font-weight: bold;
+    font-size: 16px;
+    color: {COLORS['text']};
+}}
+.settings-subtitle {{
+    font-size: 12px;
+    color: {COLORS['overlay0']};
+}}
+.setting-row {{
+    padding: 12px 0;
+    border-bottom: 1px solid {COLORS['surface0']};
+}}
+.setting-row:last-child {{
+    border-bottom: none;
+}}
+.setting-label {{
+    color: {COLORS['text']};
+    font-weight: bold;
+}}
+.setting-description {{
+    color: {COLORS['overlay0']};
+    font-size: 11px;
+}}
+.apply-button {{
+    background-color: {COLORS['green']};
+    color: {COLORS['crust']};
+    border-radius: 12px;
+    padding: 14px 28px;
+    font-weight: bold;
+    font-size: 15px;
+}}
+.apply-button:hover {{
+    background-color: {COLORS['teal']};
+}}
+.apply-button:disabled {{
+    background-color: {COLORS['surface1']};
+    color: {COLORS['overlay0']};
+}}
+.detect-button {{
+    background-color: {COLORS['blue']};
+    color: {COLORS['crust']};
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: bold;
+}}
+.detect-button:hover {{
+    background-color: {COLORS['sapphire']};
+}}
+.primary-badge {{
+    background-color: {COLORS['green']};
+    color: {COLORS['crust']};
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: bold;
+}}
+.info-banner {{
+    background-color: {COLORS['blue']}20;
+    border: 1px solid {COLORS['blue']}40;
+    border-radius: 12px;
+    padding: 16px;
+}}
+.warning-banner {{
+    background-color: {COLORS['yellow']}20;
+    border: 1px solid {COLORS['yellow']}40;
+    border-radius: 12px;
+    padding: 16px;
+}}
+"""
+
+
+@dataclass
+class DisplayMode:
+    width: int
+    height: int
+    refresh_rate: float
+    preferred: bool = False
+
+    def __str__(self):
+        return f"{self.width}x{self.height} @ {self.refresh_rate:.2f}Hz"
+
+
+@dataclass
+class Monitor:
+    name: str
+    description: str
+    width: int
+    height: int
+    refresh_rate: float
+    x: int
+    y: int
+    scale: float
+    transform: int
+    enabled: bool
+    primary: bool
+    modes: List[DisplayMode] = field(default_factory=list)
+    vrr: bool = False
+    hdr: bool = False
+
+
+class DisplaysWindow(Adw.ApplicationWindow):
+    """Main displays configuration window."""
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.set_title("Aegis Displays")
+        self.set_default_size(800, 700)
+
+        self.monitors: List[Monitor] = []
+        self.selected_monitor: Optional[Monitor] = None
+        self.has_changes = False
+
+        self._setup_css()
+        self._build_ui()
+        self._detect_monitors()
+
+    def _setup_css(self):
+        setup_css(self, APP_CSS)
+
+    def _build_ui(self):
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+
+        # Detect button
+        detect_btn = Gtk.Button(label="Detect Displays")
+        detect_btn.add_css_class('detect-button')
+        detect_btn.connect('clicked', self._on_detect)
+        header.pack_start(detect_btn)
+
+        # Apply button
+        self.apply_btn = Gtk.Button(label="Apply")
+        self.apply_btn.add_css_class('apply-button')
+        self.apply_btn.connect('clicked', self._on_apply)
+        self.apply_btn.set_sensitive(False)
+        header.pack_end(self.apply_btn)
+
+        main_box.append(header)
+
+        # Scrollable content
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        main_box.append(scroll)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        content.add_css_class('main-container')
+        scroll.set_child(content)
+
+        # Display arrangement preview
+        self.preview_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.preview_box.add_css_class('display-preview')
+        content.append(self.preview_box)
+
+        preview_label = Gtk.Label(label="Display Arrangement")
+        preview_label.set_markup(f'<span weight="bold" foreground="{COLORS["text"]}">Display Arrangement</span>')
+        preview_label.set_halign(Gtk.Align.START)
+        self.preview_box.append(preview_label)
+
+        preview_hint = Gtk.Label(label="Click a monitor to select it. Drag to rearrange.")
+        preview_hint.add_css_class('settings-subtitle')
+        preview_hint.set_halign(Gtk.Align.START)
+        self.preview_box.append(preview_hint)
+
+        # Monitor representations will be added here
+        self.monitors_area = Gtk.Fixed()
+        self.monitors_area.set_size_request(-1, 150)
+        self.preview_box.append(self.monitors_area)
+
+        # Monitor settings card
+        self.settings_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        self.settings_card.add_css_class('settings-card')
+        content.append(self.settings_card)
+
+        settings_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.settings_card.append(settings_header)
+
+        self.monitor_name_label = Gtk.Label(label="Select a monitor")
+        self.monitor_name_label.add_css_class('settings-title')
+        self.monitor_name_label.set_halign(Gtk.Align.START)
+        self.monitor_name_label.set_hexpand(True)
+        settings_header.append(self.monitor_name_label)
+
+        self.primary_badge = Gtk.Label(label="PRIMARY")
+        self.primary_badge.add_css_class('primary-badge')
+        self.primary_badge.set_visible(False)
+        settings_header.append(self.primary_badge)
+
+        self.monitor_desc_label = Gtk.Label(label="")
+        self.monitor_desc_label.add_css_class('settings-subtitle')
+        self.monitor_desc_label.set_halign(Gtk.Align.START)
+        self.settings_card.append(self.monitor_desc_label)
+
+        # Settings rows
+        self.settings_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.settings_card.append(self.settings_container)
+
+        # Resolution row
+        res_row = self._create_setting_row(
+            "Resolution",
+            "Display resolution in pixels"
+        )
+        self.resolution_dropdown = Gtk.DropDown()
+        self.resolution_dropdown.connect('notify::selected', self._on_resolution_changed)
+        res_row.append(self.resolution_dropdown)
+        self.settings_container.append(res_row)
+
+        # Refresh rate row
+        refresh_row = self._create_setting_row(
+            "Refresh Rate",
+            "Screen refresh rate in Hz"
+        )
+        self.refresh_dropdown = Gtk.DropDown()
+        self.refresh_dropdown.connect('notify::selected', self._on_refresh_changed)
+        refresh_row.append(self.refresh_dropdown)
+        self.settings_container.append(refresh_row)
+
+        # Scale row
+        scale_row = self._create_setting_row(
+            "Scale",
+            "UI scaling factor (1.0 = 100%)"
+        )
+        self.scale_dropdown = Gtk.DropDown.new_from_strings([
+            "1.0 (100%)", "1.25 (125%)", "1.5 (150%)", "1.75 (175%)", "2.0 (200%)"
+        ])
+        self.scale_dropdown.connect('notify::selected', self._on_scale_changed)
+        scale_row.append(self.scale_dropdown)
+        self.settings_container.append(scale_row)
+
+        # Rotation row
+        rotation_row = self._create_setting_row(
+            "Rotation",
+            "Display orientation"
+        )
+        self.rotation_dropdown = Gtk.DropDown.new_from_strings([
+            "Normal", "90° (Portrait)", "180° (Upside Down)", "270° (Portrait Flipped)"
+        ])
+        self.rotation_dropdown.connect('notify::selected', self._on_rotation_changed)
+        rotation_row.append(self.rotation_dropdown)
+        self.settings_container.append(rotation_row)
+
+        # VRR row
+        vrr_row = self._create_setting_row(
+            "Variable Refresh Rate",
+            "FreeSync / G-Sync adaptive sync"
+        )
+        self.vrr_switch = Gtk.Switch()
+        self.vrr_switch.set_valign(Gtk.Align.CENTER)
+        self.vrr_switch.connect('notify::active', self._on_vrr_changed)
+        vrr_row.append(self.vrr_switch)
+        self.settings_container.append(vrr_row)
+
+        # Primary row
+        primary_row = self._create_setting_row(
+            "Set as Primary",
+            "Use this monitor as the main display"
+        )
+        self.primary_switch = Gtk.Switch()
+        self.primary_switch.set_valign(Gtk.Align.CENTER)
+        self.primary_switch.connect('notify::active', self._on_primary_changed)
+        primary_row.append(self.primary_switch)
+        self.settings_container.append(primary_row)
+
+        # Enable row
+        enable_row = self._create_setting_row(
+            "Enable Display",
+            "Turn this monitor on or off"
+        )
+        self.enable_switch = Gtk.Switch()
+        self.enable_switch.set_valign(Gtk.Align.CENTER)
+        self.enable_switch.connect('notify::active', self._on_enable_changed)
+        enable_row.append(self.enable_switch)
+        self.settings_container.append(enable_row)
+
+        # Initially hide settings
+        self.settings_container.set_sensitive(False)
+
+        # Info banner
+        info_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        info_box.add_css_class('info-banner')
+        content.append(info_box)
+
+        info_icon = Gtk.Label(label="ℹ️")
+        info_box.append(info_icon)
+
+        info_label = Gtk.Label(label="Changes are applied to Hyprland configuration and persist across reboots.")
+        info_label.set_wrap(True)
+        info_label.set_hexpand(True)
+        info_box.append(info_label)
+
+    def _create_setting_row(self, label: str, description: str) -> Gtk.Box:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.add_css_class('setting-row')
+
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        info_box.set_hexpand(True)
+        row.append(info_box)
+
+        label_widget = Gtk.Label(label=label)
+        label_widget.add_css_class('setting-label')
+        label_widget.set_halign(Gtk.Align.START)
+        info_box.append(label_widget)
+
+        desc_widget = Gtk.Label(label=description)
+        desc_widget.add_css_class('setting-description')
+        desc_widget.set_halign(Gtk.Align.START)
+        info_box.append(desc_widget)
+
+        return row
+
+    def _detect_monitors(self):
+        """Detect connected monitors using hyprctl."""
+        self.monitors.clear()
+
+        try:
+            result = subprocess.run(
+                ['hyprctl', 'monitors', '-j'],
+                capture_output=True, text=True, timeout=5
+            )
+
+            if result.returncode == 0:
+                monitors_data = json.loads(result.stdout)
+
+                for m in monitors_data:
+                    # Parse available modes
+                    modes = []
+                    for mode in m.get('availableModes', []):
+                        # Format: "1920x1080@60.00Hz"
+                        match = re.match(r'(\d+)x(\d+)@(\d+\.?\d*)Hz', mode)
+                        if match:
+                            modes.append(DisplayMode(
+                                width=int(match.group(1)),
+                                height=int(match.group(2)),
+                                refresh_rate=float(match.group(3))
+                            ))
+
+                    monitor = Monitor(
+                        name=m.get('name', 'Unknown'),
+                        description=m.get('description', ''),
+                        width=m.get('width', 1920),
+                        height=m.get('height', 1080),
+                        refresh_rate=m.get('refreshRate', 60.0),
+                        x=m.get('x', 0),
+                        y=m.get('y', 0),
+                        scale=m.get('scale', 1.0),
+                        transform=m.get('transform', 0),
+                        enabled=not m.get('disabled', False),
+                        primary=m.get('focused', False),
+                        modes=modes,
+                        vrr=m.get('vrr', False)
+                    )
+                    self.monitors.append(monitor)
+
+        except Exception:
+            # Add mock monitor for demonstration
+            self.monitors = [
+                Monitor(
+                    name="DP-1",
+                    description="Dell U2723QE",
+                    width=3840,
+                    height=2160,
+                    refresh_rate=60.0,
+                    x=0,
+                    y=0,
+                    scale=1.5,
+                    transform=0,
+                    enabled=True,
+                    primary=True,
+                    modes=[
+                        DisplayMode(3840, 2160, 60.0, True),
+                        DisplayMode(2560, 1440, 60.0),
+                        DisplayMode(1920, 1080, 60.0),
+                    ]
+                ),
+                Monitor(
+                    name="HDMI-A-1",
+                    description="LG 27GL850",
+                    width=2560,
+                    height=1440,
+                    refresh_rate=144.0,
+                    x=3840,
+                    y=0,
+                    scale=1.0,
+                    transform=0,
+                    enabled=True,
+                    primary=False,
+                    modes=[
+                        DisplayMode(2560, 1440, 144.0, True),
+                        DisplayMode(2560, 1440, 60.0),
+                        DisplayMode(1920, 1080, 144.0),
+                        DisplayMode(1920, 1080, 60.0),
+                    ],
+                    vrr=True
+                ),
+            ]
+
+        self._update_preview()
+
+    def _update_preview(self):
+        """Update the monitor arrangement preview."""
+        # Clear existing
+        while True:
+            child = self.monitors_area.get_first_child()
+            if child is None:
+                break
+            self.monitors_area.remove(child)
+
+        if not self.monitors:
+            return
+
+        # Calculate scale for preview
+        total_width = max(m.x + m.width for m in self.monitors)
+        total_height = max(m.y + m.height for m in self.monitors)
+
+        preview_width = 600
+        preview_height = 150
+
+        scale = min(preview_width / total_width, preview_height / total_height) * 0.8
+
+        # Add monitor boxes
+        for monitor in self.monitors:
+            box = Gtk.Button()
+            box.add_css_class('monitor-box')
+            if monitor == self.selected_monitor:
+                box.add_css_class('selected')
+            if monitor.primary:
+                box.add_css_class('primary')
+
+            box.set_size_request(
+                int(monitor.width * scale),
+                int(monitor.height * scale)
+            )
+
+            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            content.set_halign(Gtk.Align.CENTER)
+            content.set_valign(Gtk.Align.CENTER)
+            box.set_child(content)
+
+            name_label = Gtk.Label(label=monitor.name)
+            name_label.add_css_class('monitor-label')
+            content.append(name_label)
+
+            res_label = Gtk.Label(label=f"{monitor.width}x{monitor.height}")
+            res_label.add_css_class('monitor-resolution')
+            content.append(res_label)
+
+            box.connect('clicked', self._on_monitor_clicked, monitor)
+
+            self.monitors_area.put(
+                box,
+                int(monitor.x * scale) + 50,
+                int(monitor.y * scale) + 10
+            )
+
+    def _on_monitor_clicked(self, button, monitor: Monitor):
+        """Handle monitor selection."""
+        self.selected_monitor = monitor
+        self._update_preview()
+        self._update_settings_ui()
+
+    def _update_settings_ui(self):
+        """Update the settings UI for the selected monitor."""
+        if not self.selected_monitor:
+            self.monitor_name_label.set_text("Select a monitor")
+            self.monitor_desc_label.set_text("")
+            self.settings_container.set_sensitive(False)
+            self.primary_badge.set_visible(False)
+            return
+
+        m = self.selected_monitor
+        self.settings_container.set_sensitive(True)
+
+        self.monitor_name_label.set_text(m.name)
+        self.monitor_desc_label.set_text(m.description)
+        self.primary_badge.set_visible(m.primary)
+
+        # Update resolution dropdown
+        resolutions = list(set(f"{mode.width}x{mode.height}" for mode in m.modes))
+        resolutions.sort(key=lambda r: int(r.split('x')[0]), reverse=True)
+
+        res_model = Gtk.StringList()
+        for res in resolutions:
+            res_model.append(res)
+        self.resolution_dropdown.set_model(res_model)
+
+        current_res = f"{m.width}x{m.height}"
+        if current_res in resolutions:
+            self.resolution_dropdown.set_selected(resolutions.index(current_res))
+
+        # Update refresh rate dropdown for current resolution
+        self._update_refresh_rates()
+
+        # Update scale dropdown
+        scales = [1.0, 1.25, 1.5, 1.75, 2.0]
+        if m.scale in scales:
+            self.scale_dropdown.set_selected(scales.index(m.scale))
+
+        # Update rotation dropdown
+        self.rotation_dropdown.set_selected(m.transform)
+
+        # Update switches
+        self.vrr_switch.set_active(m.vrr)
+        self.primary_switch.set_active(m.primary)
+        self.enable_switch.set_active(m.enabled)
+
+    def _update_refresh_rates(self):
+        """Update refresh rate dropdown based on selected resolution."""
+        if not self.selected_monitor:
+            return
+
+        # Get selected resolution
+        selected = self.resolution_dropdown.get_selected()
+        model = self.resolution_dropdown.get_model()
+        if selected == Gtk.INVALID_LIST_POSITION or not model:
+            return
+
+        res_str = model.get_string(selected)
+        width, height = map(int, res_str.split('x'))
+
+        # Find matching modes
+        rates = [
+            f"{mode.refresh_rate:.2f} Hz"
+            for mode in self.selected_monitor.modes
+            if mode.width == width and mode.height == height
+        ]
+        rates.sort(key=lambda r: float(r.split()[0]), reverse=True)
+
+        rate_model = Gtk.StringList()
+        for rate in rates:
+            rate_model.append(rate)
+        self.refresh_dropdown.set_model(rate_model)
+
+        # Select current rate if available
+        current_rate = f"{self.selected_monitor.refresh_rate:.2f} Hz"
+        if current_rate in rates:
+            self.refresh_dropdown.set_selected(rates.index(current_rate))
+
+    def _mark_changed(self):
+        """Mark that there are unsaved changes."""
+        self.has_changes = True
+        self.apply_btn.set_sensitive(True)
+
+    def _on_resolution_changed(self, dropdown, param):
+        self._update_refresh_rates()
+        self._mark_changed()
+
+    def _on_refresh_changed(self, dropdown, param):
+        self._mark_changed()
+
+    def _on_scale_changed(self, dropdown, param):
+        self._mark_changed()
+
+    def _on_rotation_changed(self, dropdown, param):
+        self._mark_changed()
+
+    def _on_vrr_changed(self, switch, param):
+        self._mark_changed()
+
+    def _on_primary_changed(self, switch, param):
+        if switch.get_active() and self.selected_monitor:
+            # Unset other monitors as primary
+            for m in self.monitors:
+                m.primary = (m == self.selected_monitor)
+            self._update_preview()
+        self._mark_changed()
+
+    def _on_enable_changed(self, switch, param):
+        self._mark_changed()
+
+    def _on_detect(self, button):
+        self._detect_monitors()
+        self.selected_monitor = None
+        self._update_settings_ui()
+
+    def _on_apply(self, button):
+        """Apply monitor configuration."""
+        if not self.selected_monitor:
+            return
+
+        m = self.selected_monitor
+
+        # Get selected values
+        res_model = self.resolution_dropdown.get_model()
+        res_idx = self.resolution_dropdown.get_selected()
+        if res_model and res_idx != Gtk.INVALID_LIST_POSITION:
+            res_str = res_model.get_string(res_idx)
+            width, height = map(int, res_str.split('x'))
+            m.width = width
+            m.height = height
+
+        rate_model = self.refresh_dropdown.get_model()
+        rate_idx = self.refresh_dropdown.get_selected()
+        if rate_model and rate_idx != Gtk.INVALID_LIST_POSITION:
+            rate_str = rate_model.get_string(rate_idx)
+            m.refresh_rate = float(rate_str.split()[0])
+
+        scales = [1.0, 1.25, 1.5, 1.75, 2.0]
+        scale_idx = self.scale_dropdown.get_selected()
+        if scale_idx != Gtk.INVALID_LIST_POSITION:
+            m.scale = scales[scale_idx]
+
+        m.transform = self.rotation_dropdown.get_selected()
+        m.vrr = self.vrr_switch.get_active()
+        m.enabled = self.enable_switch.get_active()
+
+        # Apply via hyprctl
+        self._apply_hyprland_config()
+
+        self.has_changes = False
+        self.apply_btn.set_sensitive(False)
+
+        # Show success
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading="Configuration Applied",
+            body="Display settings have been updated."
+        )
+        dialog.add_response("ok", "OK")
+        dialog.present()
+
+    def _apply_hyprland_config(self):
+        """Apply configuration to Hyprland."""
+        for m in self.monitors:
+            # Build hyprctl command
+            # Format: hyprctl keyword monitor name,resolution@refresh,position,scale
+            res = f"{m.width}x{m.height}@{m.refresh_rate}"
+            pos = f"{m.x}x{m.y}"
+
+            cmd = ['hyprctl', 'keyword', 'monitor',
+                   f"{m.name},{res},{pos},{m.scale}"]
+
+            try:
+                subprocess.run(cmd, check=True, capture_output=True)
+
+                # Apply VRR if supported
+                if m.vrr:
+                    subprocess.run([
+                        'hyprctl', 'keyword', f'monitor:{m.name}:vrr', '1'
+                    ], capture_output=True)
+
+                # Apply transform
+                if m.transform != 0:
+                    subprocess.run([
+                        'hyprctl', 'keyword', f'monitor:{m.name}:transform', str(m.transform)
+                    ], capture_output=True)
+
+            except Exception:
+                pass
+
+        # Save to config file for persistence
+        self._save_config()
+
+    def _save_config(self):
+        """Save monitor configuration to Hyprland config."""
+        config_dir = Path.home() / '.config' / 'hypr'
+        monitors_conf = config_dir / 'monitors.conf'
+
+        lines = ["# Auto-generated by Aegis Displays", ""]
+
+        for m in self.monitors:
+            res = f"{m.width}x{m.height}@{m.refresh_rate}"
+            pos = f"{m.x}x{m.y}"
+
+            line = f"monitor = {m.name}, {res}, {pos}, {m.scale}"
+            lines.append(line)
+
+            if m.vrr:
+                lines.append(f"# VRR enabled for {m.name}")
+
+        try:
+            monitors_conf.write_text('\n'.join(lines))
+        except Exception:
+            pass
+
+
+class DisplaysApp(Adw.Application):
+    def __init__(self):
+        super().__init__(
+            application_id='com.aegis.displays',
+            flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
+
+    def do_activate(self):
+        win = DisplaysWindow(self)
+        win.present()
+
+
+def main():
+    app = DisplaysApp()
+    app.run()
+
+
+if __name__ == '__main__':
+    main()

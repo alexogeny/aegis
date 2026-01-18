@@ -1,0 +1,721 @@
+#!/usr/bin/env python3
+"""
+Aegis Audio Mixer - GTK4/Libadwaita Virtual Audio Mixer
+A Rode Unify-style mixer for PipeWire with Catppuccin theming.
+"""
+
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Gtk, Adw, GLib, Gio, Pango
+import subprocess
+import json
+import threading
+from dataclasses import dataclass
+from typing import Optional
+
+from aegis_gtk import COLORS, setup_css
+
+# App-specific CSS (extends base theme)
+APP_CSS = f"""
+.mixer-panel {{
+    background-color: {COLORS['mantle']};
+    border-radius: 16px;
+    padding: 20px;
+    border: 2px solid {COLORS['surface0']};
+}}
+.channel-strip {{
+    background-color: {COLORS['base']};
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid {COLORS['surface0']};
+    min-width: 90px;
+}}
+.channel-strip:hover {{
+    border-color: {COLORS['surface1']};
+}}
+.channel-label {{
+    color: {COLORS['text']};
+    font-weight: bold;
+    font-size: 13px;
+}}
+.channel-apps {{
+    color: {COLORS['overlay0']};
+    font-size: 10px;
+}}
+.channel-icon {{
+    font-size: 24px;
+}}
+.fader-track {{
+    background-color: {COLORS['surface0']};
+    border-radius: 8px;
+    min-width: 8px;
+}}
+.fader-fill-green {{
+    background: linear-gradient(to top, {COLORS['green']}, {COLORS['green']}80);
+    border-radius: 8px;
+}}
+.fader-fill-teal {{
+    background: linear-gradient(to top, {COLORS['teal']}, {COLORS['teal']}80);
+    border-radius: 8px;
+}}
+.fader-fill-mauve {{
+    background: linear-gradient(to top, {COLORS['mauve']}, {COLORS['mauve']}80);
+    border-radius: 8px;
+}}
+.fader-fill-blue {{
+    background: linear-gradient(to top, {COLORS['blue']}, {COLORS['blue']}80);
+    border-radius: 8px;
+}}
+.fader-fill-yellow {{
+    background: linear-gradient(to top, {COLORS['yellow']}, {COLORS['yellow']}80);
+    border-radius: 8px;
+}}
+.fader-fill-red {{
+    background: linear-gradient(to top, {COLORS['red']}, {COLORS['red']}80);
+    border-radius: 8px;
+}}
+.volume-label {{
+    color: {COLORS['subtext0']};
+    font-family: monospace;
+    font-size: 11px;
+}}
+.mute-button {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['overlay0']};
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: bold;
+    min-width: 24px;
+    min-height: 24px;
+}}
+.mute-button:hover {{
+    background-color: {COLORS['red']};
+    color: {COLORS['crust']};
+}}
+.mute-button.active {{
+    background-color: {COLORS['red']};
+    color: {COLORS['crust']};
+}}
+.solo-button {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['overlay0']};
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: bold;
+    min-width: 24px;
+    min-height: 24px;
+}}
+.solo-button:hover {{
+    background-color: {COLORS['yellow']};
+    color: {COLORS['crust']};
+}}
+.solo-button.active {{
+    background-color: {COLORS['yellow']};
+    color: {COLORS['crust']};
+}}
+.master-section {{
+    background-color: {COLORS['surface0']}40;
+    border-radius: 12px;
+    padding: 16px;
+    border-top: 1px solid {COLORS['surface0']};
+}}
+.master-label {{
+    color: {COLORS['overlay0']};
+    font-size: 12px;
+    font-weight: bold;
+}}
+.master-meter {{
+    background-color: {COLORS['mantle']};
+    border-radius: 6px;
+    min-height: 8px;
+}}
+.master-meter-fill {{
+    background: linear-gradient(to right, {COLORS['green']}, {COLORS['yellow']}, {COLORS['red']});
+    border-radius: 6px;
+}}
+.master-volume {{
+    color: {COLORS['text']};
+    font-family: monospace;
+    font-size: 13px;
+}}
+.info-chip {{
+    background-color: {COLORS['surface0']};
+    border-radius: 8px;
+    padding: 8px 12px;
+}}
+.info-chip-label {{
+    color: {COLORS['subtext0']};
+    font-size: 12px;
+}}
+.title {{
+    color: {COLORS['text']};
+    font-weight: bold;
+    font-size: 16px;
+}}
+scale trough {{
+    background-color: {COLORS['surface0']};
+    border-radius: 4px;
+    min-height: 120px;
+    min-width: 8px;
+}}
+scale highlight {{
+    border-radius: 4px;
+}}
+scale slider {{
+    background-color: {COLORS['surface2']};
+    border: 1px solid {COLORS['overlay0']};
+    border-radius: 2px;
+    min-width: 20px;
+    min-height: 8px;
+}}
+.mic-section {{
+    background-color: {COLORS['surface0']}40;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.mic-panel {{
+    background-color: {COLORS['base']};
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.mic-meter {{
+    background-color: {COLORS['surface0']};
+    border-radius: 4px;
+    min-height: 8px;
+}}
+.mic-meter-fill {{
+    background: linear-gradient(to right, {COLORS['green']}, {COLORS['yellow']});
+    border-radius: 4px;
+}}
+.mic-meter-clipping {{
+    background: linear-gradient(to right, {COLORS['green']}, {COLORS['yellow']}, {COLORS['red']});
+    border-radius: 4px;
+}}
+.dsp-chip {{
+    background-color: {COLORS['surface0']};
+    border-radius: 6px;
+    padding: 6px 10px;
+}}
+.dsp-chip.active {{
+    background-color: {COLORS['sky']};
+    color: {COLORS['crust']};
+}}
+.dsp-label {{
+    font-size: 10px;
+    font-weight: bold;
+}}
+.mic-mute-button {{
+    background-color: {COLORS['surface1']};
+    color: {COLORS['text']};
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: bold;
+}}
+.mic-mute-button:hover {{
+    background-color: {COLORS['surface2']};
+}}
+.mic-mute-button.active {{
+    background-color: {COLORS['red']};
+    color: {COLORS['crust']};
+}}
+.section-label {{
+    color: {COLORS['overlay0']};
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}}
+"""
+
+
+@dataclass
+class VirtualSink:
+    name: str
+    icon: str
+    color: str
+    apps: str
+    volume: float = 0.65
+    muted: bool = False
+    solo: bool = False
+
+
+class ChannelStrip(Gtk.Box):
+    """A single channel strip in the mixer."""
+
+    def __init__(self, sink: VirtualSink):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.sink = sink
+        self.add_css_class('channel-strip')
+
+        # Icon
+        icon_label = Gtk.Label(label=sink.icon)
+        icon_label.add_css_class('channel-icon')
+        self.append(icon_label)
+
+        # Name
+        name_label = Gtk.Label(label=sink.name)
+        name_label.add_css_class('channel-label')
+        name_label.add_css_class(f'text-{sink.color}')
+        self.append(name_label)
+
+        # Apps
+        apps_label = Gtk.Label(label=sink.apps)
+        apps_label.add_css_class('channel-apps')
+        apps_label.set_ellipsize(Pango.EllipsizeMode.END)
+        apps_label.set_max_width_chars(12)
+        self.append(apps_label)
+
+        # Fader
+        fader_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        fader_box.set_halign(Gtk.Align.CENTER)
+        fader_box.set_margin_top(8)
+        fader_box.set_margin_bottom(8)
+        self.append(fader_box)
+
+        self.fader = Gtk.Scale.new_with_range(Gtk.Orientation.VERTICAL, 0, 1, 0.01)
+        self.fader.set_inverted(True)
+        self.fader.set_value(sink.volume)
+        self.fader.set_draw_value(False)
+        self.fader.set_size_request(-1, 120)
+        self.fader.connect('value-changed', self._on_volume_changed)
+        fader_box.append(self.fader)
+
+        # Volume display
+        self.volume_label = Gtk.Label(label=self._format_db(sink.volume))
+        self.volume_label.add_css_class('volume-label')
+        self.append(self.volume_label)
+
+        # Mute/Solo buttons
+        buttons_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        buttons_box.set_halign(Gtk.Align.CENTER)
+        self.append(buttons_box)
+
+        self.mute_btn = Gtk.ToggleButton(label="M")
+        self.mute_btn.add_css_class('mute-button')
+        self.mute_btn.connect('toggled', self._on_mute_toggled)
+        buttons_box.append(self.mute_btn)
+
+        self.solo_btn = Gtk.ToggleButton(label="S")
+        self.solo_btn.add_css_class('solo-button')
+        self.solo_btn.connect('toggled', self._on_solo_toggled)
+        buttons_box.append(self.solo_btn)
+
+    def _format_db(self, value: float) -> str:
+        if value <= 0:
+            return "-∞ dB"
+        db = 20 * (value - 1)  # Simplified dB calculation
+        return f"{db:+.0f} dB"
+
+    def _on_volume_changed(self, scale):
+        value = scale.get_value()
+        self.sink.volume = value
+        self.volume_label.set_text(self._format_db(value))
+        # Here you would update PipeWire volume
+
+    def _on_mute_toggled(self, button):
+        self.sink.muted = button.get_active()
+        if button.get_active():
+            button.add_css_class('active')
+        else:
+            button.remove_css_class('active')
+        # Here you would update PipeWire mute state
+
+    def _on_solo_toggled(self, button):
+        self.sink.solo = button.get_active()
+        if button.get_active():
+            button.add_css_class('active')
+        else:
+            button.remove_css_class('active')
+        # Here you would update PipeWire solo state
+
+
+@dataclass
+class MicrophoneInput:
+    name: str
+    device: str
+    volume: float = 0.80
+    muted: bool = False
+    noise_gate: bool = True
+    compressor: bool = True
+    eq: bool = False
+    limiter: bool = True
+
+
+class MicrophoneSection(Gtk.Box):
+    """Microphone input controls with DSP chain."""
+
+    def __init__(self, mic: MicrophoneInput):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.mic = mic
+        self.add_css_class('mic-section')
+
+        # Header
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.append(header)
+
+        header_left = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        header_left.set_hexpand(True)
+        header.append(header_left)
+
+        mic_icon = Gtk.Label(label="🎤")
+        mic_icon.set_markup('<span size="x-large">🎤</span>')
+        header_left.append(mic_icon)
+
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        header_left.append(info_box)
+
+        name_label = Gtk.Label(label=mic.name)
+        name_label.set_markup(f'<span weight="bold" foreground="{COLORS["peach"]}">{mic.name}</span>')
+        name_label.set_halign(Gtk.Align.START)
+        info_box.append(name_label)
+
+        device_label = Gtk.Label(label=mic.device)
+        device_label.set_markup(f'<span size="small" foreground="{COLORS["overlay0"]}">{mic.device}</span>')
+        device_label.set_halign(Gtk.Align.START)
+        info_box.append(device_label)
+
+        # Mute button
+        self.mute_btn = Gtk.ToggleButton(label="🔇 Mute")
+        self.mute_btn.add_css_class('mic-mute-button')
+        self.mute_btn.set_active(mic.muted)
+        if mic.muted:
+            self.mute_btn.add_css_class('active')
+        self.mute_btn.connect('toggled', self._on_mute_toggled)
+        header.append(self.mute_btn)
+
+        # Mic panel
+        mic_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        mic_panel.add_css_class('mic-panel')
+        self.append(mic_panel)
+
+        # Input level meter
+        meter_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        mic_panel.append(meter_box)
+
+        meter_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        meter_box.append(meter_header)
+
+        meter_label = Gtk.Label(label="INPUT LEVEL")
+        meter_label.add_css_class('section-label')
+        meter_label.set_halign(Gtk.Align.START)
+        meter_label.set_hexpand(True)
+        meter_header.append(meter_label)
+
+        self.level_value = Gtk.Label(label="-12 dB")
+        self.level_value.set_markup(f'<span font_family="monospace" foreground="{COLORS["text"]}">-12 dB</span>')
+        meter_header.append(self.level_value)
+
+        meter_container = Gtk.Box()
+        meter_container.add_css_class('mic-meter')
+        meter_container.set_size_request(-1, 8)
+        meter_box.append(meter_container)
+
+        self.meter_fill = Gtk.Box()
+        self.meter_fill.add_css_class('mic-meter-fill')
+        self.meter_fill.set_size_request(150, 8)
+        meter_container.append(self.meter_fill)
+
+        # Gain slider
+        gain_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        mic_panel.append(gain_box)
+
+        gain_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        gain_box.append(gain_header)
+
+        gain_label = Gtk.Label(label="GAIN")
+        gain_label.add_css_class('section-label')
+        gain_label.set_halign(Gtk.Align.START)
+        gain_label.set_hexpand(True)
+        gain_header.append(gain_label)
+
+        self.gain_value = Gtk.Label()
+        self.gain_value.set_markup(f'<span font_family="monospace" foreground="{COLORS["text"]}">{int(mic.volume * 100)}%</span>')
+        gain_header.append(self.gain_value)
+
+        self.gain_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 1, 0.01)
+        self.gain_scale.set_value(mic.volume)
+        self.gain_scale.set_draw_value(False)
+        self.gain_scale.connect('value-changed', self._on_gain_changed)
+        gain_box.append(self.gain_scale)
+
+        # DSP Chain
+        dsp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        mic_panel.append(dsp_box)
+
+        dsp_label = Gtk.Label(label="DSP PROCESSING (EasyEffects)")
+        dsp_label.add_css_class('section-label')
+        dsp_label.set_halign(Gtk.Align.START)
+        dsp_box.append(dsp_label)
+
+        dsp_chips = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        dsp_chips.set_halign(Gtk.Align.START)
+        dsp_box.append(dsp_chips)
+
+        # DSP toggles
+        dsp_effects = [
+            ("Noise Gate", "noise_gate", mic.noise_gate),
+            ("Compressor", "compressor", mic.compressor),
+            ("5-Band EQ", "eq", mic.eq),
+            ("Limiter", "limiter", mic.limiter),
+        ]
+
+        for name, attr, active in dsp_effects:
+            chip = Gtk.ToggleButton(label=name)
+            chip.add_css_class('dsp-chip')
+            chip.add_css_class('dsp-label')
+            chip.set_active(active)
+            if active:
+                chip.add_css_class('active')
+            chip.connect('toggled', self._on_dsp_toggled, attr)
+            dsp_chips.append(chip)
+
+        # EasyEffects button
+        effects_btn = Gtk.Button(label="Open EasyEffects")
+        effects_btn.add_css_class('info-chip')
+        effects_btn.connect('clicked', self._on_open_easyeffects)
+        dsp_box.append(effects_btn)
+
+    def _on_mute_toggled(self, button):
+        self.mic.muted = button.get_active()
+        if button.get_active():
+            button.add_css_class('active')
+            button.set_label("🔇 Muted")
+        else:
+            button.remove_css_class('active')
+            button.set_label("🔇 Mute")
+        # Update PipeWire mute state
+        try:
+            subprocess.Popen([
+                'pactl', 'set-source-mute', '@DEFAULT_SOURCE@',
+                'yes' if self.mic.muted else 'no'
+            ])
+        except Exception:
+            pass
+
+    def _on_gain_changed(self, scale):
+        value = scale.get_value()
+        self.mic.volume = value
+        self.gain_value.set_markup(f'<span font_family="monospace" foreground="{COLORS["text"]}">{int(value * 100)}%</span>')
+        # Update PipeWire volume
+        try:
+            subprocess.Popen([
+                'pactl', 'set-source-volume', '@DEFAULT_SOURCE@',
+                f'{int(value * 100)}%'
+            ])
+        except Exception:
+            pass
+
+    def _on_dsp_toggled(self, button, attr):
+        active = button.get_active()
+        setattr(self.mic, attr, active)
+        if active:
+            button.add_css_class('active')
+        else:
+            button.remove_css_class('active')
+
+    def _on_open_easyeffects(self, button):
+        try:
+            subprocess.Popen(['easyeffects'])
+        except Exception:
+            pass
+
+    def update_meter(self, level: float):
+        """Update the input level meter (0.0 to 1.0)."""
+        width = int(300 * level)
+        self.meter_fill.set_size_request(width, 8)
+        # Change color if clipping
+        if level > 0.9:
+            self.meter_fill.remove_css_class('mic-meter-fill')
+            self.meter_fill.add_css_class('mic-meter-clipping')
+        else:
+            self.meter_fill.remove_css_class('mic-meter-clipping')
+            self.meter_fill.add_css_class('mic-meter-fill')
+
+
+class MixerWindow(Adw.ApplicationWindow):
+    """Main mixer window."""
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.set_title("Aegis Mixer")
+        self.set_default_size(900, 600)
+
+        self._setup_css()
+        self._build_ui()
+
+        # Refresh meters periodically
+        GLib.timeout_add(50, self._update_meters)
+
+    def _setup_css(self):
+        setup_css(self, APP_CSS)
+
+    def _build_ui(self):
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+
+        # Settings button
+        settings_btn = Gtk.Button(icon_name="emblem-system-symbolic")
+        settings_btn.set_tooltip_text("Audio Settings")
+        header.pack_end(settings_btn)
+
+        # qpwgraph button
+        graph_btn = Gtk.Button(icon_name="view-grid-symbolic")
+        graph_btn.set_tooltip_text("Open qpwgraph")
+        graph_btn.connect('clicked', self._on_open_qpwgraph)
+        header.pack_end(graph_btn)
+
+        main_box.append(header)
+
+        # Scrollable content
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+        scroll.set_vexpand(True)
+        main_box.append(scroll)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        content.add_css_class('main-container')
+        scroll.set_child(content)
+
+        # Microphone section
+        self.mic_input = MicrophoneInput(
+            name="Microphone",
+            device="Built-in Audio / USB Microphone",
+            volume=0.80
+        )
+        self.mic_section = MicrophoneSection(self.mic_input)
+        content.append(self.mic_section)
+
+        # Mixer panel
+        mixer_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        mixer_panel.add_css_class('mixer-panel')
+        content.append(mixer_panel)
+
+        # Channel strips container
+        channels_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        channels_box.set_halign(Gtk.Align.CENTER)
+        mixer_panel.append(channels_box)
+
+        # Virtual sinks (matching the website design)
+        self.sinks = [
+            VirtualSink("Music", "🎵", "green", "Spotify, VLC, MPV", 0.65),
+            VirtualSink("Voice Chat", "🎧", "teal", "Discord, Slack, Zoom", 0.70),
+            VirtualSink("Games", "🎮", "mauve", "Steam, Lutris, Wine", 0.60),
+            VirtualSink("Browser", "🌐", "blue", "Firefox, Chrome", 0.55),
+            VirtualSink("System", "🔔", "yellow", "Notifications, alerts", 0.40),
+            VirtualSink("Stream Mix", "📺", "red", "OBS capture source", 0.75),
+        ]
+
+        self.channel_strips = []
+        for sink in self.sinks:
+            strip = ChannelStrip(sink)
+            self.channel_strips.append(strip)
+            channels_box.append(strip)
+
+        # Master section
+        master_section = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        master_section.add_css_class('master-section')
+        mixer_panel.append(master_section)
+
+        # Info chips
+        info_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        info_box.set_hexpand(True)
+        master_section.append(info_box)
+
+        chips = [
+            ("✓", "Apps auto-route"),
+            ("📋", "80+ app rules"),
+            ("🔀", "qpwgraph for routing"),
+        ]
+
+        for icon, text in chips:
+            chip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            chip.add_css_class('info-chip')
+
+            chip_icon = Gtk.Label(label=icon)
+            chip.append(chip_icon)
+
+            chip_label = Gtk.Label(label=text)
+            chip_label.add_css_class('info-chip-label')
+            chip.append(chip_label)
+
+            info_box.append(chip)
+
+        # Master output
+        master_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        master_box.set_halign(Gtk.Align.END)
+        master_section.append(master_box)
+
+        master_label = Gtk.Label(label="MASTER")
+        master_label.add_css_class('master-label')
+        master_box.append(master_label)
+
+        # Master meter
+        meter_container = Gtk.Box()
+        meter_container.set_size_request(150, 8)
+        meter_container.add_css_class('master-meter')
+        master_box.append(meter_container)
+
+        self.master_meter = Gtk.Box()
+        self.master_meter.add_css_class('master-meter-fill')
+        self.master_meter.set_size_request(105, 8)  # 70%
+        meter_container.append(self.master_meter)
+
+        self.master_volume = Gtk.Label(label="-3 dB")
+        self.master_volume.add_css_class('master-volume')
+        master_box.append(self.master_volume)
+
+        master_icon = Gtk.Label(label="🔊")
+        master_icon.set_margin_start(8)
+        master_box.append(master_icon)
+
+    def _on_open_qpwgraph(self, button):
+        """Open qpwgraph for advanced routing."""
+        try:
+            subprocess.Popen(['qpwgraph'])
+        except Exception:
+            pass
+
+    def _update_meters(self) -> bool:
+        """Update level meters (placeholder for real PipeWire integration)."""
+        # In a real implementation, this would read from PipeWire
+        # For now, just animate slightly
+        import random
+        width = 100 + random.randint(-10, 10)
+        self.master_meter.set_size_request(width, 8)
+
+        # Update mic meter with simulated level
+        mic_level = 0.4 + random.random() * 0.3
+        self.mic_section.update_meter(mic_level)
+
+        return True
+
+
+class MixerApp(Adw.Application):
+    def __init__(self):
+        super().__init__(
+            application_id='com.aegis.mixer',
+            flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
+
+    def do_activate(self):
+        win = MixerWindow(self)
+        win.present()
+
+
+def main():
+    app = MixerApp()
+    app.run()
+
+
+if __name__ == '__main__':
+    main()

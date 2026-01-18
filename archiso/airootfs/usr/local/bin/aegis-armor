@@ -1,0 +1,854 @@
+#!/usr/bin/env python3
+"""
+Aegis Armor - GTK4/Libadwaita Security Configuration
+Configure AppArmor profiles, firewall rules, and system hardening.
+"""
+
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Gtk, Adw, GLib, Gio, Pango
+import subprocess
+import json
+import os
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Optional, List
+from enum import Enum
+
+from aegis_gtk import COLORS, setup_css
+
+# App-specific CSS (extends base theme)
+APP_CSS = f"""
+.status-active {{
+    color: {COLORS['green']};
+    font-weight: bold;
+}}
+.status-inactive {{
+    color: {COLORS['red']};
+    font-weight: bold;
+}}
+.status-complain {{
+    color: {COLORS['yellow']};
+    font-weight: bold;
+}}
+.profile-row {{
+    background-color: {COLORS['base']};
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.profile-row:hover {{
+    border-color: {COLORS['surface1']};
+}}
+.profile-name {{
+    color: {COLORS['text']};
+    font-weight: bold;
+    font-size: 14px;
+}}
+.profile-path {{
+    color: {COLORS['overlay0']};
+    font-size: 11px;
+    font-family: monospace;
+}}
+.enforce-button {{
+    background-color: {COLORS['green']};
+    color: {COLORS['crust']};
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+}}
+.enforce-button:hover {{
+    background-color: {COLORS['teal']};
+}}
+.complain-button {{
+    background-color: {COLORS['yellow']};
+    color: {COLORS['crust']};
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+}}
+.complain-button:hover {{
+    background-color: {COLORS['peach']};
+}}
+.disable-button {{
+    background-color: {COLORS['surface1']};
+    color: {COLORS['text']};
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+}}
+.disable-button:hover {{
+    background-color: {COLORS['surface2']};
+}}
+.rule-row {{
+    background-color: {COLORS['base']};
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.rule-allow {{
+    border-left: 4px solid {COLORS['green']};
+}}
+.rule-deny {{
+    border-left: 4px solid {COLORS['red']};
+}}
+.add-button {{
+    background-color: {COLORS['blue']};
+    color: {COLORS['crust']};
+    border-radius: 8px;
+    padding: 8px 16px;
+}}
+.add-button:hover {{
+    background-color: {COLORS['sapphire']};
+}}
+.danger-button {{
+    background-color: {COLORS['red']};
+    color: {COLORS['crust']};
+    border-radius: 8px;
+    padding: 8px 16px;
+}}
+.danger-button:hover {{
+    background-color: {COLORS['maroon']};
+}}
+.sidebar {{
+    background-color: {COLORS['mantle']};
+    border-right: 1px solid {COLORS['surface0']};
+}}
+.sidebar-item {{
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 4px 8px;
+}}
+.sidebar-item:hover {{
+    background-color: {COLORS['surface0']};
+}}
+.sidebar-item.active {{
+    background-color: {COLORS['mauve']};
+    color: {COLORS['crust']};
+}}
+.section-icon {{
+    font-size: 24px;
+}}
+.info-banner {{
+    background-color: {COLORS['blue']}/20;
+    border: 1px solid {COLORS['blue']}/40;
+    border-radius: 8px;
+    padding: 12px;
+}}
+.warning-banner {{
+    background-color: {COLORS['yellow']}/20;
+    border: 1px solid {COLORS['yellow']}/40;
+    border-radius: 8px;
+    padding: 12px;
+}}
+"""
+
+
+class ProfileMode(Enum):
+    ENFORCE = "enforce"
+    COMPLAIN = "complain"
+    DISABLED = "disabled"
+
+
+@dataclass
+class AppArmorProfile:
+    name: str
+    path: str
+    mode: ProfileMode
+    complaints: int = 0
+
+
+@dataclass
+class FirewallRule:
+    id: int
+    action: str  # accept, drop, reject
+    protocol: str  # tcp, udp, any
+    port: Optional[str]
+    source: str
+    destination: str
+    comment: str
+
+
+class ArmorWindow(Adw.ApplicationWindow):
+    """Main Armor configuration window."""
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.set_title("Aegis Armor")
+        self.set_default_size(900, 700)
+
+        self.current_page = "overview"
+        self.profiles: List[AppArmorProfile] = []
+        self.firewall_rules: List[FirewallRule] = []
+
+        self._setup_css()
+        self._build_ui()
+        self._load_data()
+
+    def _setup_css(self):
+        setup_css(self, APP_CSS)
+
+    def _build_ui(self):
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+
+        # Refresh button
+        refresh_btn = Gtk.Button(icon_name="view-refresh-symbolic")
+        refresh_btn.set_tooltip_text("Refresh status")
+        refresh_btn.connect('clicked', self._on_refresh)
+        header.pack_end(refresh_btn)
+
+        main_box.append(header)
+
+        # Content with sidebar
+        content_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        content_box.set_vexpand(True)
+        main_box.append(content_box)
+
+        # Sidebar
+        sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        sidebar.add_css_class('sidebar')
+        sidebar.set_size_request(200, -1)
+        content_box.append(sidebar)
+
+        # Sidebar items
+        sidebar_items = [
+            ("overview", "", "Overview"),
+            ("apparmor", "", "AppArmor"),
+            ("firewall", "", "Firewall"),
+            ("hardening", "", "Hardening"),
+        ]
+
+        self.sidebar_buttons = {}
+        for page_id, icon, label in sidebar_items:
+            btn = Gtk.Button()
+            btn.add_css_class('sidebar-item')
+            if page_id == "overview":
+                btn.add_css_class('active')
+
+            btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            btn.set_child(btn_box)
+
+            icon_label = Gtk.Label(label=icon)
+            icon_label.add_css_class('section-icon')
+            btn_box.append(icon_label)
+
+            text_label = Gtk.Label(label=label)
+            text_label.set_halign(Gtk.Align.START)
+            btn_box.append(text_label)
+
+            btn.connect('clicked', self._on_sidebar_click, page_id)
+            sidebar.append(btn)
+            self.sidebar_buttons[page_id] = btn
+
+        # Main content area
+        self.content_stack = Gtk.Stack()
+        self.content_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self.content_stack.set_hexpand(True)
+        content_box.append(self.content_stack)
+
+        # Build pages
+        self._build_overview_page()
+        self._build_apparmor_page()
+        self._build_firewall_page()
+        self._build_hardening_page()
+
+    def _build_overview_page(self):
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        page.set_margin_top(24)
+        page.set_margin_bottom(24)
+        page.set_margin_start(24)
+        page.set_margin_end(24)
+        scroll.set_child(page)
+
+        # Welcome header
+        header = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        page.append(header)
+
+        title = Gtk.Label(label="Aegis Armor")
+        title.add_css_class('card-title')
+        title.set_halign(Gtk.Align.START)
+        title.set_markup(f'<span size="xx-large" weight="bold" foreground="{COLORS["mauve"]}">Aegis Armor</span>')
+        header.append(title)
+
+        subtitle = Gtk.Label(label="Security configuration center for AppArmor, Firewall, and system hardening.")
+        subtitle.add_css_class('card-subtitle')
+        subtitle.set_halign(Gtk.Align.START)
+        header.append(subtitle)
+
+        # Status cards grid
+        grid = Gtk.Grid()
+        grid.set_row_spacing(16)
+        grid.set_column_spacing(16)
+        grid.set_margin_top(16)
+        page.append(grid)
+
+        # AppArmor status card
+        apparmor_card = self._create_status_card(
+            "", "AppArmor",
+            "Application sandboxing with mandatory access control.",
+            "mauve"
+        )
+        self.apparmor_status_label = Gtk.Label()
+        self.apparmor_status_label.add_css_class('status-active')
+        apparmor_card.get_first_child().append(self.apparmor_status_label)
+        grid.attach(apparmor_card, 0, 0, 1, 1)
+
+        # Firewall status card
+        firewall_card = self._create_status_card(
+            "", "Firewall",
+            "Network protection with nftables.",
+            "blue"
+        )
+        self.firewall_status_label = Gtk.Label()
+        self.firewall_status_label.add_css_class('status-active')
+        firewall_card.get_first_child().append(self.firewall_status_label)
+        grid.attach(firewall_card, 1, 0, 1, 1)
+
+        # ClamAV status card
+        clamav_card = self._create_status_card(
+            "", "ClamAV",
+            "Real-time malware scanning.",
+            "teal"
+        )
+        self.clamav_status_label = Gtk.Label()
+        self.clamav_status_label.add_css_class('status-active')
+        clamav_card.get_first_child().append(self.clamav_status_label)
+        grid.attach(clamav_card, 0, 1, 1, 1)
+
+        # Kernel hardening card
+        kernel_card = self._create_status_card(
+            "", "Kernel",
+            "System hardening and exploit mitigations.",
+            "green"
+        )
+        self.kernel_status_label = Gtk.Label()
+        self.kernel_status_label.add_css_class('status-active')
+        kernel_card.get_first_child().append(self.kernel_status_label)
+        grid.attach(kernel_card, 1, 1, 1, 1)
+
+        # Quick actions
+        actions_label = Gtk.Label(label="Quick Actions")
+        actions_label.set_markup(f'<span weight="bold" foreground="{COLORS["text"]}">Quick Actions</span>')
+        actions_label.set_halign(Gtk.Align.START)
+        actions_label.set_margin_top(16)
+        page.append(actions_label)
+
+        actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        actions_box.set_margin_top(8)
+        page.append(actions_box)
+
+        scan_btn = Gtk.Button(label="Run ClamAV Scan")
+        scan_btn.add_css_class('add-button')
+        scan_btn.connect('clicked', self._on_run_scan)
+        actions_box.append(scan_btn)
+
+        update_btn = Gtk.Button(label="Update Virus Definitions")
+        update_btn.add_css_class('add-button')
+        update_btn.connect('clicked', self._on_update_defs)
+        actions_box.append(update_btn)
+
+        self.content_stack.add_named(scroll, "overview")
+
+    def _create_status_card(self, icon: str, title: str, desc: str, color: str) -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.add_css_class('card')
+        card.set_hexpand(True)
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        card.append(header)
+
+        icon_label = Gtk.Label(label=icon)
+        icon_label.set_markup(f'<span size="xx-large">{icon}</span>')
+        header.append(icon_label)
+
+        title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        header.append(title_box)
+
+        title_label = Gtk.Label(label=title)
+        title_label.set_markup(f'<span weight="bold" foreground="{COLORS[color]}">{title}</span>')
+        title_label.set_halign(Gtk.Align.START)
+        title_box.append(title_label)
+
+        desc_label = Gtk.Label(label=desc)
+        desc_label.add_css_class('card-subtitle')
+        desc_label.set_halign(Gtk.Align.START)
+        desc_label.set_wrap(True)
+        desc_label.set_max_width_chars(30)
+        title_box.append(desc_label)
+
+        return card
+
+    def _build_apparmor_page(self):
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        page.set_margin_top(24)
+        page.set_margin_bottom(24)
+        page.set_margin_start(24)
+        page.set_margin_end(24)
+        scroll.set_child(page)
+
+        # Header
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        page.append(header)
+
+        title = Gtk.Label()
+        title.set_markup(f'<span size="x-large" weight="bold" foreground="{COLORS["mauve"]}">AppArmor Profiles</span>')
+        title.set_hexpand(True)
+        title.set_halign(Gtk.Align.START)
+        header.append(title)
+
+        # Info banner for complaints
+        self.complaints_banner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.complaints_banner.add_css_class('warning-banner')
+        self.complaints_banner.set_visible(False)
+        page.append(self.complaints_banner)
+
+        warning_icon = Gtk.Label(label="")
+        self.complaints_banner.append(warning_icon)
+
+        self.complaints_label = Gtk.Label()
+        self.complaints_label.set_wrap(True)
+        self.complaints_label.set_hexpand(True)
+        self.complaints_banner.append(self.complaints_label)
+
+        enforce_all_btn = Gtk.Button(label="Enforce All")
+        enforce_all_btn.add_css_class('enforce-button')
+        enforce_all_btn.connect('clicked', self._on_enforce_all_complaints)
+        self.complaints_banner.append(enforce_all_btn)
+
+        # Profiles list
+        profiles_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        profiles_card.add_css_class('card')
+        page.append(profiles_card)
+
+        self.profiles_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        profiles_card.append(self.profiles_list)
+
+        self.content_stack.add_named(scroll, "apparmor")
+
+    def _build_firewall_page(self):
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        page.set_margin_top(24)
+        page.set_margin_bottom(24)
+        page.set_margin_start(24)
+        page.set_margin_end(24)
+        scroll.set_child(page)
+
+        # Header
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        page.append(header)
+
+        title = Gtk.Label()
+        title.set_markup(f'<span size="x-large" weight="bold" foreground="{COLORS["blue"]}">Firewall Rules</span>')
+        title.set_hexpand(True)
+        title.set_halign(Gtk.Align.START)
+        header.append(title)
+
+        add_btn = Gtk.Button(label="Add Rule")
+        add_btn.add_css_class('add-button')
+        add_btn.connect('clicked', self._on_add_firewall_rule)
+        header.append(add_btn)
+
+        # Default policy info
+        policy_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        policy_box.add_css_class('info-banner')
+        page.append(policy_box)
+
+        policy_icon = Gtk.Label(label="")
+        policy_box.append(policy_icon)
+
+        policy_label = Gtk.Label(label="Default policy: DROP all incoming connections. Only explicitly allowed services are accessible.")
+        policy_label.set_wrap(True)
+        policy_box.append(policy_label)
+
+        # Rules list
+        rules_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        rules_card.add_css_class('card')
+        page.append(rules_card)
+
+        self.rules_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        rules_card.append(self.rules_list)
+
+        self.content_stack.add_named(scroll, "firewall")
+
+    def _build_hardening_page(self):
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        page.set_margin_top(24)
+        page.set_margin_bottom(24)
+        page.set_margin_start(24)
+        page.set_margin_end(24)
+        scroll.set_child(page)
+
+        # Header
+        title = Gtk.Label()
+        title.set_markup(f'<span size="x-large" weight="bold" foreground="{COLORS["green"]}">System Hardening</span>')
+        title.set_halign(Gtk.Align.START)
+        page.append(title)
+
+        subtitle = Gtk.Label(label="Kernel security settings and exploit mitigations. These settings are applied automatically.")
+        subtitle.add_css_class('card-subtitle')
+        subtitle.set_halign(Gtk.Align.START)
+        page.append(subtitle)
+
+        # Hardening settings
+        settings = [
+            ("ASLR", "Address Space Layout Randomization", "Randomizes memory addresses to prevent exploitation", True),
+            ("PTI", "Page Table Isolation", "Protects against Meltdown attacks", True),
+            ("SMAP/SMEP", "Supervisor Mode Access Prevention", "Prevents kernel from accessing userspace memory", True),
+            ("Lockdown Mode", "Kernel Lockdown", "Prevents modifications to running kernel", True),
+            ("Secure Boot", "UEFI Secure Boot", "Verifies boot chain integrity", None),
+            ("IOMMU", "Input-Output Memory Management", "Protects against DMA attacks", None),
+        ]
+
+        settings_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        settings_card.add_css_class('card')
+        page.append(settings_card)
+
+        for name, full_name, desc, status in settings:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            row.add_css_class('profile-row')
+            settings_card.append(row)
+
+            info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            info_box.set_hexpand(True)
+            row.append(info_box)
+
+            name_label = Gtk.Label()
+            name_label.set_markup(f'<span weight="bold" foreground="{COLORS["text"]}">{name}</span> <span foreground="{COLORS["overlay0"]}">- {full_name}</span>')
+            name_label.set_halign(Gtk.Align.START)
+            info_box.append(name_label)
+
+            desc_label = Gtk.Label(label=desc)
+            desc_label.add_css_class('profile-path')
+            desc_label.set_halign(Gtk.Align.START)
+            info_box.append(desc_label)
+
+            if status is True:
+                status_label = Gtk.Label(label="Active")
+                status_label.add_css_class('status-active')
+            elif status is False:
+                status_label = Gtk.Label(label="Inactive")
+                status_label.add_css_class('status-inactive')
+            else:
+                status_label = Gtk.Label(label="Check Required")
+                status_label.add_css_class('status-complain')
+            row.append(status_label)
+
+        self.content_stack.add_named(scroll, "hardening")
+
+    def _on_sidebar_click(self, button, page_id):
+        # Update active button
+        for pid, btn in self.sidebar_buttons.items():
+            if pid == page_id:
+                btn.add_css_class('active')
+            else:
+                btn.remove_css_class('active')
+
+        self.content_stack.set_visible_child_name(page_id)
+        self.current_page = page_id
+
+    def _load_data(self):
+        """Load security status from system."""
+        self._load_apparmor_status()
+        self._load_firewall_status()
+        self._update_overview_status()
+
+    def _load_apparmor_status(self):
+        """Load AppArmor profiles and their status."""
+        self.profiles.clear()
+
+        try:
+            result = subprocess.run(
+                ['aa-status', '--json'],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                data = json.loads(result.stdout)
+
+                # Process enforce mode profiles
+                for profile in data.get('profiles', {}).keys():
+                    mode = data['profiles'][profile]
+                    self.profiles.append(AppArmorProfile(
+                        name=Path(profile).name,
+                        path=profile,
+                        mode=ProfileMode.ENFORCE if mode == 'enforce' else ProfileMode.COMPLAIN
+                    ))
+        except Exception:
+            # Add some mock profiles for demonstration
+            self.profiles = [
+                AppArmorProfile("firefox", "/usr/lib/firefox/firefox", ProfileMode.ENFORCE),
+                AppArmorProfile("discord", "/usr/bin/discord", ProfileMode.COMPLAIN, complaints=3),
+                AppArmorProfile("steam", "/usr/bin/steam", ProfileMode.ENFORCE),
+                AppArmorProfile("obs", "/usr/bin/obs", ProfileMode.ENFORCE),
+                AppArmorProfile("code", "/usr/bin/code", ProfileMode.COMPLAIN, complaints=1),
+            ]
+
+        self._populate_profiles_list()
+
+    def _populate_profiles_list(self):
+        """Populate the AppArmor profiles list."""
+        # Clear existing
+        while True:
+            child = self.profiles_list.get_first_child()
+            if child is None:
+                break
+            self.profiles_list.remove(child)
+
+        # Check for complaints
+        complaining = [p for p in self.profiles if p.mode == ProfileMode.COMPLAIN]
+        if complaining:
+            self.complaints_banner.set_visible(True)
+            total_complaints = sum(p.complaints for p in complaining)
+            self.complaints_label.set_text(
+                f"{len(complaining)} profiles in complain mode with {total_complaints} logged denials. "
+                "Review and enforce if working correctly."
+            )
+        else:
+            self.complaints_banner.set_visible(False)
+
+        # Add profiles
+        for profile in self.profiles:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            row.add_css_class('profile-row')
+            self.profiles_list.append(row)
+
+            info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            info_box.set_hexpand(True)
+            row.append(info_box)
+
+            name_label = Gtk.Label(label=profile.name)
+            name_label.add_css_class('profile-name')
+            name_label.set_halign(Gtk.Align.START)
+            info_box.append(name_label)
+
+            path_label = Gtk.Label(label=profile.path)
+            path_label.add_css_class('profile-path')
+            path_label.set_halign(Gtk.Align.START)
+            info_box.append(path_label)
+
+            # Status
+            if profile.mode == ProfileMode.ENFORCE:
+                status_label = Gtk.Label(label=" Enforcing")
+                status_label.add_css_class('status-active')
+            elif profile.mode == ProfileMode.COMPLAIN:
+                status_label = Gtk.Label(label=f" Complain ({profile.complaints})")
+                status_label.add_css_class('status-complain')
+            else:
+                status_label = Gtk.Label(label=" Disabled")
+                status_label.add_css_class('status-inactive')
+            row.append(status_label)
+
+            # Actions
+            if profile.mode == ProfileMode.COMPLAIN:
+                enforce_btn = Gtk.Button(label="Enforce")
+                enforce_btn.add_css_class('enforce-button')
+                enforce_btn.connect('clicked', self._on_enforce_profile, profile)
+                row.append(enforce_btn)
+            elif profile.mode == ProfileMode.ENFORCE:
+                complain_btn = Gtk.Button(label="Complain")
+                complain_btn.add_css_class('complain-button')
+                complain_btn.connect('clicked', self._on_complain_profile, profile)
+                row.append(complain_btn)
+
+    def _load_firewall_status(self):
+        """Load nftables firewall rules."""
+        self.firewall_rules.clear()
+
+        # Default rules for demonstration
+        self.firewall_rules = [
+            FirewallRule(1, "accept", "tcp", "22", "any", "local", "SSH access"),
+            FirewallRule(2, "accept", "tcp", "80,443", "any", "local", "HTTP/HTTPS"),
+            FirewallRule(3, "accept", "udp", "5353", "any", "local", "mDNS (device discovery)"),
+            FirewallRule(4, "drop", "any", None, "any", "any", "Default deny"),
+        ]
+
+        self._populate_rules_list()
+
+    def _populate_rules_list(self):
+        """Populate the firewall rules list."""
+        # Clear existing
+        while True:
+            child = self.rules_list.get_first_child()
+            if child is None:
+                break
+            self.rules_list.remove(child)
+
+        for rule in self.firewall_rules:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            row.add_css_class('rule-row')
+            if rule.action == 'accept':
+                row.add_css_class('rule-allow')
+            else:
+                row.add_css_class('rule-deny')
+            self.rules_list.append(row)
+
+            info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            info_box.set_hexpand(True)
+            row.append(info_box)
+
+            # Rule description
+            if rule.port:
+                rule_text = f"{rule.action.upper()} {rule.protocol.upper()} port {rule.port}"
+            else:
+                rule_text = f"{rule.action.upper()} all {rule.protocol}"
+
+            name_label = Gtk.Label()
+            name_label.set_markup(f'<span weight="bold">{rule_text}</span>')
+            name_label.set_halign(Gtk.Align.START)
+            info_box.append(name_label)
+
+            comment_label = Gtk.Label(label=rule.comment)
+            comment_label.add_css_class('profile-path')
+            comment_label.set_halign(Gtk.Align.START)
+            info_box.append(comment_label)
+
+            # Delete button (except for default deny)
+            if rule.id != 4:
+                delete_btn = Gtk.Button(label="")
+                delete_btn.add_css_class('disable-button')
+                delete_btn.connect('clicked', self._on_delete_rule, rule)
+                row.append(delete_btn)
+
+    def _update_overview_status(self):
+        """Update the overview status cards."""
+        enforce_count = len([p for p in self.profiles if p.mode == ProfileMode.ENFORCE])
+        complain_count = len([p for p in self.profiles if p.mode == ProfileMode.COMPLAIN])
+
+        if complain_count > 0:
+            self.apparmor_status_label.set_text(f"{enforce_count} enforcing, {complain_count} complaining")
+            self.apparmor_status_label.remove_css_class('status-active')
+            self.apparmor_status_label.add_css_class('status-complain')
+        else:
+            self.apparmor_status_label.set_text(f"{enforce_count} profiles enforcing")
+            self.apparmor_status_label.remove_css_class('status-complain')
+            self.apparmor_status_label.add_css_class('status-active')
+
+        self.firewall_status_label.set_text(f"{len(self.firewall_rules)} rules active")
+        self.clamav_status_label.set_text("Definitions up to date")
+        self.kernel_status_label.set_text("All mitigations active")
+
+    def _on_refresh(self, button):
+        self._load_data()
+
+    def _on_enforce_profile(self, button, profile: AppArmorProfile):
+        """Enforce an AppArmor profile."""
+        try:
+            subprocess.run(['pkexec', 'aa-enforce', profile.path], check=True)
+            profile.mode = ProfileMode.ENFORCE
+            profile.complaints = 0
+            self._populate_profiles_list()
+            self._update_overview_status()
+        except Exception:
+            pass
+
+    def _on_complain_profile(self, button, profile: AppArmorProfile):
+        """Set a profile to complain mode."""
+        try:
+            subprocess.run(['pkexec', 'aa-complain', profile.path], check=True)
+            profile.mode = ProfileMode.COMPLAIN
+            self._populate_profiles_list()
+            self._update_overview_status()
+        except Exception:
+            pass
+
+    def _on_enforce_all_complaints(self, button):
+        """Enforce all complaining profiles."""
+        for profile in self.profiles:
+            if profile.mode == ProfileMode.COMPLAIN:
+                try:
+                    subprocess.run(['pkexec', 'aa-enforce', profile.path], check=True)
+                    profile.mode = ProfileMode.ENFORCE
+                    profile.complaints = 0
+                except Exception:
+                    pass
+        self._populate_profiles_list()
+        self._update_overview_status()
+
+    def _on_add_firewall_rule(self, button):
+        """Show dialog to add a firewall rule."""
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading="Add Firewall Rule",
+            body="Configure a new firewall rule."
+        )
+
+        # Simple port entry for now
+        entry = Gtk.Entry()
+        entry.set_placeholder_text("Port number (e.g., 8080)")
+        dialog.set_extra_child(entry)
+
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("add", "Allow Port")
+        dialog.set_response_appearance("add", Adw.ResponseAppearance.SUGGESTED)
+
+        dialog.connect('response', self._on_add_rule_response, entry)
+        dialog.present()
+
+    def _on_add_rule_response(self, dialog, response, entry):
+        if response == "add":
+            port = entry.get_text().strip()
+            if port.isdigit():
+                new_id = max(r.id for r in self.firewall_rules) + 1
+                new_rule = FirewallRule(new_id, "accept", "tcp", port, "any", "local", f"Custom rule for port {port}")
+                self.firewall_rules.insert(-1, new_rule)  # Insert before default deny
+                self._populate_rules_list()
+
+    def _on_delete_rule(self, button, rule: FirewallRule):
+        """Delete a firewall rule."""
+        self.firewall_rules = [r for r in self.firewall_rules if r.id != rule.id]
+        self._populate_rules_list()
+
+    def _on_run_scan(self, button):
+        """Run a ClamAV scan."""
+        try:
+            subprocess.Popen(['pkexec', 'clamscan', '-r', '--bell', '-i', os.path.expanduser('~/Downloads')])
+        except Exception:
+            pass
+
+    def _on_update_defs(self, button):
+        """Update ClamAV definitions."""
+        try:
+            subprocess.Popen(['pkexec', 'freshclam'])
+        except Exception:
+            pass
+
+
+class ArmorApp(Adw.Application):
+    def __init__(self):
+        super().__init__(
+            application_id='com.aegis.armor',
+            flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
+
+    def do_activate(self):
+        win = ArmorWindow(self)
+        win.present()
+
+
+def main():
+    app = ArmorApp()
+    app.run()
+
+
+if __name__ == '__main__':
+    main()

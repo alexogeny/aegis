@@ -1,0 +1,669 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { InteractiveTerminal } from '../components/InteractiveTerminal';
+
+// Simple Icons SVG paths
+const icons = {
+  rust: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M23.8346 11.7033l-1.0073-.6236a13.7268 13.7268 0 00-.0283-.2936l.8656-.8069a.3483.3483 0 00-.1154-.578l-1.1066-.414a8.4958 8.4958 0 00-.087-.2856l.6904-.9587a.3462.3462 0 00-.2257-.5446l-1.1663-.1894a9.3574 9.3574 0 00-.1407-.2622l.4826-1.0749a.3437.3437 0 00-.3245-.4908l-1.1852.0418c-.0564-.0809-.1141-.161-.1724-.2396l.2527-1.1471a.3462.3462 0 00-.4091-.4118l-1.1589.2742a7.431 7.431 0 00-.2006-.2103l.0136-1.1723a.3438.3438 0 00-.4773-.3067l-1.0866.5011a8.5765 8.5765 0 00-.2237-.1751l-.2277-1.1479a.3462.3462 0 00-.5264-.1826l-.9679.7091c-.0799-.047-.1603-.0931-.2413-.138l-.4631-1.0739a.3437.3437 0 00-.5535-.0497l-.8044.8924a7.4689 7.4689 0 00-.2543-.0936l-.6837-.9502a.3462.3462 0 00-.5575.091l-.6003 1.0432a7.3754 7.3754 0 00-.26.0423l-.8834-.7799a.3438.3438 0 00-.5387.2194l-.3611 1.153a8.4503 8.4503 0 00-.2583.0861l-1.0498-.5728a.3461.3461 0 00-.4955.3226l-.1097 1.215a7.4066 7.4066 0 00-.2481.1353l-1.1779-.3353a.3437.3437 0 00-.4284.4063l.1475 1.2217c-.0736.0539-.1466.1088-.2188.1651l-1.2607-.0743a.3461.3461 0 00-.3412.468l.398 1.1717a8.4592 8.4592 0 00-.1825.1915l-1.2943.1934a.3438.3438 0 00-.2368.5061l.6347 1.0649c-.0483.0741-.0957.149-.1422.2245l-1.2785.4536a.3462.3462 0 00-.1198.5181l.8496.9036c-.0333.0811-.0658.1628-.0974.245l-1.2125.6993a.3437.3437 0 00.0029.5063l1.0351.6908c-.016.086-.0311.1724-.0451.2592l-1.0992.9238a.3461.3461 0 00.1243.5068l1.183.4268c.0014.0873.0038.1748.007.2622l-.9444 1.1203a.3438.3438 0 00.2417.4828l1.2852.1622c.0194.0854.0398.1706.0609.2555l-.7544 1.2816a.3462.3462 0 00.3517.4343l1.3385-.1066c.0368.0784.0748.1564.1137.2337l-.5353 1.401a.3438.3438 0 00.4495.3601l1.3416-.3673c.0528.0697.1066.1389.1614.2074l-.2948 1.4735a.3461.3461 0 00.5765.2597l1.2932-.618c.067.0591.1353.1174.2044.1748l-.0402 1.4952a.3437.3437 0 00.6011.1349l1.1946-.8544c.0768.0468.1547.0926.2335.1374l.2168 1.4636a.3462.3462 0 00.6582-.0133l1.0482-1.0681c.0834.033.1675.0651.2522.0963l.4691 1.3787a.3438.3438 0 00.6391-.1024l.8569-1.2525a7.232 7.232 0 00.2638.0503l.7092 1.2417a.3461.3461 0 00.6106-.1843l.6259-1.4003c.0859-.0053.1717-.0116.2573-.0185l.9294 1.0559a.3438.3438 0 00.5786-.2581l.3616-1.5053a8.4294 8.4294 0 00.2443-.0401l1.1234.8271a.3462.3462 0 00.5406-.3236l.0728-1.5622c.0772-.0233.154-.0474.2302-.0721l1.2853.5621a.3437.3437 0 00.4947-.3782l-.2329-1.5686a7.2658 7.2658 0 00.2099-.1054l1.4094.2707a.3462.3462 0 00.4411-.4204l-.5389-1.5221c.0607-.0454.121-.0914.1806-.1382l1.4904-.0398a.3438.3438 0 00.3767-.4497l-.8323-1.4224c.0464-.0573.0922-.115.1372-.1731l1.5234-.3441a.3461.3461 0 00.3033-.4648l-1.1002-1.2703a8.4556 8.4556 0 00.0883-.2018l1.5046-.6363a.3438.3438 0 00.2214-.4644zm-6.7358 3.4273c-.061.11-.132.217-.208.321-.1.138-.2088.272-.3258.401-.0635.071-.1304.14-.1994.208a5.1806 5.1806 0 01-.758.6177c-.1066.0723-.2168.1408-.3294.2058-.2788.1609-.5714.3044-.8749.428a5.5384 5.5384 0 01-1.202.3612 5.7733 5.7733 0 01-1.2526.1377c-.8602 0-1.6741-.191-2.4012-.5322a5.4476 5.4476 0 01-.9665-.5539 5.3773 5.3773 0 01-.8417-.7244 5.2273 5.2273 0 01-.6833-.8724 5.1193 5.1193 0 01-.4943-.9993 5.0163 5.0163 0 01-.2754-1.1044 5.0988 5.0988 0 01-.0569-1.1875c.0199-.3963.0796-.7853.1772-1.163a5.0984 5.0984 0 01.4086-1.0914 5.2272 5.2272 0 01.6229-.9768 5.379 5.379 0 01.8098-.8339 5.4491 5.4491 0 01.9736-.663 5.2917 5.2917 0 011.1082-.4646 5.6027 5.6027 0 011.2092-.24c.4042-.0374.8139-.0377 1.2193-.0008.4055.0368.8036.1093 1.1895.2166.2652.0738.5219.1688.7682.2833h-.006c-.163.0134-.328.038-.4926.073-.1647.0349-.3283.0806-.4895.137-.161.0565-.3186.1234-.4711.1996-.3053.1525-.5909.3424-.8482.5637-.1287.1106-.2506.2284-.3649.3524a4.4302 4.4302 0 00-.549.7488 4.3055 4.3055 0 00-.3773.8553 4.1699 4.1699 0 00-.1976.9395 4.0197 4.0197 0 00-.0043.982 4.1656 4.1656 0 00.1853.9412 4.3055 4.3055 0 00.3653.8596 4.4304 4.4304 0 00.5372.7564c.2005.2162.4202.4115.6568.5839a3.8908 3.8908 0 001.5693.7537c.2893.0627.5858.0958.8858.0984.3001.0026.6-.0233.8966-.077a3.7949 3.7949 0 001.6476-.7187 3.4673 3.4673 0 00.638-.6083 3.0918 3.0918 0 00.4556-.7063 2.7118 2.7118 0 00.2536-.7869 2.3275 2.3275 0 00.0378-.8053 1.9365 1.9365 0 00-.3016-.8646c-.156-.2373-.3573-.4405-.5934-.5999a2.5516 2.5516 0 00-.7701-.3506l-.1608-.0427h-.0035c.4463-.3016.8396-.6668 1.1664-1.0801.1168-.1476.2257-.3013.3261-.4601a5.0988 5.0988 0 01.418 1.0896c.0964.3739.1567.7598.1789 1.1537.0222.394.0069.7965-.0469 1.1921z"/></svg>`,
+  python: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M14.25.18l.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98l-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95l.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25l-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/></svg>`,
+  go: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M1.811 10.231c-.047 0-.058-.023-.035-.059l.246-.315c.023-.035.081-.058.128-.058h4.172c.046 0 .058.035.035.07l-.199.303c-.023.036-.082.07-.117.07zM.047 11.306c-.047 0-.059-.023-.035-.058l.245-.316c.023-.035.082-.058.129-.058h5.328c.047 0 .07.035.058.07l-.093.28c-.012.047-.058.07-.105.07zm2.828 1.075c-.047 0-.059-.035-.035-.07l.163-.292c.023-.035.07-.07.117-.07h2.337c.047 0 .07.035.07.082l-.023.28c0 .047-.047.082-.082.082zm12.129-2.36c-.736.187-1.239.327-1.963.514-.176.046-.187.058-.34-.117-.174-.199-.303-.327-.548-.444-.737-.362-1.45-.257-2.115.175-.795.514-1.204 1.274-1.192 2.22.011.935.654 1.706 1.577 1.835.795.105 1.46-.175 1.987-.77.105-.13.198-.27.315-.434H10.47c-.245 0-.304-.152-.222-.35.152-.362.432-.97.596-1.274a.315.315 0 01.292-.187h4.253c-.023.316-.023.631-.07.947a4.983 4.983 0 01-.958 2.29c-.841 1.11-1.94 1.8-3.33 1.986-1.145.152-2.209-.07-3.143-.77-.865-.655-1.356-1.52-1.484-2.595-.152-1.274.222-2.419.993-3.424.83-1.086 1.928-1.776 3.272-2.02 1.098-.2 2.15-.07 3.096.571.62.41 1.063.97 1.356 1.648.07.105.023.164-.117.2m3.868 6.461c-1.064-.024-2.034-.328-2.852-1.029a3.665 3.665 0 01-1.262-2.255c-.21-1.32.152-2.489.947-3.529.853-1.122 1.881-1.706 3.272-1.95 1.192-.21 2.314-.095 3.33.595.923.63 1.496 1.484 1.648 2.605.198 1.578-.257 2.863-1.344 3.962-.771.783-1.718 1.273-2.805 1.495-.315.06-.63.07-.934.106zm2.78-4.72c-.011-.153-.011-.27-.034-.387-.21-1.157-1.274-1.81-2.384-1.554-1.087.245-1.788.935-2.045 2.033-.21.912.234 1.835 1.075 2.21.643.28 1.285.244 1.905-.07.923-.48 1.425-1.228 1.484-2.233z"/></svg>`,
+  typescript: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M1.125 0C.502 0 0 .502 0 1.125v21.75C0 23.498.502 24 1.125 24h21.75c.623 0 1.125-.502 1.125-1.125V1.125C24 .502 23.498 0 22.875 0zm17.363 9.75c.612 0 1.154.037 1.627.111a6.38 6.38 0 0 1 1.306.34v2.458a3.95 3.95 0 0 0-.643-.361 5.093 5.093 0 0 0-.717-.26 5.453 5.453 0 0 0-1.426-.2c-.3 0-.573.028-.819.086a2.1 2.1 0 0 0-.623.242c-.17.104-.3.229-.393.374a.888.888 0 0 0-.14.49c0 .196.053.373.156.529.104.156.252.304.443.444s.423.276.696.41c.273.135.582.274.926.416.47.197.892.407 1.266.628.374.222.695.473.963.753.268.279.472.598.614.957.142.359.214.776.214 1.253 0 .657-.125 1.21-.373 1.656a3.033 3.033 0 0 1-1.012 1.085 4.38 4.38 0 0 1-1.487.596c-.566.12-1.163.18-1.79.18a9.916 9.916 0 0 1-1.84-.164 5.544 5.544 0 0 1-1.512-.493v-2.63a5.033 5.033 0 0 0 3.237 1.2c.333 0 .624-.03.872-.09.249-.06.456-.144.623-.25.166-.108.29-.234.373-.38a1.023 1.023 0 0 0-.074-1.089 2.12 2.12 0 0 0-.537-.5 5.597 5.597 0 0 0-.807-.444 27.72 27.72 0 0 0-1.007-.436c-.918-.383-1.602-.852-2.053-1.405-.45-.553-.676-1.222-.676-2.005 0-.614.123-1.141.369-1.582.246-.441.58-.804 1.004-1.089a4.494 4.494 0 0 1 1.47-.629 7.536 7.536 0 0 1 1.77-.201zm-15.113.188h9.563v2.166H9.506v9.646H6.789v-9.646H3.375z"/></svg>`,
+  bash: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M21.038 4.9l-7.577-4.498C13.009.134 12.505 0 12 0c-.505 0-1.009.134-1.462.403L2.961 4.9C2.054 5.437 1.5 6.429 1.5 7.503v8.995c0 1.073.554 2.066 1.461 2.604l7.577 4.497c.453.27.957.401 1.462.401.505 0 1.009-.131 1.462-.4l7.577-4.498c.907-.538 1.461-1.531 1.461-2.604V7.503c0-1.074-.554-2.066-1.462-2.603zM15.17 18.946l-.013.008-.015.008c-.153.076-.32.114-.495.114-.218 0-.421-.05-.618-.153l-1.266-.656c-.263-.136-.285-.236-.285-.31 0-.076.022-.176.285-.311l1.266-.657c.197-.102.4-.153.618-.153.175 0 .342.038.495.114l.015.008.013.007c.253.127.406.358.406.614 0 .257-.153.488-.406.615zm1.19-1.983l-1.267.658c-.332.172-.695.264-1.05.264-.287 0-.565-.055-.827-.163l-.016-.007c-.01-.003-.02-.007-.03-.011-.49-.21-.789-.624-.789-1.092 0-.467.299-.88.788-1.092.012-.004.021-.008.031-.012l.016-.006c.262-.109.54-.163.827-.163.355 0 .718.091 1.05.263l1.267.658c.555.29.887.786.887 1.35 0 .565-.332 1.061-.887 1.352zm.34-3.27c-.083.042-.188.063-.317.063H11.25c-.133 0-.24.107-.24.24v.839c0 .133.107.24.24.24h3.94c.35 0 .625.05.806.144.134.068.182.132.182.186 0 .156-.26.318-.696.432-.358.093-.749.14-1.165.14-.424 0-.845-.052-1.253-.155l-.187-.047-.187.048c-.4.102-.82.154-1.251.154-.417 0-.807-.047-1.165-.14-.436-.114-.696-.276-.696-.433 0-.054.049-.117.183-.186.18-.094.454-.143.806-.143h.51c.133 0 .24-.107.24-.24v-.84c0-.133-.107-.24-.24-.24h-.51c-.687 0-1.186.129-1.482.385-.197.17-.297.375-.297.61 0 .494.387.927 1.19 1.328.645.322 1.492.499 2.386.499.895 0 1.743-.177 2.389-.5.803-.4 1.19-.833 1.19-1.327 0-.235-.1-.44-.298-.61-.296-.256-.795-.386-1.482-.386h-3.94c-.133 0-.24-.107-.24-.24v-.839c0-.133.107-.24.24-.24h5.133c.129 0 .234-.02.317-.063.062-.032.136-.091.136-.197 0-.107-.074-.166-.136-.197zm-.44-1.263H11.25c-.133 0-.24-.107-.24-.24v-.839c0-.133.107-.24.24-.24h5.01c.133 0 .24.107.24.24v.84c0 .132-.107.24-.24.24z"/></svg>`,
+  cplusplus: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M22.394 6c-.167-.29-.398-.543-.652-.69L12.926.22c-.509-.294-1.34-.294-1.848 0L2.26 5.31c-.508.293-.923 1.013-.923 1.6v10.18c0 .294.104.62.271.91.167.29.398.543.652.69l8.816 5.09c.508.293 1.34.293 1.848 0l8.816-5.09c.254-.147.485-.4.652-.69.167-.29.27-.616.27-.91V6.91c.003-.294-.1-.62-.268-.91zM12 19.11c-3.92 0-7.109-3.19-7.109-7.11 0-3.92 3.19-7.11 7.11-7.11a7.133 7.133 0 016.156 3.553l-3.076 1.78a3.567 3.567 0 00-3.08-1.78A3.56 3.56 0 008.444 12 3.56 3.56 0 0012 15.555a3.57 3.57 0 003.08-1.778l3.078 1.78A7.135 7.135 0 0112 19.11zm7.11-6.715h-.79v.79h-.79v-.79h-.79v-.79h.79v-.79h.79v.79h.79zm2.962 0h-.79v.79h-.79v-.79h-.79v-.79h.79v-.79h.79v.79h.79z"/></svg>`,
+  docker: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.186m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.186.186v1.887c0 .102.084.185.186.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.082.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-.248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288z"/></svg>`,
+  podman: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M17.2.275L6.75.308a.259.259 0 0 0-.203.098L.056 8.602a.259.259 0 0 0-.05.219l2.356 10.194a.26.26 0 0 0 .14.174l9.43 4.511a.258.258 0 0 0 .224-.002l9.401-4.566a.259.259 0 0 0 .141-.175L23.993 8.75a.258.258 0 0 0-.051-.22L17.403.374A.259.259 0 0 0 17.2.275zm-.123.517l6.385 7.966-2.242 9.964-9.177 4.457-9.205-4.402L.54 8.827 6.875.824zM11.46 2.857c-.933 0-1.84.1-2.426.332h-.002c-1.554.569-2.725 2.105-3.074 3.952v.004c-.309 1.463-.392 2.703-.556 3.824-.07.481-.159.94-.283 1.387-.628.497-1.079 1.263-1.244 2.138v.004c-.116.547-.181 1.04-.237 1.5h-.644v.518h8.891c-.061.464-.122.996-.181 1.42H7.596v.517h7.939c-.242-.078-.486-.218-.756-.502h-.697l-.85.488-.232-.396.162-.092h-1.069c.113-.776.17-1.601.373-2.564v-.004c.22-1.164.96-2.112 1.895-2.453l.004-.002h.002c.318-.127.928-.205 1.543-.205.613 0 1.244.075 1.622.207.935.341 1.676 1.29 1.895 2.453v.004c.204.963.26 1.788.373 2.564h-.742l.162.092-.233.396-.85-.488h-.75c-.219.25-.474.412-.747.502h4.392v-.518h-.842c-.103-.743-.181-1.67-.382-2.623v-.002a4.14 4.14 0 0 0-.264-.863h1.863v-.517h-2.13a3.488 3.488 0 0 0-.8-.906h1.8v-.518H17.95a8.862 8.862 0 0 1-.193-.775h1.484v-.518h-1.576c-.013-.081-.027-.161-.039-.244-.164-1.12-.246-2.36-.555-3.824v-.004c-.348-1.848-1.52-3.383-3.075-3.952l-.002-.002h-.002c-.65-.227-1.596-.33-2.531-.33z"/></svg>`,
+  kubernetes: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M10.204 14.35l.007.01-.999 2.413a5.171 5.171 0 0 1-2.075-2.597l2.578-.437.004.005a.44.44 0 0 1 .484.606zm-.833-2.129a.44.44 0 0 0 .173-.756l.002-.011L7.585 9.7a5.143 5.143 0 0 0-.73 3.255l2.514-.725.002-.009zm1.145-1.98a.44.44 0 0 0 .699-.337l.01-.005.15-2.62a5.144 5.144 0 0 0-3.01 1.442l2.147 1.523.004-.002zm.76 2.75l.723.349.722-.347.18-.78-.5-.623h-.804l-.5.623.179.779zm1.5-3.095a.44.44 0 0 0 .7.336l.008.003 2.134-1.513a5.188 5.188 0 0 0-2.992-1.442l.148 2.615.002.001zm10.876 5.97l-5.773 7.181a1.6 1.6 0 0 1-1.248.594l-9.261.003a1.6 1.6 0 0 1-1.247-.596l-5.776-7.18a1.583 1.583 0 0 1-.307-1.34L2.1 5.573c.108-.47.425-.864.863-1.073L11.305.513a1.606 1.606 0 0 1 1.385 0l8.345 3.985c.438.209.755.604.863 1.073l2.062 8.955c.108.47-.005.963-.308 1.34zm-3.289-2.057c-.042-.01-.103-.026-.145-.034-.174-.033-.315-.025-.479-.038-.35-.037-.638-.067-.895-.148-.105-.04-.18-.165-.216-.216l-.201-.059a6.45 6.45 0 0 0-.105-2.332 6.465 6.465 0 0 0-.936-2.163c.052-.047.15-.133.177-.159.008-.09.001-.183.094-.282.197-.185.444-.338.743-.522.142-.084.273-.137.415-.242.032-.024.076-.062.11-.089.24-.191.295-.52.123-.736-.172-.216-.506-.236-.745-.045-.034.027-.08.062-.111.088-.134.116-.217.23-.33.35-.246.25-.45.458-.673.609-.097.056-.239.037-.303.033l-.19.135a6.545 6.545 0 0 0-4.146-2.003l-.012-.223c-.065-.062-.143-.115-.163-.25-.022-.268.015-.557.057-.905.023-.163.061-.298.068-.475.001-.04-.001-.099-.001-.142 0-.306-.224-.555-.5-.555-.275 0-.499.249-.499.555l.001.014c0 .041-.002.092 0 .128.006.177.044.312.067.475.042.348.078.637.056.906a.545.545 0 0 1-.162.258l-.012.211a6.424 6.424 0 0 0-4.166 2.003 8.373 8.373 0 0 1-.18-.128c-.09.012-.18.04-.297-.029-.223-.15-.427-.358-.673-.608-.113-.12-.195-.234-.329-.349-.03-.026-.077-.062-.111-.088a.594.594 0 0 0-.348-.132.481.481 0 0 0-.398.176c-.172.216-.117.546.123.737l.007.005.104.083c.142.105.272.159.414.242.299.185.546.338.743.522.076.082.09.226.1.288l.16.143a6.462 6.462 0 0 0-1.02 4.506l-.208.06c-.055.072-.133.184-.215.217-.257.081-.546.11-.895.147-.164.014-.305.006-.48.039-.037.007-.09.02-.133.03l-.004.002-.007.002c-.295.071-.484.342-.423.608.061.267.349.429.645.365l.007-.001.01-.003.129-.029c.17-.046.294-.113.448-.172.33-.118.604-.217.87-.256.112-.009.23.069.288.101l.217-.037a6.5 6.5 0 0 0 2.88 3.596l-.09.218c.033.084.069.199.044.282-.097.252-.263.517-.452.813-.091.136-.185.242-.268.399-.02.037-.045.095-.064.134-.128.275-.034.591.213.71.248.12.556-.007.69-.282v-.002c.02-.039.046-.09.062-.127.07-.162.094-.301.144-.458.132-.332.205-.68.387-.897.05-.06.13-.082.215-.105l.113-.205a6.453 6.453 0 0 0 4.609.012l.106.192c.086.028.18.042.256.155.136.232.229.507.342.84.05.156.074.295.145.457.016.037.043.09.062.129.133.276.442.402.69.282.247-.118.341-.435.213-.71-.02-.039-.045-.096-.065-.134-.083-.156-.177-.261-.268-.398-.19-.296-.346-.541-.443-.793-.04-.13.007-.21.038-.294-.018-.022-.059-.144-.083-.202a6.499 6.499 0 0 0 2.88-3.622c.064.01.176.03.213.038.075-.05.144-.114.28-.104.266.039.54.138.87.256.154.06.277.128.448.173.036.01.088.019.13.028l.009.003.007.001c.297.064.584-.098.645-.365.06-.266-.128-.537-.423-.608zM16.4 9.701l-1.95 1.746v.005a.44.44 0 0 0 .173.757l.003.01 2.526.728a5.199 5.199 0 0 0-.108-1.674A5.208 5.208 0 0 0 16.4 9.7zm-4.013 5.325a.437.437 0 0 0-.404-.232.44.44 0 0 0-.372.233h-.002l-1.268 2.292a5.164 5.164 0 0 0 3.326.003l-1.27-2.296h-.01zm1.888-1.293a.44.44 0 0 0-.27.036.44.44 0 0 0-.214.572l-.003.004 1.01 2.438a5.15 5.15 0 0 0 2.081-2.615l-2.6-.44-.004.005z"/></svg>`,
+  git: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M23.546 10.93L13.067.452c-.604-.603-1.582-.603-2.188 0L8.708 2.627l2.76 2.76c.645-.215 1.379-.07 1.889.441.516.515.658 1.258.438 1.9l2.658 2.66c.645-.223 1.387-.078 1.9.435.721.72.721 1.884 0 2.604-.719.719-1.881.719-2.6 0-.539-.541-.674-1.337-.404-1.996L12.86 8.955v6.525c.176.086.342.203.488.348.713.721.713 1.883 0 2.6-.719.721-1.889.721-2.609 0-.719-.719-.719-1.879 0-2.598.182-.18.387-.316.605-.406V8.835c-.217-.091-.424-.222-.6-.401-.545-.545-.676-1.342-.396-2.009L7.636 3.7.45 10.881c-.6.605-.6 1.584 0 2.189l10.48 10.477c.604.604 1.582.604 2.186 0l10.43-10.43c.605-.603.605-1.582 0-2.187"/></svg>`,
+};
+
+const languages = [
+  { name: 'Rust', icon: icons.rust, tools: ['rustc', 'cargo', 'rust-analyzer', 'clippy'], color: 'peach' },
+  { name: 'Python', icon: icons.python, tools: ['python3', 'uv', 'ruff', 'pylance'], color: 'yellow' },
+  { name: 'Go', icon: icons.go, tools: ['go', 'gopls', 'golangci-lint'], color: 'sky' },
+  { name: 'TypeScript', icon: icons.typescript, tools: ['bun', 'tsc', 'prettier', 'eslint'], color: 'blue' },
+  { name: 'Shell', icon: icons.bash, tools: ['fish', 'bash', 'shellcheck', 'shfmt'], color: 'green' },
+  { name: 'C/C++', icon: icons.cplusplus, tools: ['gcc', 'clang', 'cmake', 'ninja'], color: 'lavender' },
+];
+
+const devopsTools = [
+  { name: 'Docker', icon: icons.docker, desc: 'Container runtime with docker-compose and buildx' },
+  { name: 'Podman', icon: icons.podman, desc: 'Rootless containers, Docker-compatible' },
+  { name: 'Kubernetes', icon: icons.kubernetes, desc: 'kubectl, k9s, and Helm pre-installed' },
+  { name: 'Git', icon: icons.git, desc: 'lazygit TUI, delta diffs, 40+ aliases' },
+];
+
+const terminalTools = [
+  { name: 'eza', desc: 'Modern ls with tree view and icons' },
+  { name: 'bat', desc: 'cat with syntax highlighting' },
+  { name: 'fd', desc: 'Fast and user-friendly find' },
+  { name: 'ripgrep', desc: 'Lightning-fast grep' },
+  { name: 'fzf', desc: 'Fuzzy finder for everything' },
+  { name: 'zoxide', desc: 'Smart cd that learns' },
+  { name: 'jq/yq', desc: 'JSON/YAML processing' },
+  { name: 'htop/btop', desc: 'System monitoring' },
+];
+
+const vscodeExtensions = [
+  'rust-analyzer', 'Pylance', 'Go', 'ESLint', 'Prettier',
+  'GitLens', 'Git Graph', 'Docker', 'Kubernetes',
+  'Error Lens', 'Todo Tree', 'Catppuccin Theme',
+];
+---
+
+<BaseLayout
+  title="For Developers - Aegis Linux"
+  description="A development environment that just works. Rust, Python, Go, TypeScript, Docker, Kubernetes - all pre-configured with best-in-class tooling."
+>
+  <Header />
+
+  <main class="pt-24">
+    <!-- Hero -->
+    <section class="px-4 py-16 md:py-24">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-12">
+          <div class="text-6xl mb-6"></div>
+          <h1 class="text-4xl md:text-5xl font-bold text-text mb-4">
+            Your Development Environment, <span class="text-blue">Perfected</span>
+          </h1>
+          <p class="text-xl text-subtext0 max-w-2xl mx-auto">
+            Stop configuring. Start coding. Everything you need is already set up.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Languages - Solar System Animation -->
+    <section class="px-4 py-16 bg-mantle/50 overflow-hidden">
+      <div class="mx-auto max-w-6xl">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+          <!-- Solar System Style Orbit -->
+          <div class="relative h-[450px] flex items-center justify-center solar-system">
+            <!-- Star field background - more stars! -->
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+              <!-- Layer 1: Bright stars -->
+              <div class="star star-bright" style="left: 5%; top: 10%;"></div>
+              <div class="star star-bright" style="left: 92%; top: 15%;"></div>
+              <div class="star star-bright" style="left: 50%; top: 3%;"></div>
+              <div class="star star-bright" style="left: 15%; top: 85%;"></div>
+              <div class="star star-bright" style="left: 88%; top: 75%;"></div>
+              <div class="star star-bright" style="left: 3%; top: 50%;"></div>
+              <div class="star star-bright" style="left: 97%; top: 45%;"></div>
+              <!-- Layer 2: Medium stars -->
+              <div class="star" style="left: 8%; top: 25%; animation-delay: 0.5s;"></div>
+              <div class="star" style="left: 18%; top: 12%; animation-delay: 1.2s;"></div>
+              <div class="star" style="left: 28%; top: 88%; animation-delay: 0.8s;"></div>
+              <div class="star" style="left: 38%; top: 5%; animation-delay: 2.1s;"></div>
+              <div class="star" style="left: 48%; top: 92%; animation-delay: 1.5s;"></div>
+              <div class="star" style="left: 58%; top: 8%; animation-delay: 0.3s;"></div>
+              <div class="star" style="left: 68%; top: 95%; animation-delay: 1.8s;"></div>
+              <div class="star" style="left: 78%; top: 18%; animation-delay: 2.5s;"></div>
+              <div class="star" style="left: 85%; top: 82%; animation-delay: 0.9s;"></div>
+              <div class="star" style="left: 12%; top: 65%; animation-delay: 1.1s;"></div>
+              <div class="star" style="left: 22%; top: 35%; animation-delay: 2.3s;"></div>
+              <div class="star" style="left: 75%; top: 55%; animation-delay: 0.7s;"></div>
+              <div class="star" style="left: 62%; top: 78%; animation-delay: 1.9s;"></div>
+              <div class="star" style="left: 42%; top: 22%; animation-delay: 2.8s;"></div>
+              <!-- Layer 3: Dim stars -->
+              <div class="star star-dim" style="left: 6%; top: 42%; animation-delay: 0.4s;"></div>
+              <div class="star star-dim" style="left: 16%; top: 72%; animation-delay: 1.6s;"></div>
+              <div class="star star-dim" style="left: 26%; top: 58%; animation-delay: 2.2s;"></div>
+              <div class="star star-dim" style="left: 36%; top: 32%; animation-delay: 0.6s;"></div>
+              <div class="star star-dim" style="left: 46%; top: 68%; animation-delay: 1.3s;"></div>
+              <div class="star star-dim" style="left: 56%; top: 42%; animation-delay: 2.7s;"></div>
+              <div class="star star-dim" style="left: 66%; top: 28%; animation-delay: 0.2s;"></div>
+              <div class="star star-dim" style="left: 76%; top: 38%; animation-delay: 1.7s;"></div>
+              <div class="star star-dim" style="left: 86%; top: 62%; animation-delay: 2.4s;"></div>
+              <div class="star star-dim" style="left: 94%; top: 88%; animation-delay: 1.0s;"></div>
+              <div class="star star-dim" style="left: 33%; top: 15%; animation-delay: 2.0s;"></div>
+              <div class="star star-dim" style="left: 53%; top: 55%; animation-delay: 0.1s;"></div>
+            </div>
+
+            <!-- Background glow -->
+            <div class="absolute w-48 h-48 bg-mauve/20 rounded-full blur-3xl animate-pulse" style="animation-duration: 4s;"></div>
+            <div class="absolute w-32 h-32 bg-pink/25 rounded-full blur-2xl animate-pulse" style="animation-duration: 3s; animation-delay: 1s;"></div>
+
+            <!-- Central "sun" - Aegis logo -->
+            <div class="absolute z-10 bg-gradient-to-br from-mauve via-pink to-mauve rounded-full w-16 h-16 flex items-center justify-center shadow-2xl border-2 border-pink/50 sun-glow">
+              <span class="text-3xl drop-shadow-lg"></span>
+            </div>
+
+            <!-- Orbiting planets -->
+
+            <!-- Rust orbit (innermost) -->
+            <div class="planet-wrapper" style="--w: 120px; --h: 100px; --duration: 8s;">
+              <div class="planet-icon bg-peach text-crust w-10 h-10 rounded-full flex items-center justify-center shadow-lg ring-2 ring-peach/40 hover:scale-125 transition-transform cursor-pointer planet-glow-peach" title="Rust">
+                <Fragment set:html={icons.rust} />
+              </div>
+            </div>
+
+            <!-- Python orbit -->
+            <div class="planet-wrapper" style="--w: 180px; --h: 150px; --duration: 12s; --delay: -4s; --reverse: 1;">
+              <div class="planet-icon planet-reverse bg-yellow text-crust w-10 h-10 rounded-full flex items-center justify-center shadow-lg ring-2 ring-yellow/40 hover:scale-125 transition-transform cursor-pointer planet-glow-yellow" title="Python">
+                <Fragment set:html={icons.python} />
+              </div>
+            </div>
+
+            <!-- TypeScript orbit -->
+            <div class="planet-wrapper" style="--w: 240px; --h: 200px; --duration: 16s; --delay: -8s;">
+              <div class="planet-icon bg-blue text-crust w-10 h-10 rounded-full flex items-center justify-center shadow-lg ring-2 ring-blue/40 hover:scale-125 transition-transform cursor-pointer planet-glow-blue" title="TypeScript">
+                <Fragment set:html={icons.typescript} />
+              </div>
+            </div>
+
+            <!-- Go orbit -->
+            <div class="planet-wrapper" style="--w: 310px; --h: 260px; --duration: 22s; --delay: -5s; --reverse: 1;">
+              <div class="planet-icon planet-reverse bg-sky text-crust w-9 h-9 rounded-full flex items-center justify-center shadow-lg ring-2 ring-sky/40 hover:scale-125 transition-transform cursor-pointer planet-glow-sky" title="Go">
+                <Fragment set:html={icons.go} />
+              </div>
+            </div>
+
+            <!-- C++ orbit -->
+            <div class="planet-wrapper" style="--w: 380px; --h: 320px; --duration: 28s; --delay: -14s;">
+              <div class="planet-icon bg-lavender text-crust w-8 h-8 rounded-full flex items-center justify-center shadow-lg ring-2 ring-lavender/40 hover:scale-125 transition-transform cursor-pointer planet-glow-lavender" title="C/C++">
+                <Fragment set:html={icons.cplusplus} />
+              </div>
+            </div>
+
+            <!-- Docker orbit (outermost) -->
+            <div class="planet-wrapper" style="--w: 450px; --h: 380px; --duration: 35s; --delay: -10s; --reverse: 1;">
+              <div class="planet-icon planet-reverse bg-sapphire text-crust w-8 h-8 rounded-full flex items-center justify-center shadow-lg ring-2 ring-sapphire/40 hover:scale-125 transition-transform cursor-pointer planet-glow-sapphire" title="Docker">
+                <Fragment set:html={icons.docker} />
+              </div>
+            </div>
+
+            <!-- Git orbit -->
+            <div class="planet-wrapper" style="--w: 450px; --h: 380px; --duration: 40s; --delay: -25s;">
+              <div class="planet-icon bg-teal text-crust w-7 h-7 rounded-full flex items-center justify-center shadow-lg ring-2 ring-teal/40 hover:scale-125 transition-transform cursor-pointer planet-glow-teal" title="Git">
+                <Fragment set:html={icons.git} />
+              </div>
+            </div>
+          </div>
+
+          <!-- Language Details -->
+          <div>
+            <h2 class="text-3xl font-bold text-text mb-6">
+              Popular Languages, <span class="text-mauve">Ready to Go</span>
+            </h2>
+            <p class="text-subtext0 mb-8">
+              The languages developers use most, pre-installed with complete toolchains.
+              LSP servers, formatters, linters - all configured. Just open your project and start coding.
+            </p>
+
+            <div class="space-y-4">
+              {languages.map((lang) => (
+                <div class="flex items-center gap-4 group">
+                  <div class={`w-10 h-10 rounded-lg bg-${lang.color}/20 flex items-center justify-center text-${lang.color} group-hover:scale-110 transition-transform`}>
+                    <Fragment set:html={lang.icon} />
+                  </div>
+                  <div class="flex-1">
+                    <div class={`font-bold text-${lang.color}`}>{lang.name}</div>
+                    <div class="text-subtext0 text-sm">{lang.tools.join(' • ')}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <style>
+      .sun-glow {
+        box-shadow: 0 0 40px rgba(203, 166, 247, 0.5), 0 0 80px rgba(245, 194, 231, 0.3), 0 0 120px rgba(203, 166, 247, 0.15);
+      }
+
+      /* Star field */
+      .star {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background: rgba(205, 214, 244, 0.7);
+        border-radius: 50%;
+        animation: twinkle 3s ease-in-out infinite;
+      }
+
+      .star-bright {
+        width: 3px;
+        height: 3px;
+        background: rgba(205, 214, 244, 1);
+        box-shadow: 0 0 6px rgba(205, 214, 244, 0.8), 0 0 12px rgba(205, 214, 244, 0.4);
+        animation: twinkle-bright 2.5s ease-in-out infinite;
+      }
+
+      .star-dim {
+        width: 1px;
+        height: 1px;
+        background: rgba(205, 214, 244, 0.4);
+        animation: twinkle 4s ease-in-out infinite;
+      }
+
+      @keyframes twinkle {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.3); }
+      }
+
+      @keyframes twinkle-bright {
+        0%, 100% { opacity: 0.6; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.5); }
+      }
+
+      /* Planet wrapper - positions the orbit area */
+      .planet-wrapper {
+        position: absolute;
+        width: var(--w);
+        height: var(--h);
+        left: calc(50% - var(--w) / 2);
+        top: calc(50% - var(--h) / 2);
+        pointer-events: none;
+      }
+
+      /* Planet icon - actual orbiting element */
+      .planet-icon {
+        position: absolute;
+        pointer-events: auto;
+        /* Use offset-path for true elliptical motion */
+        offset-path: ellipse(calc(var(--w) / 2 - 5px) calc(var(--h) / 2 - 5px) at 50% 50%);
+        offset-rotate: 0deg;
+        animation: orbit-motion var(--duration, 20s) linear infinite;
+        animation-delay: var(--delay, 0s);
+        z-index: 15;
+        /* Center the icon on the path */
+        transform: translate(-50%, -50%);
+      }
+
+      @keyframes orbit-motion {
+        from { offset-distance: 0%; }
+        to { offset-distance: 100%; }
+      }
+
+      /* Fallback for browsers without offset-path - approximated ellipse with more keyframes */
+      @supports not (offset-path: ellipse(50% 50%)) {
+        .planet-icon {
+          offset-path: none;
+          animation: orbit-fallback var(--duration, 20s) linear infinite;
+          animation-delay: var(--delay, 0s);
+        }
+
+        @keyframes orbit-fallback {
+          0% { left: 100%; top: 50%; }
+          12.5% { left: 85.36%; top: 85.36%; }
+          25% { left: 50%; top: 100%; }
+          37.5% { left: 14.64%; top: 85.36%; }
+          50% { left: 0%; top: 50%; }
+          62.5% { left: 14.64%; top: 14.64%; }
+          75% { left: 50%; top: 0%; }
+          87.5% { left: 85.36%; top: 14.64%; }
+          100% { left: 100%; top: 50%; }
+        }
+      }
+
+      /* Planet glow effects */
+      .planet-glow-peach { box-shadow: 0 0 15px rgba(250, 179, 135, 0.5); }
+      .planet-glow-yellow { box-shadow: 0 0 15px rgba(249, 226, 175, 0.5); }
+      .planet-glow-blue { box-shadow: 0 0 15px rgba(137, 180, 250, 0.5); }
+      .planet-glow-sky { box-shadow: 0 0 15px rgba(137, 220, 235, 0.5); }
+      .planet-glow-green { box-shadow: 0 0 15px rgba(166, 227, 161, 0.5); }
+      .planet-glow-lavender { box-shadow: 0 0 15px rgba(180, 190, 254, 0.5); }
+      .planet-glow-sapphire { box-shadow: 0 0 15px rgba(116, 199, 236, 0.5); }
+      .planet-glow-teal { box-shadow: 0 0 15px rgba(148, 226, 213, 0.5); }
+
+      /* Tilt the entire solar system slightly for 3D effect */
+      .solar-system {
+        transform: perspective(1000px) rotateX(12deg);
+      }
+
+      /* Reverse orbit for specific planets */
+      .planet-icon.planet-reverse {
+        animation-direction: reverse;
+      }
+    </style>
+
+    <!-- Terminal Experience -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-6xl">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 class="text-3xl font-bold text-text mb-6">
+              Terminal That <span class="text-green">Sparks Joy</span>
+            </h2>
+            <p class="text-subtext0 mb-6">
+              Fish shell with Starship prompt. Modern replacements for classic Unix tools.
+              Catppuccin Mocha theme everywhere.
+            </p>
+
+            <div class="grid grid-cols-2 gap-4">
+              {terminalTools.map((tool) => (
+                <div class="bg-surface0/30 rounded-lg p-3">
+                  <div class="text-text font-semibold font-mono text-sm">{tool.name}</div>
+                  <div class="text-subtext0 text-xs">{tool.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Interactive Terminal Preview -->
+          <InteractiveTerminal client:visible />
+        </div>
+      </div>
+    </section>
+
+    <!-- DevOps -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-6xl">
+        <h2 class="text-3xl font-bold text-text mb-8 text-center">
+          DevOps Ready
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {devopsTools.map((tool) => (
+            <div class="bg-surface0/50 border border-surface1 rounded-xl p-6 text-center hover:border-surface2 transition-colors">
+              <div class="w-12 h-12 mx-auto mb-3 text-sky">
+                <Fragment set:html={tool.icon.replace('w-6 h-6', 'w-12 h-12')} />
+              </div>
+              <h3 class="text-lg font-bold text-text mb-2">{tool.name}</h3>
+              <p class="text-subtext0 text-sm">{tool.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- VSCode -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-6xl">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+          <!-- VSCode Preview - Full Editor -->
+          <div class="bg-base rounded-xl border-2 border-surface0 overflow-hidden shadow-2xl order-2 md:order-1">
+            <!-- Title Bar -->
+            <div class="bg-crust px-4 py-2 flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full bg-red/80"></div>
+              <div class="w-3 h-3 rounded-full bg-yellow/80"></div>
+              <div class="w-3 h-3 rounded-full bg-green/80"></div>
+              <span class="text-xs text-subtext0 ml-2">main.rs — aegis-project — Visual Studio Code</span>
+            </div>
+
+            <div class="flex" style="height: 280px;">
+              <!-- Activity Bar -->
+              <div class="w-12 bg-mantle flex flex-col items-center py-3 gap-3 border-r border-surface0 shrink-0">
+                <span class="text-mauve text-lg"></span>
+                <span class="text-overlay0 text-lg"></span>
+                <span class="text-overlay0 text-lg"></span>
+                <span class="text-overlay0 text-lg"></span>
+                <span class="text-overlay0 text-lg"></span>
+              </div>
+
+              <!-- Sidebar -->
+              <div class="w-44 bg-mantle border-r border-surface0 shrink-0 overflow-hidden">
+                <div class="px-3 py-2 text-[10px] text-overlay0 uppercase tracking-wider">Explorer</div>
+                <div class="px-2 text-xs">
+                  <div class="text-subtext1 py-1 font-semibold"> AEGIS-PROJECT</div>
+                  <div class="ml-2 space-y-0.5">
+                    <div class="text-overlay1 py-0.5 hover:bg-surface0 px-1 rounded cursor-pointer"> src</div>
+                    <div class="ml-3 text-text py-0.5 px-1 bg-surface0 rounded border-l-2 border-mauve"> main.rs</div>
+                    <div class="text-overlay1 py-0.5 hover:bg-surface0 px-1 rounded cursor-pointer"> Cargo.toml</div>
+                    <div class="text-overlay1 py-0.5 hover:bg-surface0 px-1 rounded cursor-pointer"> README.md</div>
+                    <div class="text-overlay0 py-0.5 hover:bg-surface0 px-1 rounded cursor-pointer"> .gitignore</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Editor Area -->
+              <div class="flex-1 flex flex-col min-w-0">
+                <!-- Tabs -->
+                <div class="h-9 bg-mantle flex items-center border-b border-surface0 shrink-0">
+                  <div class="px-3 py-1.5 bg-base text-text text-xs flex items-center gap-2 border-r border-surface0">
+                    <span class="text-peach"></span>
+                    main.rs
+                    <span class="text-overlay0 hover:text-text text-[10px] cursor-pointer">×</span>
+                  </div>
+                  <div class="px-3 py-1.5 text-overlay0 text-xs flex items-center gap-2 hover:bg-surface0/50 cursor-pointer">
+                    <span class="text-yellow"></span>
+                    Cargo.toml
+                  </div>
+                </div>
+
+                <!-- Code Editor -->
+                <div class="flex-1 bg-base p-3 font-mono text-xs overflow-hidden">
+                  <div class="flex">
+                    <div class="w-8 text-right pr-3 text-overlay0 select-none shrink-0">1</div>
+                    <div><span class="text-mauve">use</span> <span class="text-text">std::io;</span></div>
+                  </div>
+                  <div class="flex">
+                    <div class="w-8 text-right pr-3 text-overlay0 select-none shrink-0">2</div>
+                    <div></div>
+                  </div>
+                  <div class="flex">
+                    <div class="w-8 text-right pr-3 text-overlay0 select-none shrink-0">3</div>
+                    <div><span class="text-overlay0">/// Entry point for Aegis</span></div>
+                  </div>
+                  <div class="flex">
+                    <div class="w-8 text-right pr-3 text-overlay0 select-none shrink-0">4</div>
+                    <div><span class="text-mauve">fn</span> <span class="text-blue">main</span><span class="text-text">() {'{'}</span></div>
+                  </div>
+                  <div class="flex">
+                    <div class="w-8 text-right pr-3 text-overlay0 select-none shrink-0">5</div>
+                    <div><span class="text-text">    </span><span class="text-teal">println!</span><span class="text-text">(</span><span class="text-green">"Hello, Aegis!"</span><span class="text-text">);</span></div>
+                  </div>
+                  <div class="flex">
+                    <div class="w-8 text-right pr-3 text-overlay0 select-none shrink-0">6</div>
+                    <div><span class="text-text">{'}'}</span></div>
+                  </div>
+                  <div class="flex">
+                    <div class="w-8 text-right pr-3 text-overlay0 select-none shrink-0">7</div>
+                    <div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="h-6 bg-mauve flex items-center justify-between px-3 text-crust text-[10px]">
+              <div class="flex items-center gap-3">
+                <span> main</span>
+                <span> 0</span>
+                <span>Ln 5, Col 28</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span>Rust</span>
+                <span>UTF-8</span>
+                <span>LF</span>
+                <span> rust-analyzer</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="order-1 md:order-2">
+            <h2 class="text-3xl font-bold text-text mb-6">
+              <span class="text-mauve">VSCode</span> Ready to Go
+            </h2>
+            <p class="text-subtext0 mb-6">
+              40+ extensions pre-configured. Catppuccin theme. JetBrains Mono font with ligatures.
+              Custom keybindings for maximum productivity.
+            </p>
+
+            <div class="flex flex-wrap gap-2">
+              {vscodeExtensions.map((ext) => (
+                <span class="text-xs bg-surface0 text-subtext1 px-3 py-1.5 rounded-full">
+                  {ext}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Git Workflow -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold text-text mb-4">
+            Git Workflow, <span class="text-yellow">Supercharged</span>
+          </h2>
+          <p class="text-subtext0 max-w-2xl mx-auto">
+            146+ aliases, beautiful TUI, syntax-highlighted diffs. Git has never felt this good.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-12 items-start">
+          <!-- Lazygit Demo -->
+          <div class="bg-base rounded-xl border-2 border-surface0 overflow-hidden shadow-2xl">
+            <div class="bg-crust px-4 py-2 flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full bg-red/80"></div>
+              <div class="w-3 h-3 rounded-full bg-yellow/80"></div>
+              <div class="w-3 h-3 rounded-full bg-green/80"></div>
+              <span class="text-xs text-subtext0 ml-2">lazygit</span>
+            </div>
+            <div class="p-0 font-mono text-[10px] h-72 flex">
+              <!-- Status Panel -->
+              <div class="w-1/3 border-r border-surface0 flex flex-col">
+                <div class="bg-surface0/50 px-2 py-1 text-yellow font-bold border-b border-surface0">Status</div>
+                <div class="p-2 space-y-1 flex-1">
+                  <div class="text-green flex items-center gap-1"><span class="text-green">▶</span> Staged (2)</div>
+                  <div class="ml-3 text-green text-[9px]">M src/main.rs</div>
+                  <div class="ml-3 text-green text-[9px]">A src/lib.rs</div>
+                  <div class="text-red flex items-center gap-1 mt-2"><span class="text-red">▶</span> Unstaged (1)</div>
+                  <div class="ml-3 text-red text-[9px]">M Cargo.toml</div>
+                </div>
+              </div>
+              <!-- Commits Panel -->
+              <div class="w-1/3 border-r border-surface0 flex flex-col">
+                <div class="bg-surface0/50 px-2 py-1 text-mauve font-bold border-b border-surface0">Commits</div>
+                <div class="p-2 space-y-1 flex-1 overflow-hidden">
+                  <div class="bg-surface0 rounded px-1 py-0.5 text-text truncate">* <span class="text-yellow">feat:</span> add auth</div>
+                  <div class="px-1 py-0.5 text-subtext0 truncate">* <span class="text-blue">fix:</span> typo in docs</div>
+                  <div class="px-1 py-0.5 text-subtext0 truncate">* <span class="text-green">refactor:</span> clean</div>
+                  <div class="px-1 py-0.5 text-subtext0 truncate">* <span class="text-mauve">init:</span> project</div>
+                </div>
+              </div>
+              <!-- Diff Panel -->
+              <div class="w-1/3 flex flex-col">
+                <div class="bg-surface0/50 px-2 py-1 text-blue font-bold border-b border-surface0">Diff</div>
+                <div class="p-2 flex-1 overflow-hidden text-[9px]">
+                  <div class="text-overlay0">@@ -1,3 +1,5 @@</div>
+                  <div class="text-text"> use std::io;</div>
+                  <div class="text-green">+use auth::User;</div>
+                  <div class="text-green">+</div>
+                  <div class="text-text"> fn main() {'{'}</div>
+                  <div class="text-red">-    println!("Hi");</div>
+                  <div class="text-green">+    let u = User::new();</div>
+                  <div class="text-text"> {'}'}</div>
+                </div>
+              </div>
+            </div>
+            <!-- Bottom bar -->
+            <div class="bg-surface0/50 px-3 py-1.5 text-[9px] text-subtext0 flex items-center justify-between border-t border-surface0">
+              <div class="flex gap-3">
+                <span><span class="text-yellow">space</span> stage</span>
+                <span><span class="text-yellow">c</span> commit</span>
+                <span><span class="text-yellow">P</span> push</span>
+                <span><span class="text-yellow">p</span> pull</span>
+              </div>
+              <span class="text-mauve"> main</span>
+            </div>
+          </div>
+
+          <!-- Git Features -->
+          <div class="space-y-6">
+            <div class="bg-surface0/30 rounded-xl p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="text-3xl"></span>
+                <h3 class="text-xl font-bold text-yellow">lazygit</h3>
+              </div>
+              <p class="text-subtext0 mb-3">
+                Navigate branches, stage hunks, interactive rebase - all with keyboard shortcuts.
+                Custom keybindings for fixup commits, force-push, and more.
+              </p>
+              <div class="text-xs text-overlay0 font-mono">Press <span class="text-yellow bg-surface0 px-1 rounded">lg</span> anywhere to launch</div>
+            </div>
+
+            <div class="bg-surface0/30 rounded-xl p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="text-3xl"></span>
+                <h3 class="text-xl font-bold text-green">delta diffs</h3>
+              </div>
+              <p class="text-subtext0 mb-3">
+                Syntax-highlighted diffs with line numbers, side-by-side view, and hyperlinks.
+                Catppuccin Mocha colors throughout.
+              </p>
+              <div class="bg-base rounded-lg p-3 font-mono text-xs">
+                <div class="text-red">- old_value = 42</div>
+                <div class="text-green">+ new_value = <span class="bg-green/20">100</span></div>
+              </div>
+            </div>
+
+            <div class="bg-surface0/30 rounded-xl p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="text-3xl"></span>
+                <h3 class="text-xl font-bold text-blue">146+ Aliases</h3>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div><span class="text-mauve">git ss</span> <span class="text-overlay0">→ status</span></div>
+                <div><span class="text-mauve">git lg</span> <span class="text-overlay0">→ log graph</span></div>
+                <div><span class="text-mauve">git wip</span> <span class="text-overlay0">→ save work</span></div>
+                <div><span class="text-mauve">git oops</span> <span class="text-overlay0">→ amend</span></div>
+                <div><span class="text-mauve">git cleanup</span> <span class="text-overlay0">→ prune</span></div>
+                <div><span class="text-mauve">git pf</span> <span class="text-overlay0">→ force-lease</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GitHub/GitLab CLI -->
+        <div class="mt-12 bg-base rounded-xl border border-surface0 p-6">
+          <div class="flex flex-wrap items-center justify-center gap-8">
+            <div class="flex items-center gap-3">
+              <svg class="w-8 h-8 text-text" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <div>
+                <div class="text-text font-bold">GitHub CLI</div>
+                <div class="text-subtext0 text-sm">gh pr, gh issue, gh-dash</div>
+              </div>
+            </div>
+            <div class="text-surface1 text-2xl">+</div>
+            <div class="flex items-center gap-3">
+              <svg class="w-8 h-8 text-peach" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
+              </svg>
+              <div>
+                <div class="text-text font-bold">GitLab CLI</div>
+                <div class="text-subtext0 text-sm">glab mr, glab issue, pipelines</div>
+              </div>
+            </div>
+            <div class="text-surface1 text-2xl">+</div>
+            <div class="flex items-center gap-3">
+              <span class="text-3xl"></span>
+              <div>
+                <div class="text-text font-bold">Copilot</div>
+                <div class="text-subtext0 text-sm">AI suggestions (optional)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-4xl text-center">
+        <h2 class="text-3xl font-bold text-text mb-4">
+          Ready to Code?
+        </h2>
+        <p class="text-subtext0 text-lg mb-8">
+          Download Aegis and have a complete development environment in minutes.
+        </p>
+        <a
+          href="/download"
+          class="inline-block bg-blue hover:bg-sapphire text-crust font-semibold px-10 py-4 rounded-lg transition-colors duration-200 text-xl"
+        >
+          Download Now
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>

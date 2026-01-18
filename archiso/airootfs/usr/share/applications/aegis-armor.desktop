@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Aegis Armor
+Comment=Configure AppArmor, firewall, and system security
+GenericName=Security Configuration
+Exec=aegis-armor
+Icon=security-high
+Terminal=false
+Type=Application
+Categories=System;Settings;Security;
+Keywords=security;firewall;apparmor;hardening;protection;
+StartupNotify=true

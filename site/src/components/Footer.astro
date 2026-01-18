@@ -1,0 +1,90 @@
+---
+const socialLinks = [
+  { href: 'https://github.com/alexogeny/aegis', label: 'GitHub', icon: 'github' },
+];
+
+const footerLinks = [
+  { href: '/developers', label: 'Developers' },
+  { href: '/creators', label: 'Creators' },
+  { href: '/download', label: 'Download' },
+];
+---
+
+<footer class="relative border-t border-surface0 mt-20 overflow-hidden">
+  <!-- Subtle gradient background -->
+  <div class="absolute inset-0 bg-gradient-to-t from-crust/50 to-transparent pointer-events-none"></div>
+
+  <div class="mx-auto max-w-6xl px-6 py-12 relative z-10">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+      <!-- Logo & Tagline -->
+      <div class="text-center md:text-left">
+        <a href="/" class="group inline-flex items-center gap-2 text-mauve font-bold text-xl font-mono">
+          <div class="relative">
+            <svg class="w-6 h-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M16 2L4 8v8c0 7.732 5.268 14.924 12 16 6.732-1.076 12-8.268 12-16V8L16 2z" stroke="currentColor" stroke-width="2" fill="none" class="group-hover:stroke-pink transition-colors"/>
+              <path d="M16 8v8m-4-4h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <div class="absolute inset-0 bg-mauve/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          </div>
+          <span class="relative">
+            Aegis Linux
+            <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-mauve to-pink group-hover:w-full transition-all duration-300"></span>
+          </span>
+        </a>
+        <p class="text-subtext0 text-sm mt-2">Security by Default. Beauty by Design.</p>
+      </div>
+
+      <!-- Links -->
+      <div class="flex items-center gap-6">
+        {footerLinks.map(link => (
+          <a
+            href={link.href}
+            class="relative text-subtext1 hover:text-text transition-colors duration-200 text-sm group py-1"
+          >
+            {link.label}
+            <span class="absolute bottom-0 left-0 w-0 h-0.5 bg-mauve/50 group-hover:w-full transition-all duration-300 rounded-full"></span>
+          </a>
+        ))}
+      </div>
+
+      <!-- Social -->
+      <div class="flex items-center gap-4">
+        <a
+          href="https://github.com/alexogeny/aegis"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="group relative text-subtext1 hover:text-mauve transition-all duration-300"
+          aria-label="GitHub"
+        >
+          <svg class="w-6 h-6 transition-transform duration-300 group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <div class="absolute inset-0 bg-mauve/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Credits with animated dots -->
+    <div class="mt-8 pt-8 border-t border-surface0 text-center">
+      <p class="text-overlay0 text-sm flex items-center justify-center gap-3 flex-wrap">
+        <span class="flex items-center gap-1.5 hover:text-blue transition-colors cursor-default group">
+          <span class="w-2 h-2 rounded-full bg-blue animate-pulse"></span>
+          Built on <span class="text-blue group-hover:underline">Arch Linux</span>
+        </span>
+        <span class="text-surface1">&bull;</span>
+        <span class="flex items-center gap-1.5 hover:text-teal transition-colors cursor-default group">
+          <span class="w-2 h-2 rounded-full bg-teal animate-pulse" style="animation-delay: 0.3s;"></span>
+          Powered by <span class="text-teal group-hover:underline">Hyprland</span>
+        </span>
+        <span class="text-surface1">&bull;</span>
+        <span class="flex items-center gap-1.5 hover:text-mauve transition-colors cursor-default group">
+          <span class="w-2 h-2 rounded-full bg-mauve animate-pulse" style="animation-delay: 0.6s;"></span>
+          Themed with <span class="text-mauve group-hover:underline">Catppuccin</span>
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Decorative gradient orb -->
+  <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-mauve/5 blur-[80px] rounded-full pointer-events-none"></div>
+</footer>

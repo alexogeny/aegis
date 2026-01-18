@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Aegis Audio Mixer
+Comment=Virtual audio mixer for PipeWire
+GenericName=Audio Mixer
+Exec=aegis-mixer
+Icon=multimedia-volume-control
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Mixer;
+Keywords=audio;mixer;pipewire;volume;routing;
+StartupNotify=true
