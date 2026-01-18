@@ -5,8 +5,7 @@ import preact from '@astrojs/preact';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://alexogeny.github.io',
-  base: '/aegis/',
+  site: 'https://aegis.computer',
   output: 'static',
   vite: {
     plugins: [tailwindcss()]

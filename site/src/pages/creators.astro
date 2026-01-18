@@ -6,8 +6,6 @@ import { InteractiveMixer } from "../components/creators/InteractiveMixer";
 import { InteractiveMacropad } from "../components/creators/InteractiveMacropad";
 import { InteractiveLighting } from "../components/creators/InteractiveLighting";
 
-const base = import.meta.env.BASE_URL;
-
 // Audio features for the info section
 const audioFeatures = [
   { name: "Noise Gate", desc: "Cut background noise when not speaking" },
@@ -414,7 +412,7 @@ const captureTools = [
           Download Aegis and start streaming on Linux today.
         </p>
         <a
-          href={`${base}download`}
+          href="/download"
           class="inline-block bg-pink hover:bg-mauve text-crust font-semibold px-10 py-4 rounded-lg transition-colors duration-200 text-xl"
         >
           Download Now
