@@ -3,6 +3,7 @@ Aegis GTK Theme - Catppuccin Mocha color palette and CSS styles.
 """
 
 import gi
+
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk
 
@@ -12,22 +13,18 @@ COLORS = {
     'base': '#1e1e2e',
     'mantle': '#181825',
     'crust': '#11111b',
-
     # Surface colors
     'surface0': '#313244',
     'surface1': '#45475a',
     'surface2': '#585b70',
-
     # Text colors
     'text': '#cdd6f4',
     'subtext0': '#a6adc8',
     'subtext1': '#bac2de',
-
     # Overlay colors
     'overlay0': '#6c7086',
     'overlay1': '#7f849c',
     'overlay2': '#9399b2',
-
     # Accent colors
     'mauve': '#cba6f7',
     'blue': '#89b4fa',
@@ -47,8 +44,21 @@ COLORS = {
 
 # All available accent colors for pickers
 ACCENT_COLORS = [
-    'red', 'mauve', 'blue', 'teal', 'peach', 'green', 'pink', 'sky',
-    'yellow', 'lavender', 'sapphire', 'flamingo', 'rosewater', 'maroon', 'surface1'
+    'red',
+    'mauve',
+    'blue',
+    'teal',
+    'peach',
+    'green',
+    'pink',
+    'sky',
+    'yellow',
+    'lavender',
+    'sapphire',
+    'flamingo',
+    'rosewater',
+    'maroon',
+    'surface1',
 ]
 
 # Light text colors (need dark text on these backgrounds)
@@ -499,12 +509,12 @@ window {{
 """
 
 
-def get_app_css(app_specific_css: str = "") -> str:
+def get_app_css(app_specific_css: str = '') -> str:
     """Combine base CSS with app-specific CSS."""
-    return get_base_css() + "\n" + app_specific_css
+    return get_base_css() + '\n' + app_specific_css
 
 
-def setup_css(window, app_specific_css: str = ""):
+def setup_css(window, app_specific_css: str = ''):
     """Setup CSS for a GTK window.
 
     Args:
@@ -515,9 +525,7 @@ def setup_css(window, app_specific_css: str = ""):
     css = get_app_css(app_specific_css)
     css_provider.load_from_data(css.encode())
     Gtk.StyleContext.add_provider_for_display(
-        window.get_display(),
-        css_provider,
-        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        window.get_display(), css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
     )
 
 

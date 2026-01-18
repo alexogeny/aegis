@@ -3,11 +3,13 @@ Aegis GTK Utilities - Helper functions for Aegis applications.
 """
 
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import GLib, Adw
 import threading
-from typing import Callable, Any, Optional
+from typing import Any, Optional
+from collections.abc import Callable
 from functools import wraps
 
 
@@ -23,11 +25,13 @@ def run_async(func: Callable) -> Callable:
             data = slow_network_call()
             GLib.idle_add(update_ui, data)
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         thread = threading.Thread(target=func, args=args, kwargs=kwargs, daemon=True)
         thread.start()
         return thread
+
     return wrapper
 
 
@@ -116,7 +120,7 @@ class AsyncResult:
 
     def __init__(self):
         self.value: Any = None
-        self.error: Optional[Exception] = None
+        self.error: Exception | None = None
         self.completed = threading.Event()
 
     def set_value(self, value: Any):
@@ -127,11 +131,11 @@ class AsyncResult:
         self.error = error
         self.completed.set()
 
-    def wait(self, timeout: Optional[float] = None) -> bool:
+    def wait(self, timeout: float | None = None) -> bool:
         """Wait for the result. Returns True if completed, False if timed out."""
         return self.completed.wait(timeout)
 
-    def get(self, timeout: Optional[float] = None) -> Any:
+    def get(self, timeout: float | None = None) -> Any:
         """Wait for and return the result. Raises exception if one occurred."""
         self.wait(timeout)
         if self.error:
@@ -153,6 +157,7 @@ def debounce(wait_ms: int):
             # This will only run 300ms after the last call
             perform_search(text)
     """
+
     def decorator(func: Callable) -> Callable:
         timer_id = [None]  # Use list to allow modification in closure
 
@@ -171,6 +176,7 @@ def debounce(wait_ms: int):
             timer_id[0] = GLib.timeout_add(wait_ms, call_func)
 
         return wrapper
+
     return decorator
 
 
@@ -188,6 +194,7 @@ def throttle(wait_ms: int):
             # This will run at most every 100ms
             update_device(value)
     """
+
     def decorator(func: Callable) -> Callable:
         last_call = [0]
         pending_call = [None]
@@ -195,6 +202,7 @@ def throttle(wait_ms: int):
         @wraps(func)
         def wrapper(*args, **kwargs):
             import time
+
             now = time.time() * 1000
 
             if now - last_call[0] >= wait_ms:
@@ -204,6 +212,7 @@ def throttle(wait_ms: int):
             else:
                 # Schedule for later if not already scheduled
                 if pending_call[0] is None:
+
                     def delayed_call():
                         pending_call[0] = None
                         last_call[0] = time.time() * 1000
@@ -214,4 +223,5 @@ def throttle(wait_ms: int):
                     pending_call[0] = GLib.timeout_add(int(remaining), delayed_call)
 
         return wrapper
+
     return decorator

@@ -5,6 +5,7 @@ A friendly GUI for system backups using Timeshift/Snapper with Catppuccin themin
 """
 
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Gio
@@ -14,7 +15,7 @@ import json
 import os
 from datetime import datetime
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional
 from pathlib import Path
 from enum import Enum
 
@@ -141,9 +142,9 @@ APP_CSS = f"""
 
 
 class SnapshotType(Enum):
-    MANUAL = "manual"
-    SCHEDULED = "scheduled"
-    BOOT = "boot"
+    MANUAL = 'manual'
+    SCHEDULED = 'scheduled'
+    BOOT = 'boot'
 
 
 @dataclass
@@ -161,11 +162,11 @@ class BackupWindow(Adw.ApplicationWindow):
 
     def __init__(self, app):
         super().__init__(application=app)
-        self.set_title("Aegis Backup")
+        self.set_title('Aegis Backup')
         self.set_default_size(900, 650)
 
-        self.snapshots: List[Snapshot] = []
-        self.current_page = "snapshots"
+        self.snapshots: list[Snapshot] = []
+        self.current_page = 'snapshots'
         self.backup_tool = self._detect_backup_tool()
 
         self._setup_css()
@@ -193,14 +194,14 @@ class BackupWindow(Adw.ApplicationWindow):
         header.add_css_class('header-bar')
 
         # Create backup button
-        create_btn = Gtk.Button(label="Create Snapshot")
+        create_btn = Gtk.Button(label='Create Snapshot')
         create_btn.add_css_class('create-button')
         create_btn.connect('clicked', self._on_create_snapshot)
         header.pack_end(create_btn)
 
         # Refresh button
-        refresh_btn = Gtk.Button(icon_name="view-refresh-symbolic")
-        refresh_btn.set_tooltip_text("Refresh snapshots")
+        refresh_btn = Gtk.Button(icon_name='view-refresh-symbolic')
+        refresh_btn.set_tooltip_text('Refresh snapshots')
         refresh_btn.connect('clicked', self._on_refresh)
         header.pack_end(refresh_btn)
 
@@ -219,16 +220,16 @@ class BackupWindow(Adw.ApplicationWindow):
 
         # Sidebar items
         sidebar_items = [
-            ("snapshots", "💾", "Snapshots"),
-            ("schedule", "📅", "Schedule"),
-            ("settings", "⚙️", "Settings"),
+            ('snapshots', '💾', 'Snapshots'),
+            ('schedule', '📅', 'Schedule'),
+            ('settings', '⚙️', 'Settings'),
         ]
 
         self.sidebar_buttons = {}
         for page_id, icon, label in sidebar_items:
             btn = Gtk.Button()
             btn.add_css_class('sidebar-item')
-            if page_id == "snapshots":
+            if page_id == 'snapshots':
                 btn.add_css_class('active')
 
             btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -277,12 +278,12 @@ class BackupWindow(Adw.ApplicationWindow):
         status_info.set_hexpand(True)
         self.status_card.append(status_info)
 
-        self.status_title = Gtk.Label(label="System Protected")
+        self.status_title = Gtk.Label(label='System Protected')
         self.status_title.add_css_class('status-title')
         self.status_title.set_halign(Gtk.Align.START)
         status_info.append(self.status_title)
 
-        self.status_subtitle = Gtk.Label(label="Last snapshot: Never")
+        self.status_subtitle = Gtk.Label(label='Last snapshot: Never')
         self.status_subtitle.add_css_class('status-subtitle')
         self.status_subtitle.set_halign(Gtk.Align.START)
         status_info.append(self.status_subtitle)
@@ -297,10 +298,12 @@ class BackupWindow(Adw.ApplicationWindow):
         info_box.add_css_class('info-banner')
         page.append(info_box)
 
-        info_icon = Gtk.Label(label="ℹ️")
+        info_icon = Gtk.Label(label='ℹ️')
         info_box.append(info_icon)
 
-        info_label = Gtk.Label(label="Snapshots let you restore your system to a previous state if something goes wrong.")
+        info_label = Gtk.Label(
+            label='Snapshots let you restore your system to a previous state if something goes wrong.'
+        )
         info_label.set_wrap(True)
         info_label.set_hexpand(True)
         info_box.append(info_label)
@@ -314,13 +317,13 @@ class BackupWindow(Adw.ApplicationWindow):
         header.add_css_class('backup-header')
         snapshots_card.append(header)
 
-        title = Gtk.Label(label="Available Snapshots")
+        title = Gtk.Label(label='Available Snapshots')
         title.add_css_class('backup-title')
         title.set_halign(Gtk.Align.START)
         title.set_hexpand(True)
         header.append(title)
 
-        self.snapshot_count = Gtk.Label(label="0 snapshots")
+        self.snapshot_count = Gtk.Label(label='0 snapshots')
         self.snapshot_count.add_css_class('snapshot-size')
         header.append(self.snapshot_count)
 
@@ -333,19 +336,19 @@ class BackupWindow(Adw.ApplicationWindow):
         self.empty_state.set_halign(Gtk.Align.CENTER)
         snapshots_card.append(self.empty_state)
 
-        empty_icon = Gtk.Label(label="📦")
+        empty_icon = Gtk.Label(label='📦')
         empty_icon.add_css_class('empty-icon')
         self.empty_state.append(empty_icon)
 
-        empty_title = Gtk.Label(label="No Snapshots Yet")
+        empty_title = Gtk.Label(label='No Snapshots Yet')
         empty_title.add_css_class('empty-title')
         self.empty_state.append(empty_title)
 
-        empty_desc = Gtk.Label(label="Create your first snapshot to protect your system.")
+        empty_desc = Gtk.Label(label='Create your first snapshot to protect your system.')
         empty_desc.add_css_class('empty-description')
         self.empty_state.append(empty_desc)
 
-        self.content_stack.add_named(scroll, "snapshots")
+        self.content_stack.add_named(scroll, 'snapshots')
 
     def _build_schedule_page(self):
         scroll = Gtk.ScrolledWindow()
@@ -356,12 +359,12 @@ class BackupWindow(Adw.ApplicationWindow):
         scroll.set_child(page)
 
         # Title
-        title = Gtk.Label(label="Automatic Snapshots")
+        title = Gtk.Label(label='Automatic Snapshots')
         title.set_markup(f'<span size="x-large" weight="bold" foreground="{COLORS["text"]}">Automatic Snapshots</span>')
         title.set_halign(Gtk.Align.START)
         page.append(title)
 
-        desc = Gtk.Label(label="Configure automatic snapshot schedule to keep your system protected.")
+        desc = Gtk.Label(label='Configure automatic snapshot schedule to keep your system protected.')
         desc.add_css_class('status-subtitle')
         desc.set_halign(Gtk.Align.START)
         page.append(desc)
@@ -372,46 +375,26 @@ class BackupWindow(Adw.ApplicationWindow):
         page.append(schedule_card)
 
         # Boot snapshots
-        boot_row = self._create_schedule_row(
-            "Boot Snapshots",
-            "Create a snapshot every time the system boots",
-            True
-        )
+        boot_row = self._create_schedule_row('Boot Snapshots', 'Create a snapshot every time the system boots', True)
         schedule_card.append(boot_row)
 
         # Hourly snapshots
-        hourly_row = self._create_schedule_row(
-            "Hourly Snapshots",
-            "Keep up to 5 hourly snapshots",
-            False
-        )
+        hourly_row = self._create_schedule_row('Hourly Snapshots', 'Keep up to 5 hourly snapshots', False)
         schedule_card.append(hourly_row)
 
         # Daily snapshots
-        daily_row = self._create_schedule_row(
-            "Daily Snapshots",
-            "Keep up to 7 daily snapshots",
-            True
-        )
+        daily_row = self._create_schedule_row('Daily Snapshots', 'Keep up to 7 daily snapshots', True)
         schedule_card.append(daily_row)
 
         # Weekly snapshots
-        weekly_row = self._create_schedule_row(
-            "Weekly Snapshots",
-            "Keep up to 4 weekly snapshots",
-            True
-        )
+        weekly_row = self._create_schedule_row('Weekly Snapshots', 'Keep up to 4 weekly snapshots', True)
         schedule_card.append(weekly_row)
 
         # Monthly snapshots
-        monthly_row = self._create_schedule_row(
-            "Monthly Snapshots",
-            "Keep up to 3 monthly snapshots",
-            False
-        )
+        monthly_row = self._create_schedule_row('Monthly Snapshots', 'Keep up to 3 monthly snapshots', False)
         schedule_card.append(monthly_row)
 
-        self.content_stack.add_named(scroll, "schedule")
+        self.content_stack.add_named(scroll, 'schedule')
 
     def _create_schedule_row(self, label: str, description: str, default: bool) -> Gtk.Widget:
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -447,7 +430,7 @@ class BackupWindow(Adw.ApplicationWindow):
         scroll.set_child(page)
 
         # Title
-        title = Gtk.Label(label="Backup Settings")
+        title = Gtk.Label(label='Backup Settings')
         title.set_markup(f'<span size="x-large" weight="bold" foreground="{COLORS["text"]}">Backup Settings</span>')
         title.set_halign(Gtk.Align.START)
         page.append(title)
@@ -466,21 +449,19 @@ class BackupWindow(Adw.ApplicationWindow):
         loc_info.set_hexpand(True)
         location_row.append(loc_info)
 
-        loc_label = Gtk.Label(label="Backup Location")
+        loc_label = Gtk.Label(label='Backup Location')
         loc_label.add_css_class('settings-label')
         loc_label.set_halign(Gtk.Align.START)
         loc_info.append(loc_label)
 
-        loc_desc = Gtk.Label(label="Where to store system snapshots")
+        loc_desc = Gtk.Label(label='Where to store system snapshots')
         loc_desc.add_css_class('settings-description')
         loc_desc.set_halign(Gtk.Align.START)
         loc_info.append(loc_desc)
 
-        location_dropdown = Gtk.DropDown.new_from_strings([
-            "Local disk (/.snapshots)",
-            "External drive",
-            "Network location"
-        ])
+        location_dropdown = Gtk.DropDown.new_from_strings(
+            ['Local disk (/.snapshots)', 'External drive', 'Network location']
+        )
         location_row.append(location_dropdown)
 
         # Include home
@@ -492,12 +473,12 @@ class BackupWindow(Adw.ApplicationWindow):
         home_info.set_hexpand(True)
         home_row.append(home_info)
 
-        home_label = Gtk.Label(label="Include Home Directory")
+        home_label = Gtk.Label(label='Include Home Directory')
         home_label.add_css_class('settings-label')
         home_label.set_halign(Gtk.Align.START)
         home_info.append(home_label)
 
-        home_desc = Gtk.Label(label="Back up user files along with system")
+        home_desc = Gtk.Label(label='Back up user files along with system')
         home_desc.add_css_class('settings-description')
         home_desc.set_halign(Gtk.Align.START)
         home_info.append(home_desc)
@@ -516,21 +497,17 @@ class BackupWindow(Adw.ApplicationWindow):
         comp_info.set_hexpand(True)
         compression_row.append(comp_info)
 
-        comp_label = Gtk.Label(label="Compression")
+        comp_label = Gtk.Label(label='Compression')
         comp_label.add_css_class('settings-label')
         comp_label.set_halign(Gtk.Align.START)
         comp_info.append(comp_label)
 
-        comp_desc = Gtk.Label(label="Compress snapshots to save space")
+        comp_desc = Gtk.Label(label='Compress snapshots to save space')
         comp_desc.add_css_class('settings-description')
         comp_desc.set_halign(Gtk.Align.START)
         comp_info.append(comp_desc)
 
-        comp_dropdown = Gtk.DropDown.new_from_strings([
-            "None (fastest)",
-            "Fast (zstd)",
-            "Maximum (zstd -19)"
-        ])
+        comp_dropdown = Gtk.DropDown.new_from_strings(['None (fastest)', 'Fast (zstd)', 'Maximum (zstd -19)'])
         comp_dropdown.set_selected(1)
         compression_row.append(comp_dropdown)
 
@@ -540,15 +517,17 @@ class BackupWindow(Adw.ApplicationWindow):
         warning_box.set_margin_top(16)
         page.append(warning_box)
 
-        warning_icon = Gtk.Label(label="⚠️")
+        warning_icon = Gtk.Label(label='⚠️')
         warning_box.append(warning_icon)
 
-        warning_label = Gtk.Label(label="System snapshots do not back up personal files. Use a separate backup solution for important data.")
+        warning_label = Gtk.Label(
+            label='System snapshots do not back up personal files. Use a separate backup solution for important data.'
+        )
         warning_label.set_wrap(True)
         warning_label.set_hexpand(True)
         warning_box.append(warning_label)
 
-        self.content_stack.add_named(scroll, "settings")
+        self.content_stack.add_named(scroll, 'settings')
 
     def _on_sidebar_click(self, button, page_id):
         for pid, btn in self.sidebar_buttons.items():
@@ -567,8 +546,7 @@ class BackupWindow(Adw.ApplicationWindow):
         try:
             if self.backup_tool == 'timeshift':
                 result = subprocess.run(
-                    ['timeshift', '--list', '--scripted'],
-                    capture_output=True, text=True, timeout=30
+                    ['timeshift', '--list', '--scripted'], capture_output=True, text=True, timeout=30
                 )
 
                 if result.returncode == 0:
@@ -577,44 +555,63 @@ class BackupWindow(Adw.ApplicationWindow):
                         if line.startswith('  '):
                             parts = line.split()
                             if len(parts) >= 4:
-                                self.snapshots.append(Snapshot(
-                                    id=parts[0],
-                                    name=parts[0],
-                                    date=datetime.strptime(f"{parts[1]} {parts[2]}", "%Y-%m-%d %H:%M:%S"),
-                                    snapshot_type=SnapshotType.MANUAL,
-                                    size=parts[3] if len(parts) > 3 else "Unknown",
-                                    description=""
-                                ))
+                                self.snapshots.append(
+                                    Snapshot(
+                                        id=parts[0],
+                                        name=parts[0],
+                                        date=datetime.strptime(f'{parts[1]} {parts[2]}', '%Y-%m-%d %H:%M:%S'),
+                                        snapshot_type=SnapshotType.MANUAL,
+                                        size=parts[3] if len(parts) > 3 else 'Unknown',
+                                        description='',
+                                    )
+                                )
 
             elif self.backup_tool == 'snapper':
-                result = subprocess.run(
-                    ['snapper', '--jsonout', 'list'],
-                    capture_output=True, text=True, timeout=30
-                )
+                result = subprocess.run(['snapper', '--jsonout', 'list'], capture_output=True, text=True, timeout=30)
 
                 if result.returncode == 0:
                     data = json.loads(result.stdout)
                     for snap in data.get('snapshots', []):
                         snap_type = snap.get('type', 'single')
-                        self.snapshots.append(Snapshot(
-                            id=str(snap.get('number', 0)),
-                            name=snap.get('description', f"Snapshot #{snap.get('number', 0)}"),
-                            date=datetime.fromisoformat(snap.get('date', '').replace('Z', '+00:00')),
-                            snapshot_type=SnapshotType.SCHEDULED if snap_type == 'pre' else SnapshotType.MANUAL,
-                            size=snap.get('cleanup', 'Unknown'),
-                            description=snap.get('description', '')
-                        ))
+                        self.snapshots.append(
+                            Snapshot(
+                                id=str(snap.get('number', 0)),
+                                name=snap.get('description', f'Snapshot #{snap.get("number", 0)}'),
+                                date=datetime.fromisoformat(snap.get('date', '').replace('Z', '+00:00')),
+                                snapshot_type=SnapshotType.SCHEDULED if snap_type == 'pre' else SnapshotType.MANUAL,
+                                size=snap.get('cleanup', 'Unknown'),
+                                description=snap.get('description', ''),
+                            )
+                        )
 
         except Exception:
             # Add mock snapshots for demonstration
             now = datetime.now()
             self.snapshots = [
-                Snapshot("1", "Before system update", datetime(now.year, now.month, now.day - 2, 10, 30),
-                         SnapshotType.MANUAL, "1.2 GB", "Created before updating packages"),
-                Snapshot("2", "Boot snapshot", datetime(now.year, now.month, now.day - 1, 8, 0),
-                         SnapshotType.BOOT, "856 MB", "Automatic boot snapshot"),
-                Snapshot("3", "Daily backup", datetime(now.year, now.month, now.day, 3, 0),
-                         SnapshotType.SCHEDULED, "1.1 GB", "Scheduled daily snapshot"),
+                Snapshot(
+                    '1',
+                    'Before system update',
+                    datetime(now.year, now.month, now.day - 2, 10, 30),
+                    SnapshotType.MANUAL,
+                    '1.2 GB',
+                    'Created before updating packages',
+                ),
+                Snapshot(
+                    '2',
+                    'Boot snapshot',
+                    datetime(now.year, now.month, now.day - 1, 8, 0),
+                    SnapshotType.BOOT,
+                    '856 MB',
+                    'Automatic boot snapshot',
+                ),
+                Snapshot(
+                    '3',
+                    'Daily backup',
+                    datetime(now.year, now.month, now.day, 3, 0),
+                    SnapshotType.SCHEDULED,
+                    '1.1 GB',
+                    'Scheduled daily snapshot',
+                ),
             ]
 
         self._populate_snapshots_list()
@@ -629,13 +626,13 @@ class BackupWindow(Adw.ApplicationWindow):
             self.snapshots_list.remove(child)
 
         # Update count
-        self.snapshot_count.set_label(f"{len(self.snapshots)} snapshots")
+        self.snapshot_count.set_label(f'{len(self.snapshots)} snapshots')
 
         # Show/hide empty state
         if not self.snapshots:
             self.empty_state.set_visible(True)
             self.snapshots_list.set_visible(False)
-            self.status_subtitle.set_text("Last snapshot: Never")
+            self.status_subtitle.set_text('Last snapshot: Never')
             return
 
         self.empty_state.set_visible(False)
@@ -643,7 +640,7 @@ class BackupWindow(Adw.ApplicationWindow):
 
         # Update status
         latest = max(self.snapshots, key=lambda s: s.date)
-        self.status_subtitle.set_text(f"Last snapshot: {latest.date.strftime('%Y-%m-%d %H:%M')}")
+        self.status_subtitle.set_text(f'Last snapshot: {latest.date.strftime("%Y-%m-%d %H:%M")}')
 
         # Add snapshot rows
         for snapshot in sorted(self.snapshots, key=lambda s: s.date, reverse=True):
@@ -676,7 +673,7 @@ class BackupWindow(Adw.ApplicationWindow):
         details_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
         info_box.append(details_box)
 
-        date_label = Gtk.Label(label=snapshot.date.strftime("%Y-%m-%d %H:%M"))
+        date_label = Gtk.Label(label=snapshot.date.strftime('%Y-%m-%d %H:%M'))
         date_label.add_css_class('snapshot-date')
         details_box.append(date_label)
 
@@ -688,12 +685,12 @@ class BackupWindow(Adw.ApplicationWindow):
         actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         row.append(actions_box)
 
-        restore_btn = Gtk.Button(label="Restore")
+        restore_btn = Gtk.Button(label='Restore')
         restore_btn.add_css_class('restore-button')
         restore_btn.connect('clicked', self._on_restore_snapshot, snapshot)
         actions_box.append(restore_btn)
 
-        delete_btn = Gtk.Button(label="🗑️")
+        delete_btn = Gtk.Button(label='🗑️')
         delete_btn.add_css_class('delete-button')
         delete_btn.connect('clicked', self._on_delete_snapshot, snapshot)
         actions_box.append(delete_btn)
@@ -706,48 +703,40 @@ class BackupWindow(Adw.ApplicationWindow):
     def _on_create_snapshot(self, button):
         """Create a new snapshot."""
         dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading="Create Snapshot",
-            body="Enter a name for this snapshot:"
+            transient_for=self, heading='Create Snapshot', body='Enter a name for this snapshot:'
         )
 
         entry = Gtk.Entry()
-        entry.set_placeholder_text("e.g., Before system update")
+        entry.set_placeholder_text('e.g., Before system update')
         dialog.set_extra_child(entry)
 
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("create", "Create")
-        dialog.set_response_appearance("create", Adw.ResponseAppearance.SUGGESTED)
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('create', 'Create')
+        dialog.set_response_appearance('create', Adw.ResponseAppearance.SUGGESTED)
 
         dialog.connect('response', self._on_create_response, entry)
         dialog.present()
 
     def _on_create_response(self, dialog, response, entry):
-        if response == "create":
-            name = entry.get_text().strip() or "Manual snapshot"
+        if response == 'create':
+            name = entry.get_text().strip() or 'Manual snapshot'
             self._do_create_snapshot(name)
 
     def _do_create_snapshot(self, name: str):
         """Actually create the snapshot."""
         # Show progress
-        progress_dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading="Creating Snapshot",
-            body="Please wait..."
-        )
+        progress_dialog = Adw.MessageDialog(transient_for=self, heading='Creating Snapshot', body='Please wait...')
         progress_dialog.present()
 
         def create_thread():
             try:
                 if self.backup_tool == 'timeshift':
                     subprocess.run(
-                        ['pkexec', 'timeshift', '--create', '--comments', name],
-                        capture_output=True, timeout=300
+                        ['pkexec', 'timeshift', '--create', '--comments', name], capture_output=True, timeout=300
                     )
                 elif self.backup_tool == 'snapper':
                     subprocess.run(
-                        ['pkexec', 'snapper', 'create', '--description', name],
-                        capture_output=True, timeout=300
+                        ['pkexec', 'snapper', 'create', '--description', name], capture_output=True, timeout=300
                     )
 
                 GLib.idle_add(self._snapshot_created, progress_dialog)
@@ -763,41 +752,37 @@ class BackupWindow(Adw.ApplicationWindow):
         self._load_snapshots()
 
         success_dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading="Snapshot Created",
-            body="Your system snapshot has been created successfully."
+            transient_for=self, heading='Snapshot Created', body='Your system snapshot has been created successfully.'
         )
-        success_dialog.add_response("ok", "OK")
+        success_dialog.add_response('ok', 'OK')
         success_dialog.present()
 
     def _snapshot_failed(self, dialog, error):
         dialog.close()
 
         error_dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading="Snapshot Failed",
-            body=f"Could not create snapshot: {error}"
+            transient_for=self, heading='Snapshot Failed', body=f'Could not create snapshot: {error}'
         )
-        error_dialog.add_response("ok", "OK")
+        error_dialog.add_response('ok', 'OK')
         error_dialog.present()
 
     def _on_restore_snapshot(self, button, snapshot: Snapshot):
         """Restore a snapshot."""
         dialog = Adw.MessageDialog(
             transient_for=self,
-            heading="Restore Snapshot?",
-            body=f"This will restore your system to the state from '{snapshot.name}' ({snapshot.date.strftime('%Y-%m-%d %H:%M')}).\n\nYour computer will need to restart. Make sure you've saved all your work."
+            heading='Restore Snapshot?',
+            body=f"This will restore your system to the state from '{snapshot.name}' ({snapshot.date.strftime('%Y-%m-%d %H:%M')}).\n\nYour computer will need to restart. Make sure you've saved all your work.",
         )
 
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("restore", "Restore")
-        dialog.set_response_appearance("restore", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('restore', 'Restore')
+        dialog.set_response_appearance('restore', Adw.ResponseAppearance.DESTRUCTIVE)
 
         dialog.connect('response', self._on_restore_response, snapshot)
         dialog.present()
 
     def _on_restore_response(self, dialog, response, snapshot: Snapshot):
-        if response == "restore":
+        if response == 'restore':
             try:
                 if self.backup_tool == 'timeshift':
                     subprocess.Popen(['pkexec', 'timeshift', '--restore', '--snapshot', snapshot.id])
@@ -810,30 +795,26 @@ class BackupWindow(Adw.ApplicationWindow):
         """Delete a snapshot."""
         dialog = Adw.MessageDialog(
             transient_for=self,
-            heading="Delete Snapshot?",
-            body=f"Are you sure you want to delete '{snapshot.name}'? This action cannot be undone."
+            heading='Delete Snapshot?',
+            body=f"Are you sure you want to delete '{snapshot.name}'? This action cannot be undone.",
         )
 
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("delete", "Delete")
-        dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('delete', 'Delete')
+        dialog.set_response_appearance('delete', Adw.ResponseAppearance.DESTRUCTIVE)
 
         dialog.connect('response', self._on_delete_response, snapshot)
         dialog.present()
 
     def _on_delete_response(self, dialog, response, snapshot: Snapshot):
-        if response == "delete":
+        if response == 'delete':
             try:
                 if self.backup_tool == 'timeshift':
                     subprocess.run(
-                        ['pkexec', 'timeshift', '--delete', '--snapshot', snapshot.id],
-                        capture_output=True, timeout=60
+                        ['pkexec', 'timeshift', '--delete', '--snapshot', snapshot.id], capture_output=True, timeout=60
                     )
                 elif self.backup_tool == 'snapper':
-                    subprocess.run(
-                        ['pkexec', 'snapper', 'delete', snapshot.id],
-                        capture_output=True, timeout=60
-                    )
+                    subprocess.run(['pkexec', 'snapper', 'delete', snapshot.id], capture_output=True, timeout=60)
 
                 self._load_snapshots()
             except Exception:
@@ -842,10 +823,7 @@ class BackupWindow(Adw.ApplicationWindow):
 
 class BackupApp(Adw.Application):
     def __init__(self):
-        super().__init__(
-            application_id='com.aegis.backup',
-            flags=Gio.ApplicationFlags.FLAGS_NONE
-        )
+        super().__init__(application_id='com.aegis.backup', flags=Gio.ApplicationFlags.FLAGS_NONE)
 
     def do_activate(self):
         win = BackupWindow(self)

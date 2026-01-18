@@ -5,6 +5,7 @@ A Rode Unify-style mixer for PipeWire with Catppuccin theming.
 """
 
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Gio, Pango
@@ -295,21 +296,21 @@ class ChannelStrip(Gtk.Box):
         buttons_box.set_halign(Gtk.Align.CENTER)
         self.append(buttons_box)
 
-        self.mute_btn = Gtk.ToggleButton(label="M")
+        self.mute_btn = Gtk.ToggleButton(label='M')
         self.mute_btn.add_css_class('mute-button')
         self.mute_btn.connect('toggled', self._on_mute_toggled)
         buttons_box.append(self.mute_btn)
 
-        self.solo_btn = Gtk.ToggleButton(label="S")
+        self.solo_btn = Gtk.ToggleButton(label='S')
         self.solo_btn.add_css_class('solo-button')
         self.solo_btn.connect('toggled', self._on_solo_toggled)
         buttons_box.append(self.solo_btn)
 
     def _format_db(self, value: float) -> str:
         if value <= 0:
-            return "-∞ dB"
+            return '-∞ dB'
         db = 20 * (value - 1)  # Simplified dB calculation
-        return f"{db:+.0f} dB"
+        return f'{db:+.0f} dB'
 
     def _on_volume_changed(self, scale):
         value = scale.get_value()
@@ -362,7 +363,7 @@ class MicrophoneSection(Gtk.Box):
         header_left.set_hexpand(True)
         header.append(header_left)
 
-        mic_icon = Gtk.Label(label="🎤")
+        mic_icon = Gtk.Label(label='🎤')
         mic_icon.set_markup('<span size="x-large">🎤</span>')
         header_left.append(mic_icon)
 
@@ -380,7 +381,7 @@ class MicrophoneSection(Gtk.Box):
         info_box.append(device_label)
 
         # Mute button
-        self.mute_btn = Gtk.ToggleButton(label="🔇 Mute")
+        self.mute_btn = Gtk.ToggleButton(label='🔇 Mute')
         self.mute_btn.add_css_class('mic-mute-button')
         self.mute_btn.set_active(mic.muted)
         if mic.muted:
@@ -400,13 +401,13 @@ class MicrophoneSection(Gtk.Box):
         meter_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         meter_box.append(meter_header)
 
-        meter_label = Gtk.Label(label="INPUT LEVEL")
+        meter_label = Gtk.Label(label='INPUT LEVEL')
         meter_label.add_css_class('section-label')
         meter_label.set_halign(Gtk.Align.START)
         meter_label.set_hexpand(True)
         meter_header.append(meter_label)
 
-        self.level_value = Gtk.Label(label="-12 dB")
+        self.level_value = Gtk.Label(label='-12 dB')
         self.level_value.set_markup(f'<span font_family="monospace" foreground="{COLORS["text"]}">-12 dB</span>')
         meter_header.append(self.level_value)
 
@@ -427,14 +428,16 @@ class MicrophoneSection(Gtk.Box):
         gain_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         gain_box.append(gain_header)
 
-        gain_label = Gtk.Label(label="GAIN")
+        gain_label = Gtk.Label(label='GAIN')
         gain_label.add_css_class('section-label')
         gain_label.set_halign(Gtk.Align.START)
         gain_label.set_hexpand(True)
         gain_header.append(gain_label)
 
         self.gain_value = Gtk.Label()
-        self.gain_value.set_markup(f'<span font_family="monospace" foreground="{COLORS["text"]}">{int(mic.volume * 100)}%</span>')
+        self.gain_value.set_markup(
+            f'<span font_family="monospace" foreground="{COLORS["text"]}">{int(mic.volume * 100)}%</span>'
+        )
         gain_header.append(self.gain_value)
 
         self.gain_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 1, 0.01)
@@ -447,7 +450,7 @@ class MicrophoneSection(Gtk.Box):
         dsp_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         mic_panel.append(dsp_box)
 
-        dsp_label = Gtk.Label(label="DSP PROCESSING (EasyEffects)")
+        dsp_label = Gtk.Label(label='DSP PROCESSING (EasyEffects)')
         dsp_label.add_css_class('section-label')
         dsp_label.set_halign(Gtk.Align.START)
         dsp_box.append(dsp_label)
@@ -458,10 +461,10 @@ class MicrophoneSection(Gtk.Box):
 
         # DSP toggles
         dsp_effects = [
-            ("Noise Gate", "noise_gate", mic.noise_gate),
-            ("Compressor", "compressor", mic.compressor),
-            ("5-Band EQ", "eq", mic.eq),
-            ("Limiter", "limiter", mic.limiter),
+            ('Noise Gate', 'noise_gate', mic.noise_gate),
+            ('Compressor', 'compressor', mic.compressor),
+            ('5-Band EQ', 'eq', mic.eq),
+            ('Limiter', 'limiter', mic.limiter),
         ]
 
         for name, attr, active in dsp_effects:
@@ -475,7 +478,7 @@ class MicrophoneSection(Gtk.Box):
             dsp_chips.append(chip)
 
         # EasyEffects button
-        effects_btn = Gtk.Button(label="Open EasyEffects")
+        effects_btn = Gtk.Button(label='Open EasyEffects')
         effects_btn.add_css_class('info-chip')
         effects_btn.connect('clicked', self._on_open_easyeffects)
         dsp_box.append(effects_btn)
@@ -484,29 +487,25 @@ class MicrophoneSection(Gtk.Box):
         self.mic.muted = button.get_active()
         if button.get_active():
             button.add_css_class('active')
-            button.set_label("🔇 Muted")
+            button.set_label('🔇 Muted')
         else:
             button.remove_css_class('active')
-            button.set_label("🔇 Mute")
+            button.set_label('🔇 Mute')
         # Update PipeWire mute state
         try:
-            subprocess.Popen([
-                'pactl', 'set-source-mute', '@DEFAULT_SOURCE@',
-                'yes' if self.mic.muted else 'no'
-            ])
+            subprocess.Popen(['pactl', 'set-source-mute', '@DEFAULT_SOURCE@', 'yes' if self.mic.muted else 'no'])
         except Exception:
             pass
 
     def _on_gain_changed(self, scale):
         value = scale.get_value()
         self.mic.volume = value
-        self.gain_value.set_markup(f'<span font_family="monospace" foreground="{COLORS["text"]}">{int(value * 100)}%</span>')
+        self.gain_value.set_markup(
+            f'<span font_family="monospace" foreground="{COLORS["text"]}">{int(value * 100)}%</span>'
+        )
         # Update PipeWire volume
         try:
-            subprocess.Popen([
-                'pactl', 'set-source-volume', '@DEFAULT_SOURCE@',
-                f'{int(value * 100)}%'
-            ])
+            subprocess.Popen(['pactl', 'set-source-volume', '@DEFAULT_SOURCE@', f'{int(value * 100)}%'])
         except Exception:
             pass
 
@@ -542,7 +541,7 @@ class MixerWindow(Adw.ApplicationWindow):
 
     def __init__(self, app):
         super().__init__(application=app)
-        self.set_title("Aegis Mixer")
+        self.set_title('Aegis Mixer')
         self.set_default_size(900, 600)
 
         self._setup_css()
@@ -564,13 +563,13 @@ class MixerWindow(Adw.ApplicationWindow):
         header.add_css_class('header-bar')
 
         # Settings button
-        settings_btn = Gtk.Button(icon_name="emblem-system-symbolic")
-        settings_btn.set_tooltip_text("Audio Settings")
+        settings_btn = Gtk.Button(icon_name='emblem-system-symbolic')
+        settings_btn.set_tooltip_text('Audio Settings')
         header.pack_end(settings_btn)
 
         # qpwgraph button
-        graph_btn = Gtk.Button(icon_name="view-grid-symbolic")
-        graph_btn.set_tooltip_text("Open qpwgraph")
+        graph_btn = Gtk.Button(icon_name='view-grid-symbolic')
+        graph_btn.set_tooltip_text('Open qpwgraph')
         graph_btn.connect('clicked', self._on_open_qpwgraph)
         header.pack_end(graph_btn)
 
@@ -587,11 +586,7 @@ class MixerWindow(Adw.ApplicationWindow):
         scroll.set_child(content)
 
         # Microphone section
-        self.mic_input = MicrophoneInput(
-            name="Microphone",
-            device="Built-in Audio / USB Microphone",
-            volume=0.80
-        )
+        self.mic_input = MicrophoneInput(name='Microphone', device='Built-in Audio / USB Microphone', volume=0.80)
         self.mic_section = MicrophoneSection(self.mic_input)
         content.append(self.mic_section)
 
@@ -607,12 +602,12 @@ class MixerWindow(Adw.ApplicationWindow):
 
         # Virtual sinks (matching the website design)
         self.sinks = [
-            VirtualSink("Music", "🎵", "green", "Spotify, VLC, MPV", 0.65),
-            VirtualSink("Voice Chat", "🎧", "teal", "Discord, Slack, Zoom", 0.70),
-            VirtualSink("Games", "🎮", "mauve", "Steam, Lutris, Wine", 0.60),
-            VirtualSink("Browser", "🌐", "blue", "Firefox, Chrome", 0.55),
-            VirtualSink("System", "🔔", "yellow", "Notifications, alerts", 0.40),
-            VirtualSink("Stream Mix", "📺", "red", "OBS capture source", 0.75),
+            VirtualSink('Music', '🎵', 'green', 'Spotify, VLC, MPV', 0.65),
+            VirtualSink('Voice Chat', '🎧', 'teal', 'Discord, Slack, Zoom', 0.70),
+            VirtualSink('Games', '🎮', 'mauve', 'Steam, Lutris, Wine', 0.60),
+            VirtualSink('Browser', '🌐', 'blue', 'Firefox, Chrome', 0.55),
+            VirtualSink('System', '🔔', 'yellow', 'Notifications, alerts', 0.40),
+            VirtualSink('Stream Mix', '📺', 'red', 'OBS capture source', 0.75),
         ]
 
         self.channel_strips = []
@@ -632,9 +627,9 @@ class MixerWindow(Adw.ApplicationWindow):
         master_section.append(info_box)
 
         chips = [
-            ("✓", "Apps auto-route"),
-            ("📋", "80+ app rules"),
-            ("🔀", "qpwgraph for routing"),
+            ('✓', 'Apps auto-route'),
+            ('📋', '80+ app rules'),
+            ('🔀', 'qpwgraph for routing'),
         ]
 
         for icon, text in chips:
@@ -655,7 +650,7 @@ class MixerWindow(Adw.ApplicationWindow):
         master_box.set_halign(Gtk.Align.END)
         master_section.append(master_box)
 
-        master_label = Gtk.Label(label="MASTER")
+        master_label = Gtk.Label(label='MASTER')
         master_label.add_css_class('master-label')
         master_box.append(master_label)
 
@@ -670,11 +665,11 @@ class MixerWindow(Adw.ApplicationWindow):
         self.master_meter.set_size_request(105, 8)  # 70%
         meter_container.append(self.master_meter)
 
-        self.master_volume = Gtk.Label(label="-3 dB")
+        self.master_volume = Gtk.Label(label='-3 dB')
         self.master_volume.add_css_class('master-volume')
         master_box.append(self.master_volume)
 
-        master_icon = Gtk.Label(label="🔊")
+        master_icon = Gtk.Label(label='🔊')
         master_icon.set_margin_start(8)
         master_box.append(master_icon)
 
@@ -690,6 +685,7 @@ class MixerWindow(Adw.ApplicationWindow):
         # In a real implementation, this would read from PipeWire
         # For now, just animate slightly
         import random
+
         width = 100 + random.randint(-10, 10)
         self.master_meter.set_size_request(width, 8)
 
@@ -702,10 +698,7 @@ class MixerWindow(Adw.ApplicationWindow):
 
 class MixerApp(Adw.Application):
     def __init__(self):
-        super().__init__(
-            application_id='com.aegis.mixer',
-            flags=Gio.ApplicationFlags.FLAGS_NONE
-        )
+        super().__init__(application_id='com.aegis.mixer', flags=Gio.ApplicationFlags.FLAGS_NONE)
 
     def do_activate(self):
         win = MixerWindow(self)

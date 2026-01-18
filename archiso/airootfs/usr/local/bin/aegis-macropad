@@ -7,6 +7,7 @@ Features customizable icons, lighting preset integration, and full edit mode.
 """
 
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Gio, GdkPixbuf
@@ -14,7 +15,7 @@ import json
 import subprocess
 from pathlib import Path
 from dataclasses import dataclass, asdict
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 # Import shared Aegis GTK library
 from aegis_gtk import (
@@ -58,19 +59,20 @@ APP_CSS = f"""
 @dataclass
 class DeckButton:
     """Represents a macro button configuration."""
+
     icon: str
     icon_type: str  # "emoji", "icon_name", "file_path"
     label: str
     color: str
-    action: str = ""
-    action_type: str = "command"  # "command", "hotkey", "text", "lighting_preset"
-    lighting_preset_id: Optional[str] = None
+    action: str = ''
+    action_type: str = 'command'  # "command", "hotkey", "text", "lighting_preset"
+    lighting_preset_id: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'DeckButton':
+    def from_dict(cls, data: dict[str, Any]) -> 'DeckButton':
         # Handle legacy format without icon_type
         if 'icon_type' not in data:
             data['icon_type'] = 'emoji'
@@ -81,30 +83,30 @@ class DeckButton:
             color=data.get('color', 'surface'),
             action=data.get('action', ''),
             action_type=data.get('action_type', 'command'),
-            lighting_preset_id=data.get('lighting_preset_id')
+            lighting_preset_id=data.get('lighting_preset_id'),
         )
 
 
 # Default button layout (5x3 grid)
 DEFAULT_BUTTONS = [
     # Row 1
-    DeckButton("🔴", "emoji", "LIVE", "red", "obs-cli start-streaming", "command"),
-    DeckButton("🎬", "emoji", "RECORD", "mauve", "obs-cli start-recording", "command"),
-    DeckButton("📷", "emoji", "SCENE 1", "blue", "obs-cli set-scene 'Scene 1'", "command"),
-    DeckButton("🎮", "emoji", "SCENE 2", "teal", "obs-cli set-scene 'Scene 2'", "command"),
-    DeckButton("💬", "emoji", "SCENE 3", "peach", "obs-cli set-scene 'Scene 3'", "command"),
+    DeckButton('🔴', 'emoji', 'LIVE', 'red', 'obs-cli start-streaming', 'command'),
+    DeckButton('🎬', 'emoji', 'RECORD', 'mauve', 'obs-cli start-recording', 'command'),
+    DeckButton('📷', 'emoji', 'SCENE 1', 'blue', "obs-cli set-scene 'Scene 1'", 'command'),
+    DeckButton('🎮', 'emoji', 'SCENE 2', 'teal', "obs-cli set-scene 'Scene 2'", 'command'),
+    DeckButton('💬', 'emoji', 'SCENE 3', 'peach', "obs-cli set-scene 'Scene 3'", 'command'),
     # Row 2
-    DeckButton("🎤", "emoji", "MIC", "green", "pactl set-source-mute @DEFAULT_SOURCE@ toggle", "command"),
-    DeckButton("🔊", "emoji", "MUSIC", "pink", "playerctl play-pause", "command"),
-    DeckButton("🌅", "emoji", "WARM", "peach", "", "lighting_preset", "warm"),
-    DeckButton("🎬", "emoji", "STUDIO", "yellow", "", "lighting_preset", "studio"),
-    DeckButton("☀️", "emoji", "DAYLIGHT", "sky", "", "lighting_preset", "daylight"),
+    DeckButton('🎤', 'emoji', 'MIC', 'green', 'pactl set-source-mute @DEFAULT_SOURCE@ toggle', 'command'),
+    DeckButton('🔊', 'emoji', 'MUSIC', 'pink', 'playerctl play-pause', 'command'),
+    DeckButton('🌅', 'emoji', 'WARM', 'peach', '', 'lighting_preset', 'warm'),
+    DeckButton('🎬', 'emoji', 'STUDIO', 'yellow', '', 'lighting_preset', 'studio'),
+    DeckButton('☀️', 'emoji', 'DAYLIGHT', 'sky', '', 'lighting_preset', 'daylight'),
     # Row 3
-    DeckButton("🎵", "emoji", "SFX 1", "lavender", "paplay /usr/share/sounds/sfx/sound1.wav", "command"),
-    DeckButton("🎶", "emoji", "SFX 2", "sapphire", "paplay /usr/share/sounds/sfx/sound2.wav", "command"),
-    DeckButton("👏", "emoji", "SFX 3", "flamingo", "paplay /usr/share/sounds/sfx/sound3.wav", "command"),
-    DeckButton("🌙", "emoji", "LIGHT OFF", "surface1", "", "lighting_preset", "off"),
-    DeckButton("⚙️", "emoji", "CONFIG", "surface1", "", "command"),
+    DeckButton('🎵', 'emoji', 'SFX 1', 'lavender', 'paplay /usr/share/sounds/sfx/sound1.wav', 'command'),
+    DeckButton('🎶', 'emoji', 'SFX 2', 'sapphire', 'paplay /usr/share/sounds/sfx/sound2.wav', 'command'),
+    DeckButton('👏', 'emoji', 'SFX 3', 'flamingo', 'paplay /usr/share/sounds/sfx/sound3.wav', 'command'),
+    DeckButton('🌙', 'emoji', 'LIGHT OFF', 'surface1', '', 'lighting_preset', 'off'),
+    DeckButton('⚙️', 'emoji', 'CONFIG', 'surface1', '', 'command'),
 ]
 
 
@@ -112,19 +114,19 @@ class ButtonEditDialog(Adw.Window):
     """Dialog for editing a macro button."""
 
     ACTION_TYPES = [
-        ("command", "Shell Command"),
-        ("lighting_preset", "Lighting Preset"),
-        ("hotkey", "Keyboard Shortcut"),
-        ("text", "Text Input"),
+        ('command', 'Shell Command'),
+        ('lighting_preset', 'Lighting Preset'),
+        ('hotkey', 'Keyboard Shortcut'),
+        ('text', 'Text Input'),
     ]
 
-    def __init__(self, parent, button: Optional[DeckButton] = None):
+    def __init__(self, parent, button: DeckButton | None = None):
         super().__init__(transient_for=parent, modal=True)
-        self.set_title("Edit Button" if button else "New Button")
+        self.set_title('Edit Button' if button else 'New Button')
         self.set_default_size(450, 600)
 
-        self.button_data = button or DeckButton("", "emoji", "", "surface1", "", "command")
-        self.result: Optional[DeckButton] = None
+        self.button_data = button or DeckButton('', 'emoji', '', 'surface1', '', 'command')
+        self.result: DeckButton | None = None
 
         self._build_ui()
 
@@ -138,11 +140,11 @@ class ButtonEditDialog(Adw.Window):
         header = Adw.HeaderBar()
         header.add_css_class('header-bar')
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label='Cancel')
         cancel_btn.connect('clicked', lambda b: self.close())
         header.pack_start(cancel_btn)
 
-        save_btn = Gtk.Button(label="Save")
+        save_btn = Gtk.Button(label='Save')
         save_btn.add_css_class('primary-button')
         save_btn.connect('clicked', self._on_save)
         header.pack_end(save_btn)
@@ -164,7 +166,7 @@ class ButtonEditDialog(Adw.Window):
         preview_box.set_halign(Gtk.Align.CENTER)
         content.append(preview_box)
 
-        preview_label = Gtk.Label(label="Preview")
+        preview_label = Gtk.Label(label='Preview')
         preview_label.add_css_class('section-title')
         preview_box.append(preview_label)
 
@@ -181,17 +183,17 @@ class ButtonEditDialog(Adw.Window):
         icon_section = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         content.append(icon_section)
 
-        icon_label = Gtk.Label(label="Icon")
+        icon_label = Gtk.Label(label='Icon')
         icon_label.add_css_class('section-title')
         icon_label.set_hexpand(True)
         icon_label.set_halign(Gtk.Align.START)
         icon_section.append(icon_label)
 
-        self.icon_display = Gtk.Label(label=self.button_data.icon or "None")
+        self.icon_display = Gtk.Label(label=self.button_data.icon or 'None')
         self.icon_display.set_size_request(40, -1)
         icon_section.append(self.icon_display)
 
-        choose_icon_btn = Gtk.Button(label="Choose...")
+        choose_icon_btn = Gtk.Button(label='Choose...')
         choose_icon_btn.connect('clicked', self._on_choose_icon)
         icon_section.append(choose_icon_btn)
 
@@ -199,13 +201,13 @@ class ButtonEditDialog(Adw.Window):
         label_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         content.append(label_box)
 
-        label_label = Gtk.Label(label="Label")
+        label_label = Gtk.Label(label='Label')
         label_label.add_css_class('section-title')
         label_label.set_halign(Gtk.Align.START)
         label_box.append(label_label)
 
         self.label_entry = Gtk.Entry()
-        self.label_entry.set_placeholder_text("Button Label")
+        self.label_entry.set_placeholder_text('Button Label')
         self.label_entry.set_text(self.button_data.label)
         self.label_entry.connect('changed', self._on_label_changed)
         label_box.append(self.label_entry)
@@ -214,15 +216,13 @@ class ButtonEditDialog(Adw.Window):
         color_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         content.append(color_box)
 
-        color_label = Gtk.Label(label="Color")
+        color_label = Gtk.Label(label='Color')
         color_label.add_css_class('section-title')
         color_label.set_halign(Gtk.Align.START)
         color_box.append(color_label)
 
         self.color_picker = ColorPickerRow(
-            selected_color=self.button_data.color,
-            colors=ACCENT_COLORS,
-            on_change=self._on_color_changed
+            selected_color=self.button_data.color, colors=ACCENT_COLORS, on_change=self._on_color_changed
         )
         color_box.append(self.color_picker)
 
@@ -230,7 +230,7 @@ class ButtonEditDialog(Adw.Window):
         action_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         content.append(action_box)
 
-        action_label = Gtk.Label(label="Action Type")
+        action_label = Gtk.Label(label='Action Type')
         action_label.add_css_class('section-title')
         action_label.set_halign(Gtk.Align.START)
         action_box.append(action_label)
@@ -254,28 +254,28 @@ class ButtonEditDialog(Adw.Window):
 
         # Command input
         command_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        command_label = Gtk.Label(label="Command")
+        command_label = Gtk.Label(label='Command')
         command_label.add_css_class('subtitle')
         command_label.set_halign(Gtk.Align.START)
         command_box.append(command_label)
 
         self.command_entry = Gtk.Entry()
-        self.command_entry.set_placeholder_text("e.g., pactl set-source-mute @DEFAULT_SOURCE@ toggle")
-        if self.button_data.action_type == "command":
+        self.command_entry.set_placeholder_text('e.g., pactl set-source-mute @DEFAULT_SOURCE@ toggle')
+        if self.button_data.action_type == 'command':
             self.command_entry.set_text(self.button_data.action)
         command_box.append(self.command_entry)
-        self.action_stack.add_named(command_box, "command")
+        self.action_stack.add_named(command_box, 'command')
 
         # Lighting preset dropdown
         preset_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        preset_label = Gtk.Label(label="Lighting Preset")
+        preset_label = Gtk.Label(label='Lighting Preset')
         preset_label.add_css_class('subtitle')
         preset_label.set_halign(Gtk.Align.START)
         preset_box.append(preset_label)
 
         self.presets = LightingPresetAPI.get_presets()
-        preset_names = [f"{p['icon']} {p['name']}" for p in self.presets]
-        self.preset_dropdown = Gtk.DropDown.new_from_strings(preset_names if preset_names else ["No presets available"])
+        preset_names = [f'{p["icon"]} {p["name"]}' for p in self.presets]
+        self.preset_dropdown = Gtk.DropDown.new_from_strings(preset_names if preset_names else ['No presets available'])
 
         # Set current preset
         if self.button_data.lighting_preset_id:
@@ -286,40 +286,40 @@ class ButtonEditDialog(Adw.Window):
 
         preset_box.append(self.preset_dropdown)
 
-        refresh_btn = Gtk.Button(label="Refresh Presets")
+        refresh_btn = Gtk.Button(label='Refresh Presets')
         refresh_btn.set_halign(Gtk.Align.START)
         refresh_btn.connect('clicked', self._on_refresh_presets)
         preset_box.append(refresh_btn)
 
-        self.action_stack.add_named(preset_box, "lighting_preset")
+        self.action_stack.add_named(preset_box, 'lighting_preset')
 
         # Hotkey input
         hotkey_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        hotkey_label = Gtk.Label(label="Keyboard Shortcut")
+        hotkey_label = Gtk.Label(label='Keyboard Shortcut')
         hotkey_label.add_css_class('subtitle')
         hotkey_label.set_halign(Gtk.Align.START)
         hotkey_box.append(hotkey_label)
 
         self.hotkey_entry = Gtk.Entry()
-        self.hotkey_entry.set_placeholder_text("e.g., ctrl+shift+a")
-        if self.button_data.action_type == "hotkey":
+        self.hotkey_entry.set_placeholder_text('e.g., ctrl+shift+a')
+        if self.button_data.action_type == 'hotkey':
             self.hotkey_entry.set_text(self.button_data.action)
         hotkey_box.append(self.hotkey_entry)
-        self.action_stack.add_named(hotkey_box, "hotkey")
+        self.action_stack.add_named(hotkey_box, 'hotkey')
 
         # Text input
         text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        text_label = Gtk.Label(label="Text to Type")
+        text_label = Gtk.Label(label='Text to Type')
         text_label.add_css_class('subtitle')
         text_label.set_halign(Gtk.Align.START)
         text_box.append(text_label)
 
         self.text_entry = Gtk.Entry()
-        self.text_entry.set_placeholder_text("Text to input when pressed")
-        if self.button_data.action_type == "text":
+        self.text_entry.set_placeholder_text('Text to input when pressed')
+        if self.button_data.action_type == 'text':
             self.text_entry.set_text(self.button_data.action)
         text_box.append(self.text_entry)
-        self.action_stack.add_named(text_box, "text")
+        self.action_stack.add_named(text_box, 'text')
 
         # Show correct action input
         self.action_stack.set_visible_child_name(self.button_data.action_type)
@@ -330,24 +330,24 @@ class ButtonEditDialog(Adw.Window):
         preview_box.set_valign(Gtk.Align.CENTER)
 
         # Icon
-        if self.button_data.icon_type == "emoji":
-            icon_widget = Gtk.Label(label=self.button_data.icon or "?")
+        if self.button_data.icon_type == 'emoji':
+            icon_widget = Gtk.Label(label=self.button_data.icon or '?')
             icon_widget.add_css_class('button-icon')
-        elif self.button_data.icon_type == "icon_name":
-            icon_widget = Gtk.Image.new_from_icon_name(self.button_data.icon or "dialog-question-symbolic")
+        elif self.button_data.icon_type == 'icon_name':
+            icon_widget = Gtk.Image.new_from_icon_name(self.button_data.icon or 'dialog-question-symbolic')
             icon_widget.set_pixel_size(28)
         else:
             try:
                 pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.button_data.icon, 28, 28, True)
                 icon_widget = Gtk.Image.new_from_pixbuf(pixbuf)
             except Exception:
-                icon_widget = Gtk.Image.new_from_icon_name("dialog-question-symbolic")
+                icon_widget = Gtk.Image.new_from_icon_name('dialog-question-symbolic')
                 icon_widget.set_pixel_size(28)
 
         preview_box.append(icon_widget)
 
         # Label
-        label = Gtk.Label(label=self.button_data.label or "LABEL")
+        label = Gtk.Label(label=self.button_data.label or 'LABEL')
         label.add_css_class('button-label')
         text_color = COLORS['crust'] if needs_dark_text(self.button_data.color) else 'white'
         label.set_markup(f'<span foreground="{text_color}">{self.button_data.label or "LABEL"}</span>')
@@ -360,7 +360,7 @@ class ButtonEditDialog(Adw.Window):
             self,
             current_icon=self.button_data.icon,
             current_type=self.button_data.icon_type,
-            on_select=self._on_icon_selected
+            on_select=self._on_icon_selected,
         )
         dialog.present()
 
@@ -368,9 +368,9 @@ class ButtonEditDialog(Adw.Window):
         self.button_data.icon = icon
         self.button_data.icon_type = icon_type
 
-        if icon_type == "emoji":
+        if icon_type == 'emoji':
             self.icon_display.set_text(icon)
-        elif icon_type == "icon_name":
+        elif icon_type == 'icon_name':
             self.icon_display.set_text(icon.replace('-symbolic', ''))
         else:
             self.icon_display.set_text(Path(icon).name)
@@ -396,7 +396,7 @@ class ButtonEditDialog(Adw.Window):
 
     def _on_refresh_presets(self, button):
         self.presets = LightingPresetAPI.get_presets()
-        preset_names = [f"{p['icon']} {p['name']}" for p in self.presets]
+        preset_names = [f'{p["icon"]} {p["name"]}' for p in self.presets]
         model = Gtk.StringList()
         for name in preset_names:
             model.append(name)
@@ -404,18 +404,18 @@ class ButtonEditDialog(Adw.Window):
 
     def _on_save(self, button):
         action_type = self.button_data.action_type
-        action = ""
+        action = ''
         preset_id = None
 
-        if action_type == "command":
+        if action_type == 'command':
             action = self.command_entry.get_text()
-        elif action_type == "lighting_preset":
+        elif action_type == 'lighting_preset':
             idx = self.preset_dropdown.get_selected()
             if 0 <= idx < len(self.presets):
                 preset_id = self.presets[idx]['id']
-        elif action_type == "hotkey":
+        elif action_type == 'hotkey':
             action = self.hotkey_entry.get_text()
-        elif action_type == "text":
+        elif action_type == 'text':
             action = self.text_entry.get_text()
 
         self.result = DeckButton(
@@ -425,7 +425,7 @@ class ButtonEditDialog(Adw.Window):
             color=self.button_data.color,
             action=action,
             action_type=action_type,
-            lighting_preset_id=preset_id
+            lighting_preset_id=preset_id,
         )
         self.close()
 
@@ -455,26 +455,26 @@ class MacropadButton(Gtk.Button):
         self.set_child(box)
 
         # Icon based on type
-        if self.button_data.icon_type == "emoji" or not self.button_data.icon_type:
-            icon = Gtk.Label(label=self.button_data.icon or "?")
+        if self.button_data.icon_type == 'emoji' or not self.button_data.icon_type:
+            icon = Gtk.Label(label=self.button_data.icon or '?')
             icon.add_css_class('button-icon')
             box.append(icon)
-        elif self.button_data.icon_type == "icon_name":
-            icon = Gtk.Image.new_from_icon_name(self.button_data.icon or "dialog-question-symbolic")
+        elif self.button_data.icon_type == 'icon_name':
+            icon = Gtk.Image.new_from_icon_name(self.button_data.icon or 'dialog-question-symbolic')
             icon.set_pixel_size(28)
             icon.add_css_class('button-icon-image')
             box.append(icon)
-        elif self.button_data.icon_type == "file_path":
+        elif self.button_data.icon_type == 'file_path':
             try:
                 expanded_path = Path(self.button_data.icon).expanduser()
                 if expanded_path.exists():
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(expanded_path), 28, 28, True)
                     icon = Gtk.Image.new_from_pixbuf(pixbuf)
                 else:
-                    icon = Gtk.Image.new_from_icon_name("dialog-question-symbolic")
+                    icon = Gtk.Image.new_from_icon_name('dialog-question-symbolic')
                     icon.set_pixel_size(28)
             except Exception:
-                icon = Gtk.Image.new_from_icon_name("dialog-question-symbolic")
+                icon = Gtk.Image.new_from_icon_name('dialog-question-symbolic')
                 icon.set_pixel_size(28)
             icon.add_css_class('button-icon-image')
             box.append(icon)
@@ -491,38 +491,35 @@ class MacropadButton(Gtk.Button):
         if self.edit_mode:
             return
 
-        if self.button_data.action_type == "lighting_preset":
+        if self.button_data.action_type == 'lighting_preset':
             if self.button_data.lighting_preset_id:
                 run_in_thread(self._apply_lighting_preset)
-        elif self.button_data.action_type == "command" and self.button_data.action:
+        elif self.button_data.action_type == 'command' and self.button_data.action:
             try:
                 subprocess.Popen(
-                    self.button_data.action,
-                    shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    self.button_data.action, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
                 self._show_success()
             except Exception:
                 self._show_error()
-        elif self.button_data.action_type == "hotkey" and self.button_data.action:
+        elif self.button_data.action_type == 'hotkey' and self.button_data.action:
             try:
                 subprocess.Popen(
-                    f"xdotool key {self.button_data.action}",
+                    f'xdotool key {self.button_data.action}',
                     shell=True,
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    stderr=subprocess.DEVNULL,
                 )
                 self._show_success()
             except Exception:
                 self._show_error()
-        elif self.button_data.action_type == "text" and self.button_data.action:
+        elif self.button_data.action_type == 'text' and self.button_data.action:
             try:
                 subprocess.Popen(
                     f"xdotool type '{self.button_data.action}'",
                     shell=True,
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    stderr=subprocess.DEVNULL,
                 )
                 self._show_success()
             except Exception:
@@ -546,15 +543,15 @@ class MacropadWindow(Adw.ApplicationWindow):
 
     def __init__(self, app):
         super().__init__(application=app)
-        self.set_title("Aegis Macropad")
+        self.set_title('Aegis Macropad')
         self.set_default_size(520, 480)
 
-        self.pages: List[List[DeckButton]] = [DEFAULT_BUTTONS.copy(), [], []]
+        self.pages: list[list[DeckButton]] = [DEFAULT_BUTTONS.copy(), [], []]
         self.current_page = 0
         self.edit_mode = False
-        self.config_path = Path.home() / ".config" / "aegis" / "macropad" / "config.json"
-        self.button_widgets: List[MacropadButton] = []
-        self.page_indicators: List[Gtk.Button] = []
+        self.config_path = Path.home() / '.config' / 'aegis' / 'macropad' / 'config.json'
+        self.button_widgets: list[MacropadButton] = []
+        self.page_indicators: list[Gtk.Button] = []
 
         setup_css(self, APP_CSS)
         self._build_ui()
@@ -571,18 +568,18 @@ class MacropadWindow(Adw.ApplicationWindow):
         # Device status
         status_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
 
-        device_icon = Gtk.Label(label="🎮")
+        device_icon = Gtk.Label(label='🎮')
         status_box.append(device_icon)
 
         device_info = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         device_info.set_valign(Gtk.Align.CENTER)
 
-        device_name = Gtk.Label(label="Macropad")
+        device_name = Gtk.Label(label='Macropad')
         device_name.add_css_class('title')
         device_name.set_halign(Gtk.Align.START)
         device_info.append(device_name)
 
-        self.status_label = Gtk.Label(label="● Virtual")
+        self.status_label = Gtk.Label(label='● Virtual')
         self.status_label.add_css_class('status-connected')
         self.status_label.set_halign(Gtk.Align.START)
         device_info.append(self.status_label)
@@ -591,18 +588,18 @@ class MacropadWindow(Adw.ApplicationWindow):
         header.set_title_widget(status_box)
 
         # Edit button
-        self.edit_btn = Gtk.Button(icon_name="document-edit-symbolic")
-        self.edit_btn.set_tooltip_text("Edit buttons")
+        self.edit_btn = Gtk.Button(icon_name='document-edit-symbolic')
+        self.edit_btn.set_tooltip_text('Edit buttons')
         self.edit_btn.connect('clicked', self._on_edit_mode_toggled)
         header.pack_end(self.edit_btn)
 
         # Menu button
-        menu_btn = Gtk.MenuButton(icon_name="open-menu-symbolic")
-        menu_btn.set_tooltip_text("Menu")
+        menu_btn = Gtk.MenuButton(icon_name='open-menu-symbolic')
+        menu_btn.set_tooltip_text('Menu')
 
         menu = Gio.Menu()
-        menu.append("Import Config", "app.import")
-        menu.append("Export Config", "app.export")
+        menu.append('Import Config', 'app.import')
+        menu.append('Export Config', 'app.export')
         menu_btn.set_menu_model(menu)
         header.pack_end(menu_btn)
 
@@ -651,7 +648,7 @@ class MacropadWindow(Adw.ApplicationWindow):
         chips_box.set_margin_top(8)
         content.append(chips_box)
 
-        categories = ["Streaming", "Audio", "Lighting", "System"]
+        categories = ['Streaming', 'Audio', 'Lighting', 'System']
         for cat in categories:
             chip = Gtk.Label(label=cat)
             chip.add_css_class('chip')
@@ -662,12 +659,12 @@ class MacropadWindow(Adw.ApplicationWindow):
 
     def _setup_actions(self):
         """Setup application actions."""
-        import_action = Gio.SimpleAction.new("import", None)
-        import_action.connect("activate", self._on_import_config)
+        import_action = Gio.SimpleAction.new('import', None)
+        import_action.connect('activate', self._on_import_config)
         self.get_application().add_action(import_action)
 
-        export_action = Gio.SimpleAction.new("export", None)
-        export_action.connect("activate", self._on_export_config)
+        export_action = Gio.SimpleAction.new('export', None)
+        export_action.connect('activate', self._on_export_config)
         self.get_application().add_action(export_action)
 
     def _populate_buttons(self):
@@ -682,7 +679,7 @@ class MacropadWindow(Adw.ApplicationWindow):
         buttons = self.pages[self.current_page] if self.current_page < len(self.pages) else []
 
         while len(buttons) < 15:
-            buttons.append(DeckButton("", "emoji", "", "surface1", "", "command"))
+            buttons.append(DeckButton('', 'emoji', '', 'surface1', '', 'command'))
 
         for i, btn_data in enumerate(buttons[:15]):
             row = i // 5
@@ -699,10 +696,10 @@ class MacropadWindow(Adw.ApplicationWindow):
 
         if self.edit_mode:
             self.edit_btn.add_css_class('edit-btn-active')
-            self.status_label.set_text("● Edit Mode")
+            self.status_label.set_text('● Edit Mode')
         else:
             self.edit_btn.remove_css_class('edit-btn-active')
-            self.status_label.set_text("● Virtual")
+            self.status_label.set_text('● Virtual')
             self._save_config()
 
         self._populate_buttons()
@@ -714,7 +711,7 @@ class MacropadWindow(Adw.ApplicationWindow):
 
         current_buttons = self.pages[self.current_page]
         while len(current_buttons) <= index:
-            current_buttons.append(DeckButton("", "emoji", "", "surface1", "", "command"))
+            current_buttons.append(DeckButton('', 'emoji', '', 'surface1', '', 'command'))
 
         dialog = ButtonEditDialog(self, current_buttons[index])
         dialog.connect('close-request', lambda d: self._on_button_edit_closed(d, index))
@@ -748,39 +745,35 @@ class MacropadWindow(Adw.ApplicationWindow):
                     for i, page_data in enumerate(config.get('pages', [])):
                         if i < len(self.pages):
                             self.pages[i] = [
-                                DeckButton.from_dict(btn_data)
-                                for btn_data in page_data.get('buttons', [])
+                                DeckButton.from_dict(btn_data) for btn_data in page_data.get('buttons', [])
                             ]
 
                     self.current_page = config.get('active_page', 0)
                     self._populate_buttons()
         except Exception as e:
-            print(f"Error loading config: {e}")
+            print(f'Error loading config: {e}')
 
     def _save_config(self):
         """Save configuration."""
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             config = {
-                'pages': [
-                    {'buttons': [btn.to_dict() for btn in page]}
-                    for page in self.pages
-                ],
-                'active_page': self.current_page
+                'pages': [{'buttons': [btn.to_dict() for btn in page]} for page in self.pages],
+                'active_page': self.current_page,
             }
             with open(self.config_path, 'w') as f:
                 json.dump(config, f, indent=2)
         except Exception as e:
-            print(f"Error saving config: {e}")
+            print(f'Error saving config: {e}')
 
     def _on_import_config(self, action, param):
         """Import configuration from file."""
         dialog = Gtk.FileDialog()
-        dialog.set_title("Import Configuration")
+        dialog.set_title('Import Configuration')
 
         filter_json = Gtk.FileFilter()
-        filter_json.add_pattern("*.json")
-        filter_json.set_name("JSON files")
+        filter_json.add_pattern('*.json')
+        filter_json.set_name('JSON files')
 
         filters = Gio.ListStore.new(Gtk.FileFilter)
         filters.append(filter_json)
@@ -797,10 +790,7 @@ class MacropadWindow(Adw.ApplicationWindow):
 
                 for i, page_data in enumerate(config.get('pages', [])):
                     if i < len(self.pages):
-                        self.pages[i] = [
-                            DeckButton.from_dict(btn_data)
-                            for btn_data in page_data.get('buttons', [])
-                        ]
+                        self.pages[i] = [DeckButton.from_dict(btn_data) for btn_data in page_data.get('buttons', [])]
 
                 self._populate_buttons()
                 self._save_config()
@@ -810,8 +800,8 @@ class MacropadWindow(Adw.ApplicationWindow):
     def _on_export_config(self, action, param):
         """Export configuration to file."""
         dialog = Gtk.FileDialog()
-        dialog.set_title("Export Configuration")
-        dialog.set_initial_name("macropad-config.json")
+        dialog.set_title('Export Configuration')
+        dialog.set_initial_name('macropad-config.json')
         dialog.save(self, None, self._on_export_file_selected)
 
     def _on_export_file_selected(self, dialog, result):
@@ -819,11 +809,8 @@ class MacropadWindow(Adw.ApplicationWindow):
             file = dialog.save_finish(result)
             if file:
                 config = {
-                    'pages': [
-                        {'buttons': [btn.to_dict() for btn in page]}
-                        for page in self.pages
-                    ],
-                    'active_page': self.current_page
+                    'pages': [{'buttons': [btn.to_dict() for btn in page]} for page in self.pages],
+                    'active_page': self.current_page,
                 }
                 with open(file.get_path(), 'w') as f:
                     json.dump(config, f, indent=2)
@@ -833,10 +820,7 @@ class MacropadWindow(Adw.ApplicationWindow):
 
 class MacropadApp(Adw.Application):
     def __init__(self):
-        super().__init__(
-            application_id='com.aegis.macropad',
-            flags=Gio.ApplicationFlags.FLAGS_NONE
-        )
+        super().__init__(application_id='com.aegis.macropad', flags=Gio.ApplicationFlags.FLAGS_NONE)
 
     def do_activate(self):
         win = MacropadWindow(self)

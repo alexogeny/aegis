@@ -7,13 +7,14 @@ Features user-definable presets with save/edit/delete functionality.
 """
 
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Gio
 import json
 import subprocess
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional
 
 # Import shared Aegis GTK library
 from aegis_gtk import (
@@ -118,23 +119,24 @@ class PresetEditorDialog(Adw.Window):
     """Dialog for creating/editing lighting presets."""
 
     EMOJI_CATEGORIES = {
-        "Lighting": ["💡", "🔆", "🌅", "☀️", "🌙", "✨", "🌟", "⚡"],
-        "Studio": ["🎬", "📷", "🎥", "📺", "🖥️", "💻", "🎮", "🎧"],
-        "Nature": ["🌈", "🔥", "❄️", "🌊", "🌴", "🌸", "🍃", "🌺"],
+        'Lighting': ['💡', '🔆', '🌅', '☀️', '🌙', '✨', '🌟', '⚡'],
+        'Studio': ['🎬', '📷', '🎥', '📺', '🖥️', '💻', '🎮', '🎧'],
+        'Nature': ['🌈', '🔥', '❄️', '🌊', '🌴', '🌸', '🍃', '🌺'],
     }
 
-    COLOR_OPTIONS = ["peach", "yellow", "sky", "mauve", "blue", "teal", "green", "pink", "red", "surface1"]
+    COLOR_OPTIONS = ['peach', 'yellow', 'sky', 'mauve', 'blue', 'teal', 'green', 'pink', 'red', 'surface1']
 
-    def __init__(self, parent, preset: Optional[LightingPreset] = None,
-                 current_temp: int = 4500, current_brightness: int = 50):
+    def __init__(
+        self, parent, preset: LightingPreset | None = None, current_temp: int = 4500, current_brightness: int = 50
+    ):
         super().__init__(transient_for=parent, modal=True)
-        self.set_title("Edit Preset" if preset else "New Preset")
+        self.set_title('Edit Preset' if preset else 'New Preset')
         self.set_default_size(400, 550)
 
         self.preset = preset
-        self.selected_icon = preset.icon if preset else "💡"
-        self.selected_color = preset.color if preset else "yellow"
-        self.result: Optional[Dict] = None
+        self.selected_icon = preset.icon if preset else '💡'
+        self.selected_color = preset.color if preset else 'yellow'
+        self.result: dict | None = None
 
         self._build_ui(current_temp, current_brightness)
 
@@ -148,11 +150,11 @@ class PresetEditorDialog(Adw.Window):
         header = Adw.HeaderBar()
         header.add_css_class('header-bar')
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label='Cancel')
         cancel_btn.connect('clicked', lambda b: self.close())
         header.pack_start(cancel_btn)
 
-        save_btn = Gtk.Button(label="Save")
+        save_btn = Gtk.Button(label='Save')
         save_btn.add_css_class('primary-button')
         save_btn.connect('clicked', self._on_save)
         header.pack_end(save_btn)
@@ -173,13 +175,13 @@ class PresetEditorDialog(Adw.Window):
         name_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         content.append(name_box)
 
-        name_label = Gtk.Label(label="Preset Name")
+        name_label = Gtk.Label(label='Preset Name')
         name_label.add_css_class('section-title')
         name_label.set_halign(Gtk.Align.START)
         name_box.append(name_label)
 
         self.name_entry = Gtk.Entry()
-        self.name_entry.set_placeholder_text("My Preset")
+        self.name_entry.set_placeholder_text('My Preset')
         if self.preset:
             self.name_entry.set_text(self.preset.name)
         name_box.append(self.name_entry)
@@ -188,15 +190,13 @@ class PresetEditorDialog(Adw.Window):
         icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         content.append(icon_box)
 
-        icon_label = Gtk.Label(label="Icon")
+        icon_label = Gtk.Label(label='Icon')
         icon_label.add_css_class('section-title')
         icon_label.set_halign(Gtk.Align.START)
         icon_box.append(icon_label)
 
         self.emoji_picker = EmojiPicker(
-            selected_emoji=self.selected_icon,
-            categories=self.EMOJI_CATEGORIES,
-            on_change=self._on_emoji_change
+            selected_emoji=self.selected_icon, categories=self.EMOJI_CATEGORIES, on_change=self._on_emoji_change
         )
         icon_box.append(self.emoji_picker)
 
@@ -204,37 +204,35 @@ class PresetEditorDialog(Adw.Window):
         color_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         content.append(color_box)
 
-        color_label = Gtk.Label(label="Color")
+        color_label = Gtk.Label(label='Color')
         color_label.add_css_class('section-title')
         color_label.set_halign(Gtk.Align.START)
         color_box.append(color_label)
 
         self.color_picker = ColorPickerRow(
-            selected_color=self.selected_color,
-            colors=self.COLOR_OPTIONS,
-            on_change=self._on_color_change
+            selected_color=self.selected_color, colors=self.COLOR_OPTIONS, on_change=self._on_color_change
         )
         color_box.append(self.color_picker)
 
         # Temperature slider
         self.temp_slider = SliderRow(
-            label="Temperature",
+            label='Temperature',
             min_val=2900,
             max_val=7000,
             step=100,
             value=self.preset.temperature if self.preset else current_temp,
-            format_func=lambda v: f"{int(v)}K"
+            format_func=lambda v: f'{int(v)}K',
         )
         content.append(self.temp_slider)
 
         # Brightness slider
         self.bright_slider = SliderRow(
-            label="Brightness",
+            label='Brightness',
             min_val=0,
             max_val=100,
             step=1,
             value=self.preset.brightness if self.preset else current_brightness,
-            format_func=lambda v: f"{int(v)}%"
+            format_func=lambda v: f'{int(v)}%',
         )
         content.append(self.bright_slider)
 
@@ -243,7 +241,7 @@ class PresetEditorDialog(Adw.Window):
         power_box.set_margin_top(8)
         content.append(power_box)
 
-        power_label = Gtk.Label(label="Turn On Light")
+        power_label = Gtk.Label(label='Turn On Light')
         power_label.add_css_class('section-title')
         power_label.set_hexpand(True)
         power_label.set_halign(Gtk.Align.START)
@@ -262,7 +260,7 @@ class PresetEditorDialog(Adw.Window):
     def _on_save(self, button):
         name = self.name_entry.get_text().strip()
         if not name:
-            name = "Unnamed Preset"
+            name = 'Unnamed Preset'
 
         self.result = {
             'name': name,
@@ -270,7 +268,7 @@ class PresetEditorDialog(Adw.Window):
             'color': self.selected_color,
             'temperature': int(self.temp_slider.get_value()),
             'brightness': int(self.bright_slider.get_value()),
-            'power': self.power_switch.get_active()
+            'power': self.power_switch.get_active(),
         }
         self.close()
 
@@ -280,14 +278,14 @@ class LightingWindow(Adw.ApplicationWindow):
 
     def __init__(self, app):
         super().__init__(application=app)
-        self.set_title("Aegis Lighting")
+        self.set_title('Aegis Lighting')
         self.set_default_size(420, 700)
 
         self.lights: list[SmartLight] = []
-        self.current_light: Optional[SmartLight] = None
+        self.current_light: SmartLight | None = None
 
         self.preset_manager = PresetManager(PRESETS_PATH)
-        self.preset_rows: Dict[str, Gtk.Box] = {}
+        self.preset_rows: dict[str, Gtk.Box] = {}
 
         setup_css(self, APP_CSS)
         self._build_ui()
@@ -307,14 +305,14 @@ class LightingWindow(Adw.ApplicationWindow):
         header.add_css_class('header-bar')
 
         # Add device button
-        add_btn = Gtk.Button(label="Add Device")
+        add_btn = Gtk.Button(label='Add Device')
         add_btn.add_css_class('add-button')
         add_btn.connect('clicked', self._on_add_device)
         header.pack_start(add_btn)
 
         # Discover button
-        discover_btn = Gtk.Button(icon_name="view-refresh-symbolic")
-        discover_btn.set_tooltip_text("Discover devices on network")
+        discover_btn = Gtk.Button(icon_name='view-refresh-symbolic')
+        discover_btn.set_tooltip_text('Discover devices on network')
         discover_btn.connect('clicked', self._on_discover)
         header.pack_end(discover_btn)
 
@@ -352,12 +350,12 @@ class LightingWindow(Adw.ApplicationWindow):
         device_info.set_hexpand(True)
         device_header.append(device_info)
 
-        self.device_name_label = Gtk.Label(label="Smart Light")
+        self.device_name_label = Gtk.Label(label='Smart Light')
         self.device_name_label.add_css_class('title')
         self.device_name_label.set_halign(Gtk.Align.START)
         device_info.append(self.device_name_label)
 
-        self.device_status_label = Gtk.Label(label="● Connected")
+        self.device_status_label = Gtk.Label(label='● Connected')
         self.device_status_label.add_css_class('status-connected')
         self.device_status_label.set_halign(Gtk.Align.START)
         device_info.append(self.device_status_label)
@@ -381,23 +379,23 @@ class LightingWindow(Adw.ApplicationWindow):
         self.light_preview.set_size_request(120, 120)
         preview_box.append(self.light_preview)
 
-        self.status_label = Gtk.Label(label="ON")
+        self.status_label = Gtk.Label(label='ON')
         self.status_label.add_css_class('title')
         preview_box.append(self.status_label)
 
-        self.temp_brightness_label = Gtk.Label(label="4500K · 50%")
+        self.temp_brightness_label = Gtk.Label(label='4500K · 50%')
         self.temp_brightness_label.add_css_class('subtitle')
         preview_box.append(self.temp_brightness_label)
 
         # Brightness slider
         self.brightness_slider = SliderRow(
-            label="Brightness",
+            label='Brightness',
             min_val=0,
             max_val=100,
             step=1,
             value=50,
-            format_func=lambda v: f"{int(v)}%",
-            on_change=self._on_brightness_changed
+            format_func=lambda v: f'{int(v)}%',
+            on_change=self._on_brightness_changed,
         )
         self.control_card.append(self.brightness_slider)
 
@@ -406,26 +404,26 @@ class LightingWindow(Adw.ApplicationWindow):
         self.control_card.append(temp_container)
 
         self.temp_slider = SliderRow(
-            label="Temperature",
+            label='Temperature',
             min_val=2900,
             max_val=7000,
             step=100,
             value=4500,
-            format_func=lambda v: f"{int(v)}K",
-            on_change=self._on_temp_changed
+            format_func=lambda v: f'{int(v)}K',
+            on_change=self._on_temp_changed,
         )
         temp_container.append(self.temp_slider)
 
         temp_labels = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         temp_container.append(temp_labels)
 
-        warm_label = Gtk.Label(label="Warm")
+        warm_label = Gtk.Label(label='Warm')
         warm_label.add_css_class('subtitle')
         warm_label.set_hexpand(True)
         warm_label.set_halign(Gtk.Align.START)
         temp_labels.append(warm_label)
 
-        cool_label = Gtk.Label(label="Cool")
+        cool_label = Gtk.Label(label='Cool')
         cool_label.add_css_class('subtitle')
         cool_label.set_halign(Gtk.Align.END)
         temp_labels.append(cool_label)
@@ -435,14 +433,14 @@ class LightingWindow(Adw.ApplicationWindow):
         presets_header.set_margin_top(8)
         self.control_card.append(presets_header)
 
-        presets_label = Gtk.Label(label="Presets")
+        presets_label = Gtk.Label(label='Presets')
         presets_label.add_css_class('section-title')
         presets_label.set_hexpand(True)
         presets_label.set_halign(Gtk.Align.START)
         presets_header.append(presets_label)
 
-        save_preset_btn = Gtk.Button(icon_name="list-add-symbolic")
-        save_preset_btn.set_tooltip_text("Save current as preset")
+        save_preset_btn = Gtk.Button(icon_name='list-add-symbolic')
+        save_preset_btn.set_tooltip_text('Save current as preset')
         save_preset_btn.add_css_class('preset-btn')
         save_preset_btn.connect('clicked', self._on_save_preset)
         presets_header.append(save_preset_btn)
@@ -459,12 +457,12 @@ class LightingWindow(Adw.ApplicationWindow):
         io_box.set_margin_top(8)
         self.control_card.append(io_box)
 
-        import_btn = Gtk.Button(label="Import")
+        import_btn = Gtk.Button(label='Import')
         import_btn.add_css_class('export-import-btn')
         import_btn.connect('clicked', self._on_import_presets)
         io_box.append(import_btn)
 
-        export_btn = Gtk.Button(label="Export")
+        export_btn = Gtk.Button(label='Export')
         export_btn.add_css_class('export-import-btn')
         export_btn.connect('clicked', self._on_export_presets)
         io_box.append(export_btn)
@@ -477,11 +475,11 @@ class LightingWindow(Adw.ApplicationWindow):
         self.no_devices_box.set_visible(True)
         content.append(self.no_devices_box)
 
-        no_devices_icon = Gtk.Image.new_from_icon_name("dialog-information-symbolic")
+        no_devices_icon = Gtk.Image.new_from_icon_name('dialog-information-symbolic')
         no_devices_icon.set_pixel_size(48)
         self.no_devices_box.append(no_devices_icon)
 
-        no_devices_label = Gtk.Label(label="No lights configured")
+        no_devices_label = Gtk.Label(label='No lights configured')
         no_devices_label.add_css_class('title')
         self.no_devices_box.append(no_devices_label)
 
@@ -529,9 +527,9 @@ class LightingWindow(Adw.ApplicationWindow):
         info_box.append(name)
 
         if preset.power:
-            info_text = f"{preset.temperature}K · {preset.brightness}%"
+            info_text = f'{preset.temperature}K · {preset.brightness}%'
         else:
-            info_text = "Light Off"
+            info_text = 'Light Off'
         info = Gtk.Label(label=info_text)
         info.add_css_class('preset-info')
         info.set_halign(Gtk.Align.START)
@@ -539,16 +537,16 @@ class LightingWindow(Adw.ApplicationWindow):
 
         # Edit button (only for non-builtin)
         if not preset.is_builtin:
-            edit_btn = Gtk.Button(icon_name="document-edit-symbolic")
+            edit_btn = Gtk.Button(icon_name='document-edit-symbolic')
             edit_btn.add_css_class('preset-btn')
-            edit_btn.set_tooltip_text("Edit preset")
+            edit_btn.set_tooltip_text('Edit preset')
             edit_btn.connect('clicked', self._on_edit_preset, preset.id)
             row.append(edit_btn)
 
-            delete_btn = Gtk.Button(icon_name="user-trash-symbolic")
+            delete_btn = Gtk.Button(icon_name='user-trash-symbolic')
             delete_btn.add_css_class('preset-btn')
             delete_btn.add_css_class('delete')
-            delete_btn.set_tooltip_text("Delete preset")
+            delete_btn.set_tooltip_text('Delete preset')
             delete_btn.connect('clicked', self._on_delete_preset, preset.id)
             row.append(delete_btn)
 
@@ -575,7 +573,7 @@ class LightingWindow(Adw.ApplicationWindow):
                 self.current_light.set_state,
                 on=preset.power,
                 brightness=preset.brightness,
-                temperature=preset.temperature
+                temperature=preset.temperature,
             )
             GLib.timeout_add(100, self._update_ui_from_device)
 
@@ -593,7 +591,7 @@ class LightingWindow(Adw.ApplicationWindow):
             self,
             preset=None,
             current_temp=int(self.temp_slider.get_value()),
-            current_brightness=int(self.brightness_slider.get_value())
+            current_brightness=int(self.brightness_slider.get_value()),
         )
         dialog.connect('close-request', self._on_save_preset_dialog_closed)
         dialog.present()
@@ -606,7 +604,7 @@ class LightingWindow(Adw.ApplicationWindow):
                 color=dialog.result['color'],
                 temperature=dialog.result['temperature'],
                 brightness=dialog.result['brightness'],
-                power=dialog.result['power']
+                power=dialog.result['power'],
             )
             self._populate_presets()
         return False
@@ -628,7 +626,7 @@ class LightingWindow(Adw.ApplicationWindow):
                 color=dialog.result['color'],
                 temperature=dialog.result['temperature'],
                 brightness=dialog.result['brightness'],
-                power=dialog.result['power']
+                power=dialog.result['power'],
             )
             self._populate_presets()
         return False
@@ -638,29 +636,27 @@ class LightingWindow(Adw.ApplicationWindow):
         preset = self.preset_manager.get_preset(preset_id)
         if preset and not preset.is_builtin:
             dialog = Adw.MessageDialog(
-                transient_for=self,
-                heading="Delete Preset?",
-                body=f"Are you sure you want to delete '{preset.name}'?"
+                transient_for=self, heading='Delete Preset?', body=f"Are you sure you want to delete '{preset.name}'?"
             )
-            dialog.add_response("cancel", "Cancel")
-            dialog.add_response("delete", "Delete")
-            dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
+            dialog.add_response('cancel', 'Cancel')
+            dialog.add_response('delete', 'Delete')
+            dialog.set_response_appearance('delete', Adw.ResponseAppearance.DESTRUCTIVE)
             dialog.connect('response', self._on_delete_confirmed, preset_id)
             dialog.present()
 
     def _on_delete_confirmed(self, dialog, response, preset_id):
-        if response == "delete":
+        if response == 'delete':
             self.preset_manager.remove_preset(preset_id)
             self._populate_presets()
 
     def _on_import_presets(self, button):
         """Import presets from a file."""
         dialog = Gtk.FileDialog()
-        dialog.set_title("Import Presets")
+        dialog.set_title('Import Presets')
 
         filter_json = Gtk.FileFilter()
-        filter_json.add_pattern("*.json")
-        filter_json.set_name("JSON files")
+        filter_json.add_pattern('*.json')
+        filter_json.set_name('JSON files')
 
         filters = Gio.ListStore.new(Gtk.FileFilter)
         filters.append(filter_json)
@@ -676,17 +672,17 @@ class LightingWindow(Adw.ApplicationWindow):
                 count = self.preset_manager.import_presets(path)
                 if count > 0:
                     self._populate_presets()
-                    self._show_toast(f"Imported {count} preset(s)")
+                    self._show_toast(f'Imported {count} preset(s)')
                 else:
-                    self._show_toast("No presets found in file")
+                    self._show_toast('No presets found in file')
         except Exception:
             pass
 
     def _on_export_presets(self, button):
         """Export presets to a file."""
         dialog = Gtk.FileDialog()
-        dialog.set_title("Export Presets")
-        dialog.set_initial_name("lighting-presets.json")
+        dialog.set_title('Export Presets')
+        dialog.set_initial_name('lighting-presets.json')
         dialog.save(self, None, self._on_export_file_selected)
 
     def _on_export_file_selected(self, dialog, result):
@@ -695,9 +691,9 @@ class LightingWindow(Adw.ApplicationWindow):
             if file:
                 path = Path(file.get_path())
                 if self.preset_manager.export_presets(path):
-                    self._show_toast("Presets exported successfully")
+                    self._show_toast('Presets exported successfully')
                 else:
-                    self._show_toast("Failed to export presets")
+                    self._show_toast('Failed to export presets')
         except Exception:
             pass
 
@@ -724,9 +720,9 @@ class LightingWindow(Adw.ApplicationWindow):
         try:
             DEVICES_PATH.parent.mkdir(parents=True, exist_ok=True)
             config = {
-                'keylights': [{'ip': l.ip, 'name': l.name} for l in self.lights],
+                'keylights': [{'ip': light.ip, 'name': light.name} for light in self.lights],
                 'default_brightness': 50,
-                'default_temperature': 4500
+                'default_temperature': 4500,
             }
             with open(DEVICES_PATH, 'w') as f:
                 json.dump(config, f, indent=2)
@@ -745,7 +741,7 @@ class LightingWindow(Adw.ApplicationWindow):
             # Update dropdown
             model = Gtk.StringList()
             for light in self.lights:
-                model.append(f"{light.name} ({light.ip})")
+                model.append(f'{light.name} ({light.ip})')
             self.device_combo.set_model(model)
 
             if self.current_light is None:
@@ -780,11 +776,11 @@ class LightingWindow(Adw.ApplicationWindow):
         # Update name and status
         self.device_name_label.set_text(light.name)
         if light.connected:
-            self.device_status_label.set_text(f"● {light.ip}:{light.port}")
+            self.device_status_label.set_text(f'● {light.ip}:{light.port}')
             self.device_status_label.remove_css_class('status-disconnected')
             self.device_status_label.add_css_class('status-connected')
         else:
-            self.device_status_label.set_text("● Disconnected")
+            self.device_status_label.set_text('● Disconnected')
             self.device_status_label.remove_css_class('status-connected')
             self.device_status_label.add_css_class('status-disconnected')
 
@@ -797,13 +793,13 @@ class LightingWindow(Adw.ApplicationWindow):
         if light.on:
             self.light_preview.remove_css_class('light-preview-off')
             self.light_preview.add_css_class('light-preview')
-            self.status_label.set_text("ON")
+            self.status_label.set_text('ON')
         else:
             self.light_preview.remove_css_class('light-preview')
             self.light_preview.add_css_class('light-preview-off')
-            self.status_label.set_text("OFF")
+            self.status_label.set_text('OFF')
 
-        self.temp_brightness_label.set_text(f"{light.temperature}K · {light.brightness}%")
+        self.temp_brightness_label.set_text(f'{light.temperature}K · {light.brightness}%')
 
         # Update sliders
         self.brightness_slider.set_value(light.brightness, emit_signal=False)
@@ -827,38 +823,36 @@ class LightingWindow(Adw.ApplicationWindow):
         """Handle brightness slider change."""
         value = int(value)
         if self.current_light:
-            self.temp_brightness_label.set_text(f"{self.current_light.temperature}K · {value}%")
+            self.temp_brightness_label.set_text(f'{self.current_light.temperature}K · {value}%')
             run_in_thread(self.current_light.set_state, brightness=value)
 
     def _on_temp_changed(self, value):
         """Handle temperature slider change."""
         value = int(value)
         if self.current_light:
-            self.temp_brightness_label.set_text(f"{value}K · {self.current_light.brightness}%")
+            self.temp_brightness_label.set_text(f'{value}K · {self.current_light.brightness}%')
             run_in_thread(self.current_light.set_state, temperature=value)
 
     def _on_add_device(self, button):
         """Show dialog to add a device manually."""
         dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading="Add Light",
-            body="Enter the IP address of your smart light"
+            transient_for=self, heading='Add Light', body='Enter the IP address of your smart light'
         )
 
         entry = Gtk.Entry()
-        entry.set_placeholder_text("192.168.1.100")
+        entry.set_placeholder_text('192.168.1.100')
         dialog.set_extra_child(entry)
 
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("add", "Add")
-        dialog.set_response_appearance("add", Adw.ResponseAppearance.SUGGESTED)
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('add', 'Add')
+        dialog.set_response_appearance('add', Adw.ResponseAppearance.SUGGESTED)
 
         dialog.connect('response', self._on_add_dialog_response, entry)
         dialog.present()
 
     def _on_add_dialog_response(self, dialog, response, entry):
         """Handle add device dialog response."""
-        if response == "add":
+        if response == 'add':
             ip = entry.get_text().strip()
             if ip:
                 light = SmartLight(ip)
@@ -869,11 +863,9 @@ class LightingWindow(Adw.ApplicationWindow):
                 else:
                     # Show error
                     error_dialog = Adw.MessageDialog(
-                        transient_for=self,
-                        heading="Connection Failed",
-                        body=f"Could not connect to light at {ip}:9123"
+                        transient_for=self, heading='Connection Failed', body=f'Could not connect to light at {ip}:9123'
                     )
-                    error_dialog.add_response("ok", "OK")
+                    error_dialog.add_response('ok', 'OK')
                     error_dialog.present()
 
     def _on_discover(self, button):
@@ -883,10 +875,7 @@ class LightingWindow(Adw.ApplicationWindow):
     def _discover_async(self):
         """Run discovery in background."""
         try:
-            result = subprocess.run(
-                ['avahi-browse', '-rpt', '_elg._tcp'],
-                capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(['avahi-browse', '-rpt', '_elg._tcp'], capture_output=True, text=True, timeout=5)
 
             found = []
             for line in result.stdout.split('\n'):
@@ -895,7 +884,7 @@ class LightingWindow(Adw.ApplicationWindow):
                     if len(parts) >= 8:
                         name = parts[3]
                         ip = parts[7]
-                        if ip and ip not in [l.ip for l in self.lights]:
+                        if ip and ip not in [light.ip for light in self.lights]:
                             found.append((ip, name))
 
             if found:
@@ -919,10 +908,7 @@ class LightingApp(Adw.Application):
     """Main application class."""
 
     def __init__(self):
-        super().__init__(
-            application_id='com.aegis.lighting',
-            flags=Gio.ApplicationFlags.FLAGS_NONE
-        )
+        super().__init__(application_id='com.aegis.lighting', flags=Gio.ApplicationFlags.FLAGS_NONE)
 
     def do_activate(self):
         win = LightingWindow(self)

@@ -6,54 +6,55 @@ Used by aegis-lighting and aegis-macropad for cross-app integration.
 import json
 from pathlib import Path
 from dataclasses import dataclass, asdict
-from typing import Optional, List, Dict, Any
+from typing import Any
 from datetime import datetime
 import urllib.request
 import urllib.error
 
 
 # Configuration paths
-LIGHTING_CONFIG_DIR = Path.home() / ".config" / "aegis" / "lighting"
-DEVICES_PATH = LIGHTING_CONFIG_DIR / "devices.json"
-PRESETS_PATH = LIGHTING_CONFIG_DIR / "presets.json"
+LIGHTING_CONFIG_DIR = Path.home() / '.config' / 'aegis' / 'lighting'
+DEVICES_PATH = LIGHTING_CONFIG_DIR / 'devices.json'
+PRESETS_PATH = LIGHTING_CONFIG_DIR / 'presets.json'
 
 
 @dataclass
 class LightingPreset:
     """Represents a lighting preset configuration."""
+
     id: str
     name: str
     icon: str
     color: str
     temperature: int  # Kelvin (2900-7000)
-    brightness: int   # Percentage (0-100)
+    brightness: int  # Percentage (0-100)
     power: bool
     is_builtin: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'LightingPreset':
+    def from_dict(cls, data: dict[str, Any]) -> 'LightingPreset':
         return cls(**data)
 
 
 # Default builtin presets
 BUILTIN_PRESETS = [
-    LightingPreset("warm", "Warm", "🌅", "peach", 3200, 30, True, True),
-    LightingPreset("studio", "Studio", "🎬", "yellow", 4500, 50, True, True),
-    LightingPreset("daylight", "Daylight", "☀️", "sky", 5600, 70, True, True),
-    LightingPreset("off", "Off", "🌙", "surface1", 4500, 0, False, True),
+    LightingPreset('warm', 'Warm', '🌅', 'peach', 3200, 30, True, True),
+    LightingPreset('studio', 'Studio', '🎬', 'yellow', 4500, 50, True, True),
+    LightingPreset('daylight', 'Daylight', '☀️', 'sky', 5600, 70, True, True),
+    LightingPreset('off', 'Off', '🌙', 'surface1', 4500, 0, False, True),
 ]
 
 
 class PresetManager:
     """Manages lighting presets with CRUD operations."""
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         self.config_path = config_path or PRESETS_PATH
-        self.presets: List[LightingPreset] = []
-        self.active_preset_id: Optional[str] = None
+        self.presets: list[LightingPreset] = []
+        self.active_preset_id: str | None = None
         self.load_presets()
 
     def load_presets(self) -> None:
@@ -70,7 +71,7 @@ class PresetManager:
                             self.presets.append(LightingPreset.from_dict(preset_data))
                     self.active_preset_id = data.get('active_preset')
         except Exception as e:
-            print(f"Error loading presets: {e}")
+            print(f'Error loading presets: {e}')
 
     def save_presets(self) -> None:
         """Save presets to config file."""
@@ -78,12 +79,12 @@ class PresetManager:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             data = {
                 'presets': [p.to_dict() for p in self.presets if not p.is_builtin],
-                'active_preset': self.active_preset_id
+                'active_preset': self.active_preset_id,
             }
             with open(self.config_path, 'w') as f:
                 json.dump(data, f, indent=2)
         except Exception as e:
-            print(f"Error saving presets: {e}")
+            print(f'Error saving presets: {e}')
 
     def add_preset(self, preset: LightingPreset) -> None:
         """Add a new preset."""
@@ -114,17 +115,18 @@ class PresetManager:
                 return True
         return False
 
-    def get_preset(self, preset_id: str) -> Optional[LightingPreset]:
+    def get_preset(self, preset_id: str) -> LightingPreset | None:
         """Get a preset by ID."""
         for preset in self.presets:
             if preset.id == preset_id:
                 return preset
         return None
 
-    def create_from_current(self, name: str, icon: str, color: str,
-                            temperature: int, brightness: int, power: bool) -> LightingPreset:
+    def create_from_current(
+        self, name: str, icon: str, color: str, temperature: int, brightness: int, power: bool
+    ) -> LightingPreset:
         """Create a new preset from current settings."""
-        preset_id = f"custom-{int(datetime.now().timestamp())}"
+        preset_id = f'custom-{int(datetime.now().timestamp())}'
         preset = LightingPreset(
             id=preset_id,
             name=name,
@@ -133,7 +135,7 @@ class PresetManager:
             temperature=temperature,
             brightness=brightness,
             power=power,
-            is_builtin=False
+            is_builtin=False,
         )
         self.add_preset(preset)
         return preset
@@ -156,7 +158,7 @@ class PresetManager:
             count = 0
             for preset_data in data.get('presets', []):
                 preset_data['is_builtin'] = False
-                preset_data['id'] = f"imported-{int(datetime.now().timestamp())}-{count}"
+                preset_data['id'] = f'imported-{int(datetime.now().timestamp())}-{count}'
                 self.presets.append(LightingPreset.from_dict(preset_data))
                 count += 1
             if count > 0:
@@ -170,7 +172,7 @@ class LightingPresetAPI:
     """API for accessing lighting presets from any application."""
 
     @staticmethod
-    def get_presets() -> List[Dict]:
+    def get_presets() -> list[dict]:
         """Load all available presets as dictionaries."""
         presets = [p.to_dict() for p in BUILTIN_PRESETS]
         try:
@@ -185,7 +187,7 @@ class LightingPresetAPI:
         return presets
 
     @staticmethod
-    def get_devices() -> List[Dict]:
+    def get_devices() -> list[dict]:
         """Load configured light devices."""
         try:
             if DEVICES_PATH.exists():
@@ -226,7 +228,7 @@ class LightingPresetAPI:
             ip = device.get('ip')
             if ip:
                 try:
-                    url = f"http://{ip}:9123/elgato/lights"
+                    url = f'http://{ip}:9123/elgato/lights'
                     # Convert Kelvin to mired
                     temp_kelvin = preset.get('temperature', 4500)
                     temp_mired = int(1000000 / max(2900, min(7000, temp_kelvin)))
@@ -234,7 +236,7 @@ class LightingPresetAPI:
                     light_data = {
                         'on': 1 if preset.get('power', True) else 0,
                         'brightness': preset.get('brightness', 50),
-                        'temperature': temp_mired
+                        'temperature': temp_mired,
                     }
                     payload = json.dumps({'lights': [light_data]}).encode()
                     req = urllib.request.Request(url, data=payload, method='PUT')
@@ -248,7 +250,7 @@ class LightingPresetAPI:
         return success
 
     @staticmethod
-    def get_current_state(device_ip: Optional[str] = None) -> Optional[Dict]:
+    def get_current_state(device_ip: str | None = None) -> dict | None:
         """Get current lighting state from a device.
 
         Args:
@@ -267,7 +269,7 @@ class LightingPresetAPI:
             return None
 
         try:
-            url = f"http://{device_ip}:9123/elgato/lights"
+            url = f'http://{device_ip}:9123/elgato/lights'
             req = urllib.request.Request(url, method='GET')
             with urllib.request.urlopen(req, timeout=2) as response:
                 data = json.loads(response.read().decode())
@@ -275,7 +277,7 @@ class LightingPresetAPI:
                 return {
                     'on': light['on'] == 1,
                     'brightness': light['brightness'],
-                    'temperature': int(1000000 / light['temperature'])  # mired to Kelvin
+                    'temperature': int(1000000 / light['temperature']),  # mired to Kelvin
                 }
         except Exception:
             return None
@@ -284,7 +286,7 @@ class LightingPresetAPI:
 class SmartLight:
     """Represents a network-connected smart light device."""
 
-    def __init__(self, ip: str, name: str = "Smart Light"):
+    def __init__(self, ip: str, name: str = 'Smart Light'):
         self.ip = ip
         self.name = name
         self.port = 9123
@@ -295,7 +297,7 @@ class SmartLight:
 
     @property
     def url(self) -> str:
-        return f"http://{self.ip}:{self.port}/elgato/lights"
+        return f'http://{self.ip}:{self.port}/elgato/lights'
 
     def fetch_status(self) -> bool:
         """Fetch current status from the device."""
@@ -313,8 +315,7 @@ class SmartLight:
             self.connected = False
             return False
 
-    def set_state(self, on: Optional[bool] = None, brightness: Optional[int] = None,
-                  temperature: Optional[int] = None) -> bool:
+    def set_state(self, on: bool | None = None, brightness: int | None = None, temperature: int | None = None) -> bool:
         """Update the light state."""
         try:
             light_data = {}
@@ -338,8 +339,4 @@ class SmartLight:
 
     def apply_preset(self, preset: LightingPreset) -> bool:
         """Apply a preset to this light."""
-        return self.set_state(
-            on=preset.power,
-            brightness=preset.brightness,
-            temperature=preset.temperature
-        )
+        return self.set_state(on=preset.power, brightness=preset.brightness, temperature=preset.temperature)

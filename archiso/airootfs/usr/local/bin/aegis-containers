@@ -1,0 +1,1027 @@
+#!/usr/bin/env python3
+"""
+Aegis Containers - GTK4/Libadwaita Docker/Podman Container Manager
+A beautiful container viewer and manager with Catppuccin theming.
+"""
+
+import gi
+
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Gtk, Adw, GLib, Gio, Pango
+import subprocess
+import json
+import threading
+from dataclasses import dataclass
+from typing import Optional
+from datetime import datetime
+
+from aegis_gtk import COLORS, setup_css
+
+# App-specific CSS (extends base theme)
+APP_CSS = f"""
+.container-card {{
+    background-color: {COLORS['mantle']};
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.container-card:hover {{
+    border-color: {COLORS['surface1']};
+}}
+.container-name {{
+    font-size: 15px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.container-image {{
+    font-size: 12px;
+    color: {COLORS['overlay0']};
+    font-family: monospace;
+}}
+.container-id {{
+    font-size: 11px;
+    color: {COLORS['surface2']};
+    font-family: monospace;
+}}
+.status-running {{
+    background-color: {COLORS['green']}30;
+    color: {COLORS['green']};
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: bold;
+}}
+.status-stopped {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['overlay0']};
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: bold;
+}}
+.status-paused {{
+    background-color: {COLORS['yellow']}30;
+    color: {COLORS['yellow']};
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: bold;
+}}
+.status-restarting {{
+    background-color: {COLORS['blue']}30;
+    color: {COLORS['blue']};
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: bold;
+}}
+.action-button {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['text']};
+    border-radius: 6px;
+    padding: 6px;
+    min-width: 32px;
+    min-height: 32px;
+}}
+.action-button:hover {{
+    background-color: {COLORS['surface1']};
+}}
+.action-button.start {{
+    background-color: {COLORS['green']}30;
+    color: {COLORS['green']};
+}}
+.action-button.start:hover {{
+    background-color: {COLORS['green']};
+    color: {COLORS['crust']};
+}}
+.action-button.stop {{
+    background-color: {COLORS['red']}30;
+    color: {COLORS['red']};
+}}
+.action-button.stop:hover {{
+    background-color: {COLORS['red']};
+    color: {COLORS['crust']};
+}}
+.action-button.restart {{
+    background-color: {COLORS['blue']}30;
+    color: {COLORS['blue']};
+}}
+.action-button.restart:hover {{
+    background-color: {COLORS['blue']};
+    color: {COLORS['crust']};
+}}
+.stats-label {{
+    font-size: 11px;
+    color: {COLORS['overlay0']};
+}}
+.stats-value {{
+    font-size: 12px;
+    font-weight: bold;
+    color: {COLORS['text']};
+    font-family: monospace;
+}}
+.resource-bar {{
+    background-color: {COLORS['surface0']};
+    border-radius: 4px;
+    min-height: 6px;
+}}
+.resource-fill {{
+    border-radius: 4px;
+    min-height: 6px;
+}}
+.resource-fill.cpu {{
+    background-color: {COLORS['blue']};
+}}
+.resource-fill.memory {{
+    background-color: {COLORS['mauve']};
+}}
+.empty-state {{
+    padding: 48px;
+}}
+.empty-icon {{
+    font-size: 64px;
+    color: {COLORS['surface1']};
+}}
+.empty-title {{
+    font-size: 20px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.empty-description {{
+    font-size: 14px;
+    color: {COLORS['overlay0']};
+}}
+.log-view {{
+    background-color: {COLORS['crust']};
+    border-radius: 8px;
+    padding: 12px;
+    font-family: monospace;
+    font-size: 11px;
+}}
+.log-text {{
+    color: {COLORS['text']};
+    font-family: monospace;
+}}
+.header-stats {{
+    background-color: {COLORS['surface0']}60;
+    border-radius: 8px;
+    padding: 8px 16px;
+}}
+.header-stat-value {{
+    font-size: 18px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.header-stat-label {{
+    font-size: 11px;
+    color: {COLORS['overlay0']};
+}}
+.image-card {{
+    background-color: {COLORS['mantle']};
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.image-name {{
+    font-size: 14px;
+    font-weight: bold;
+    color: {COLORS['text']};
+    font-family: monospace;
+}}
+.image-tag {{
+    background-color: {COLORS['blue']}30;
+    color: {COLORS['blue']};
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+}}
+.image-size {{
+    font-size: 12px;
+    color: {COLORS['overlay0']};
+}}
+.tab-label {{
+    padding: 8px 16px;
+}}
+"""
+
+
+@dataclass
+class Container:
+    id: str
+    name: str
+    image: str
+    status: str
+    state: str  # running, stopped, paused, restarting
+    created: str
+    ports: str
+    cpu_percent: float = 0.0
+    memory_usage: str = '0B'
+    memory_percent: float = 0.0
+
+
+@dataclass
+class Image:
+    id: str
+    repository: str
+    tag: str
+    size: str
+    created: str
+
+
+class ContainerRuntime:
+    """Abstraction for Docker/Podman commands."""
+
+    def __init__(self):
+        self.runtime = self._detect_runtime()
+
+    def _detect_runtime(self) -> str:
+        """Detect available container runtime."""
+        for runtime in ['podman', 'docker']:
+            try:
+                result = subprocess.run([runtime, '--version'], capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    return runtime
+            except (subprocess.SubprocessError, FileNotFoundError):
+                continue
+        return 'docker'  # Default fallback
+
+    def _run(self, args: list[str], timeout: int = 30) -> tuple[bool, str]:
+        """Run a container command."""
+        try:
+            result = subprocess.run([self.runtime] + args, capture_output=True, text=True, timeout=timeout)
+            return result.returncode == 0, result.stdout or result.stderr
+        except subprocess.TimeoutExpired:
+            return False, 'Command timed out'
+        except Exception as e:
+            return False, str(e)
+
+    def list_containers(self, all_containers: bool = True) -> list[Container]:
+        """List containers."""
+        args = ['ps', '--format', 'json']
+        if all_containers:
+            args.append('-a')
+
+        success, output = self._run(args)
+        if not success or not output.strip():
+            return []
+
+        containers = []
+        try:
+            # Handle both Docker and Podman JSON formats
+            lines = output.strip().split('\n')
+            for line in lines:
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+
+                # Normalize field names between Docker and Podman
+                container_id = data.get('ID', data.get('Id', ''))[:12]
+                name = data.get('Names', data.get('Name', ''))
+                if isinstance(name, list):
+                    name = name[0] if name else ''
+                name = name.lstrip('/')
+
+                image = data.get('Image', '')
+                status = data.get('Status', '')
+                state = data.get('State', 'unknown')
+                if isinstance(state, dict):
+                    state = state.get('Status', 'unknown')
+                state = state.lower()
+
+                # Normalize state
+                if 'running' in state or 'up' in status.lower():
+                    state = 'running'
+                elif 'paused' in state:
+                    state = 'paused'
+                elif 'restarting' in state:
+                    state = 'restarting'
+                else:
+                    state = 'stopped'
+
+                created = data.get('CreatedAt', data.get('Created', ''))
+                ports = data.get('Ports', '')
+                if isinstance(ports, list):
+                    ports = ', '.join(str(p) for p in ports)
+
+                containers.append(
+                    Container(
+                        id=container_id,
+                        name=name,
+                        image=image,
+                        status=status,
+                        state=state,
+                        created=created,
+                        ports=str(ports),
+                    )
+                )
+        except json.JSONDecodeError:
+            pass
+
+        return containers
+
+    def list_images(self) -> list[Image]:
+        """List images."""
+        args = ['images', '--format', 'json']
+        success, output = self._run(args)
+        if not success or not output.strip():
+            return []
+
+        images = []
+        try:
+            lines = output.strip().split('\n')
+            for line in lines:
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+
+                image_id = data.get('ID', data.get('Id', ''))[:12]
+                repo = data.get('Repository', data.get('repository', '<none>'))
+                tag = data.get('Tag', data.get('tag', '<none>'))
+                size = data.get('Size', data.get('size', 'Unknown'))
+                created = data.get('CreatedAt', data.get('Created', ''))
+
+                images.append(Image(id=image_id, repository=repo, tag=tag, size=size, created=created))
+        except json.JSONDecodeError:
+            pass
+
+        return images
+
+    def get_stats(self, container_id: str) -> dict:
+        """Get container stats."""
+        args = ['stats', container_id, '--no-stream', '--format', 'json']
+        success, output = self._run(args, timeout=10)
+        if not success:
+            return {}
+
+        try:
+            return json.loads(output.strip().split('\n')[0])
+        except (json.JSONDecodeError, IndexError):
+            return {}
+
+    def start(self, container_id: str) -> tuple[bool, str]:
+        return self._run(['start', container_id])
+
+    def stop(self, container_id: str) -> tuple[bool, str]:
+        return self._run(['stop', container_id])
+
+    def restart(self, container_id: str) -> tuple[bool, str]:
+        return self._run(['restart', container_id])
+
+    def remove(self, container_id: str, force: bool = False) -> tuple[bool, str]:
+        args = ['rm']
+        if force:
+            args.append('-f')
+        args.append(container_id)
+        return self._run(args)
+
+    def logs(self, container_id: str, tail: int = 100) -> tuple[bool, str]:
+        return self._run(['logs', '--tail', str(tail), container_id])
+
+    def remove_image(self, image_id: str, force: bool = False) -> tuple[bool, str]:
+        args = ['rmi']
+        if force:
+            args.append('-f')
+        args.append(image_id)
+        return self._run(args)
+
+
+class ContainerCard(Gtk.Box):
+    """A card displaying container information."""
+
+    def __init__(self, container: Container, runtime: ContainerRuntime, on_refresh: callable):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.container = container
+        self.runtime = runtime
+        self.on_refresh = on_refresh
+        self.add_css_class('container-card')
+
+        self._build_ui()
+
+    def _build_ui(self):
+        # Header row
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.append(header)
+
+        # Container icon based on image
+        icon = self._get_container_icon()
+        icon_label = Gtk.Label(label=icon)
+        icon_label.set_markup(f'<span size="x-large">{icon}</span>')
+        header.append(icon_label)
+
+        # Info
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        info_box.set_hexpand(True)
+        header.append(info_box)
+
+        name_label = Gtk.Label(label=self.container.name)
+        name_label.add_css_class('container-name')
+        name_label.set_halign(Gtk.Align.START)
+        name_label.set_ellipsize(Pango.EllipsizeMode.END)
+        info_box.append(name_label)
+
+        image_label = Gtk.Label(label=self.container.image)
+        image_label.add_css_class('container-image')
+        image_label.set_halign(Gtk.Align.START)
+        image_label.set_ellipsize(Pango.EllipsizeMode.END)
+        info_box.append(image_label)
+
+        id_label = Gtk.Label(label=self.container.id)
+        id_label.add_css_class('container-id')
+        id_label.set_halign(Gtk.Align.START)
+        info_box.append(id_label)
+
+        # Status badge
+        status_label = Gtk.Label(label=self.container.state.capitalize())
+        status_label.add_css_class(f'status-{self.container.state}')
+        header.append(status_label)
+
+        # Stats row (for running containers)
+        if self.container.state == 'running':
+            stats_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=24)
+            stats_box.set_margin_top(4)
+            self.append(stats_box)
+
+            # CPU
+            cpu_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            cpu_box.set_hexpand(True)
+            stats_box.append(cpu_box)
+
+            cpu_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+            cpu_box.append(cpu_header)
+
+            cpu_label = Gtk.Label(label='CPU')
+            cpu_label.add_css_class('stats-label')
+            cpu_label.set_halign(Gtk.Align.START)
+            cpu_label.set_hexpand(True)
+            cpu_header.append(cpu_label)
+
+            self.cpu_value = Gtk.Label(label=f'{self.container.cpu_percent:.1f}%')
+            self.cpu_value.add_css_class('stats-value')
+            cpu_header.append(self.cpu_value)
+
+            cpu_bar_bg = Gtk.Box()
+            cpu_bar_bg.add_css_class('resource-bar')
+            cpu_bar_bg.set_size_request(-1, 6)
+            cpu_box.append(cpu_bar_bg)
+
+            self.cpu_fill = Gtk.Box()
+            self.cpu_fill.add_css_class('resource-fill')
+            self.cpu_fill.add_css_class('cpu')
+            self.cpu_fill.set_size_request(int(self.container.cpu_percent * 2), 6)
+            cpu_bar_bg.append(self.cpu_fill)
+
+            # Memory
+            mem_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            mem_box.set_hexpand(True)
+            stats_box.append(mem_box)
+
+            mem_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+            mem_box.append(mem_header)
+
+            mem_label = Gtk.Label(label='Memory')
+            mem_label.add_css_class('stats-label')
+            mem_label.set_halign(Gtk.Align.START)
+            mem_label.set_hexpand(True)
+            mem_header.append(mem_label)
+
+            self.mem_value = Gtk.Label(label=self.container.memory_usage)
+            self.mem_value.add_css_class('stats-value')
+            mem_header.append(self.mem_value)
+
+            mem_bar_bg = Gtk.Box()
+            mem_bar_bg.add_css_class('resource-bar')
+            mem_bar_bg.set_size_request(-1, 6)
+            mem_box.append(mem_bar_bg)
+
+            self.mem_fill = Gtk.Box()
+            self.mem_fill.add_css_class('resource-fill')
+            self.mem_fill.add_css_class('memory')
+            self.mem_fill.set_size_request(int(self.container.memory_percent * 2), 6)
+            mem_bar_bg.append(self.mem_fill)
+
+        # Status and ports
+        if self.container.ports:
+            ports_label = Gtk.Label(label=f'Ports: {self.container.ports}')
+            ports_label.add_css_class('stats-label')
+            ports_label.set_halign(Gtk.Align.START)
+            ports_label.set_ellipsize(Pango.EllipsizeMode.END)
+            self.append(ports_label)
+
+        # Action buttons
+        actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions_box.set_margin_top(4)
+        self.append(actions_box)
+
+        if self.container.state == 'running':
+            stop_btn = Gtk.Button(label='Stop')
+            stop_btn.add_css_class('action-button')
+            stop_btn.add_css_class('stop')
+            stop_btn.connect('clicked', self._on_stop)
+            actions_box.append(stop_btn)
+
+            restart_btn = Gtk.Button(label='Restart')
+            restart_btn.add_css_class('action-button')
+            restart_btn.add_css_class('restart')
+            restart_btn.connect('clicked', self._on_restart)
+            actions_box.append(restart_btn)
+        else:
+            start_btn = Gtk.Button(label='Start')
+            start_btn.add_css_class('action-button')
+            start_btn.add_css_class('start')
+            start_btn.connect('clicked', self._on_start)
+            actions_box.append(start_btn)
+
+        # Spacer
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        actions_box.append(spacer)
+
+        # Logs button
+        logs_btn = Gtk.Button(icon_name='utilities-terminal-symbolic')
+        logs_btn.add_css_class('action-button')
+        logs_btn.set_tooltip_text('View Logs')
+        logs_btn.connect('clicked', self._on_logs)
+        actions_box.append(logs_btn)
+
+        # Delete button
+        delete_btn = Gtk.Button(icon_name='user-trash-symbolic')
+        delete_btn.add_css_class('action-button')
+        delete_btn.set_tooltip_text('Remove Container')
+        delete_btn.connect('clicked', self._on_delete)
+        actions_box.append(delete_btn)
+
+    def _get_container_icon(self) -> str:
+        """Get an icon based on the container image."""
+        image = self.container.image.lower()
+        if 'postgres' in image:
+            return '🐘'
+        elif 'mysql' in image or 'mariadb' in image:
+            return '🐬'
+        elif 'redis' in image:
+            return '🔴'
+        elif 'mongo' in image:
+            return '🍃'
+        elif 'nginx' in image:
+            return '🌐'
+        elif 'node' in image:
+            return '📗'
+        elif 'python' in image:
+            return '🐍'
+        elif 'go' in image or 'golang' in image:
+            return '🐹'
+        elif 'rust' in image:
+            return '🦀'
+        elif 'ruby' in image:
+            return '💎'
+        elif 'php' in image:
+            return '🐘'
+        elif 'java' in image:
+            return '☕'
+        elif 'elasticsearch' in image:
+            return '🔍'
+        elif 'rabbitmq' in image:
+            return '🐰'
+        elif 'kafka' in image:
+            return '📨'
+        elif 'jenkins' in image:
+            return '🤵'
+        elif 'gitlab' in image:
+            return '🦊'
+        elif 'grafana' in image:
+            return '📊'
+        elif 'prometheus' in image:
+            return '🔥'
+        else:
+            return '📦'
+
+    def _on_start(self, button):
+        def do_start():
+            success, msg = self.runtime.start(self.container.id)
+            GLib.idle_add(self.on_refresh)
+
+        threading.Thread(target=do_start, daemon=True).start()
+
+    def _on_stop(self, button):
+        def do_stop():
+            success, msg = self.runtime.stop(self.container.id)
+            GLib.idle_add(self.on_refresh)
+
+        threading.Thread(target=do_stop, daemon=True).start()
+
+    def _on_restart(self, button):
+        def do_restart():
+            success, msg = self.runtime.restart(self.container.id)
+            GLib.idle_add(self.on_refresh)
+
+        threading.Thread(target=do_restart, daemon=True).start()
+
+    def _on_logs(self, button):
+        # Open logs in a dialog
+        dialog = LogsDialog(self.get_root(), self.container, self.runtime)
+        dialog.present()
+
+    def _on_delete(self, button):
+        # Confirm deletion
+        dialog = Adw.MessageDialog(
+            transient_for=self.get_root(),
+            heading='Remove Container?',
+            body=f"Are you sure you want to remove '{self.container.name}'?",
+        )
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('delete', 'Remove')
+        dialog.set_response_appearance('delete', Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.connect('response', self._on_delete_response)
+        dialog.present()
+
+    def _on_delete_response(self, dialog, response):
+        if response == 'delete':
+
+            def do_delete():
+                success, msg = self.runtime.remove(self.container.id, force=True)
+                GLib.idle_add(self.on_refresh)
+
+            threading.Thread(target=do_delete, daemon=True).start()
+
+    def update_stats(self, stats: dict):
+        """Update container stats display."""
+        if self.container.state != 'running':
+            return
+
+        cpu = stats.get('CPUPerc', '0%').rstrip('%')
+        try:
+            cpu_val = float(cpu)
+        except ValueError:
+            cpu_val = 0
+
+        mem_usage = stats.get('MemUsage', '0B / 0B').split('/')[0].strip()
+        mem_perc = stats.get('MemPerc', '0%').rstrip('%')
+        try:
+            mem_val = float(mem_perc)
+        except ValueError:
+            mem_val = 0
+
+        self.cpu_value.set_label(f'{cpu_val:.1f}%')
+        self.cpu_fill.set_size_request(int(min(cpu_val, 100) * 2), 6)
+
+        self.mem_value.set_label(mem_usage)
+        self.mem_fill.set_size_request(int(min(mem_val, 100) * 2), 6)
+
+
+class LogsDialog(Adw.Window):
+    """Dialog for viewing container logs."""
+
+    def __init__(self, parent, container: Container, runtime: ContainerRuntime):
+        super().__init__()
+        self.container = container
+        self.runtime = runtime
+
+        self.set_title(f'Logs - {container.name}')
+        self.set_default_size(700, 500)
+        self.set_transient_for(parent)
+        self.set_modal(True)
+
+        self._build_ui()
+        self._load_logs()
+
+    def _build_ui(self):
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header
+        header = Adw.HeaderBar()
+        main_box.append(header)
+
+        refresh_btn = Gtk.Button(icon_name='view-refresh-symbolic')
+        refresh_btn.connect('clicked', lambda b: self._load_logs())
+        header.pack_end(refresh_btn)
+
+        # Log view
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        main_box.append(scroll)
+
+        self.log_view = Gtk.TextView()
+        self.log_view.set_editable(False)
+        self.log_view.set_monospace(True)
+        self.log_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        self.log_view.add_css_class('log-view')
+        self.log_view.set_margin_start(12)
+        self.log_view.set_margin_end(12)
+        self.log_view.set_margin_top(12)
+        self.log_view.set_margin_bottom(12)
+        scroll.set_child(self.log_view)
+
+    def _load_logs(self):
+        def fetch():
+            success, output = self.runtime.logs(self.container.id, tail=500)
+            GLib.idle_add(self._update_logs, output if success else f'Error: {output}')
+
+        threading.Thread(target=fetch, daemon=True).start()
+
+    def _update_logs(self, text: str):
+        buffer = self.log_view.get_buffer()
+        buffer.set_text(text)
+        # Scroll to bottom
+        mark = buffer.get_insert()
+        self.log_view.scroll_to_mark(mark, 0, True, 0, 1)
+
+
+class ImageCard(Gtk.Box):
+    """A card displaying image information."""
+
+    def __init__(self, image: Image, runtime: ContainerRuntime, on_refresh: callable):
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.image = image
+        self.runtime = runtime
+        self.on_refresh = on_refresh
+        self.add_css_class('image-card')
+
+        self._build_ui()
+
+    def _build_ui(self):
+        # Icon
+        icon_label = Gtk.Label(label='🖼️')
+        icon_label.set_markup('<span size="large">🖼️</span>')
+        self.append(icon_label)
+
+        # Info
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        info_box.set_hexpand(True)
+        self.append(info_box)
+
+        name_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        info_box.append(name_box)
+
+        name_label = Gtk.Label(label=self.image.repository)
+        name_label.add_css_class('image-name')
+        name_label.set_halign(Gtk.Align.START)
+        name_label.set_ellipsize(Pango.EllipsizeMode.END)
+        name_box.append(name_label)
+
+        tag_label = Gtk.Label(label=self.image.tag)
+        tag_label.add_css_class('image-tag')
+        name_box.append(tag_label)
+
+        details_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        info_box.append(details_box)
+
+        id_label = Gtk.Label(label=self.image.id)
+        id_label.add_css_class('container-id')
+        details_box.append(id_label)
+
+        size_label = Gtk.Label(label=self.image.size)
+        size_label.add_css_class('image-size')
+        details_box.append(size_label)
+
+        # Delete button
+        delete_btn = Gtk.Button(icon_name='user-trash-symbolic')
+        delete_btn.add_css_class('action-button')
+        delete_btn.set_tooltip_text('Remove Image')
+        delete_btn.connect('clicked', self._on_delete)
+        self.append(delete_btn)
+
+    def _on_delete(self, button):
+        dialog = Adw.MessageDialog(
+            transient_for=self.get_root(),
+            heading='Remove Image?',
+            body=f"Are you sure you want to remove '{self.image.repository}:{self.image.tag}'?",
+        )
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('delete', 'Remove')
+        dialog.set_response_appearance('delete', Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.connect('response', self._on_delete_response)
+        dialog.present()
+
+    def _on_delete_response(self, dialog, response):
+        if response == 'delete':
+
+            def do_delete():
+                success, msg = self.runtime.remove_image(self.image.id, force=True)
+                GLib.idle_add(self.on_refresh)
+
+            threading.Thread(target=do_delete, daemon=True).start()
+
+
+class ContainersWindow(Adw.ApplicationWindow):
+    """Main container manager window."""
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.set_title('Aegis Containers')
+        self.set_default_size(900, 650)
+
+        self.runtime = ContainerRuntime()
+        self.container_cards = {}
+
+        self._setup_css()
+        self._build_ui()
+        self._refresh()
+
+        # Auto-refresh every 5 seconds
+        GLib.timeout_add_seconds(5, self._auto_refresh)
+
+    def _setup_css(self):
+        setup_css(self, APP_CSS)
+
+    def _build_ui(self):
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+
+        # Runtime indicator
+        runtime_label = Gtk.Label(label=self.runtime.runtime.capitalize())
+        runtime_label.add_css_class('stats-label')
+        header.pack_start(runtime_label)
+
+        # Refresh button
+        refresh_btn = Gtk.Button(icon_name='view-refresh-symbolic')
+        refresh_btn.set_tooltip_text('Refresh')
+        refresh_btn.connect('clicked', lambda b: self._refresh())
+        header.pack_end(refresh_btn)
+
+        main_box.append(header)
+
+        # Stats header
+        stats_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        stats_header.set_margin_start(24)
+        stats_header.set_margin_end(24)
+        stats_header.set_margin_top(16)
+        stats_header.set_margin_bottom(8)
+        main_box.append(stats_header)
+
+        # Running count
+        self.running_stat = self._create_stat_box('0', 'Running')
+        stats_header.append(self.running_stat)
+
+        # Stopped count
+        self.stopped_stat = self._create_stat_box('0', 'Stopped')
+        stats_header.append(self.stopped_stat)
+
+        # Images count
+        self.images_stat = self._create_stat_box('0', 'Images')
+        stats_header.append(self.images_stat)
+
+        # Tab view
+        self.tab_view = Adw.ViewStack()
+        self.tab_view.set_vexpand(True)
+        main_box.append(self.tab_view)
+
+        # Tab switcher
+        tab_bar = Adw.ViewSwitcher()
+        tab_bar.set_stack(self.tab_view)
+        tab_bar.set_policy(Adw.ViewSwitcherPolicy.WIDE)
+        header.set_title_widget(tab_bar)
+
+        # Containers tab
+        self.containers_scroll = Gtk.ScrolledWindow()
+        self.containers_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.tab_view.add_titled(self.containers_scroll, 'containers', 'Containers')
+
+        self.containers_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.containers_list.set_margin_start(24)
+        self.containers_list.set_margin_end(24)
+        self.containers_list.set_margin_top(16)
+        self.containers_list.set_margin_bottom(24)
+        self.containers_scroll.set_child(self.containers_list)
+
+        # Images tab
+        self.images_scroll = Gtk.ScrolledWindow()
+        self.images_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.tab_view.add_titled(self.images_scroll, 'images', 'Images')
+
+        self.images_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.images_list.set_margin_start(24)
+        self.images_list.set_margin_end(24)
+        self.images_list.set_margin_top(16)
+        self.images_list.set_margin_bottom(24)
+        self.images_scroll.set_child(self.images_list)
+
+    def _create_stat_box(self, value: str, label: str) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        box.add_css_class('header-stats')
+
+        value_label = Gtk.Label(label=value)
+        value_label.add_css_class('header-stat-value')
+        box.append(value_label)
+
+        label_widget = Gtk.Label(label=label)
+        label_widget.add_css_class('header-stat-label')
+        box.append(label_widget)
+
+        return box
+
+    def _refresh(self):
+        """Refresh container and image lists."""
+
+        def fetch_data():
+            containers = self.runtime.list_containers()
+            images = self.runtime.list_images()
+            GLib.idle_add(self._update_ui, containers, images)
+
+        threading.Thread(target=fetch_data, daemon=True).start()
+
+    def _auto_refresh(self) -> bool:
+        """Auto-refresh callback."""
+        self._refresh()
+        return True
+
+    def _update_ui(self, containers: list[Container], images: list[Image]):
+        """Update the UI with new data."""
+        # Update stats
+        running = sum(1 for c in containers if c.state == 'running')
+        stopped = sum(1 for c in containers if c.state != 'running')
+
+        self.running_stat.get_first_child().set_label(str(running))
+        self.stopped_stat.get_first_child().set_label(str(stopped))
+        self.images_stat.get_first_child().set_label(str(len(images)))
+
+        # Clear containers list
+        while child := self.containers_list.get_first_child():
+            self.containers_list.remove(child)
+
+        # Clear images list
+        while child := self.images_list.get_first_child():
+            self.images_list.remove(child)
+
+        self.container_cards.clear()
+
+        if not containers:
+            # Empty state for containers
+            empty = self._create_empty_state(
+                '📦', 'No Containers', f'No containers found. Use {self.runtime.runtime} to create one.'
+            )
+            self.containers_list.append(empty)
+        else:
+            for container in containers:
+                card = ContainerCard(container, self.runtime, self._refresh)
+                self.container_cards[container.id] = card
+                self.containers_list.append(card)
+
+        if not images:
+            # Empty state for images
+            empty = self._create_empty_state(
+                '🖼️', 'No Images', f'No images found. Use {self.runtime.runtime} pull to download one.'
+            )
+            self.images_list.append(empty)
+        else:
+            for image in images:
+                card = ImageCard(image, self.runtime, self._refresh)
+                self.images_list.append(card)
+
+        # Fetch stats for running containers
+        self._update_stats(containers)
+
+    def _create_empty_state(self, icon: str, title: str, description: str) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.add_css_class('empty-state')
+        box.set_valign(Gtk.Align.CENTER)
+        box.set_halign(Gtk.Align.CENTER)
+
+        icon_label = Gtk.Label(label=icon)
+        icon_label.add_css_class('empty-icon')
+        box.append(icon_label)
+
+        title_label = Gtk.Label(label=title)
+        title_label.add_css_class('empty-title')
+        box.append(title_label)
+
+        desc_label = Gtk.Label(label=description)
+        desc_label.add_css_class('empty-description')
+        box.append(desc_label)
+
+        return box
+
+    def _update_stats(self, containers: list[Container]):
+        """Update stats for running containers."""
+
+        def fetch_stats():
+            for container in containers:
+                if container.state == 'running' and container.id in self.container_cards:
+                    stats = self.runtime.get_stats(container.id)
+                    GLib.idle_add(self.container_cards[container.id].update_stats, stats)
+
+        threading.Thread(target=fetch_stats, daemon=True).start()
+
+
+class ContainersApp(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id='com.aegis.containers', flags=Gio.ApplicationFlags.FLAGS_NONE)
+
+    def do_activate(self):
+        win = ContainersWindow(self)
+        win.present()
+
+
+def main():
+    app = ContainersApp()
+    app.run()
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,790 @@
+#!/usr/bin/env python3
+"""
+Aegis Clipboard - GTK4/Libadwaita Clipboard History Manager
+A beautiful clipboard manager with search, pins, and image preview.
+"""
+
+import gi
+
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+gi.require_version('Gdk', '4.0')
+from gi.repository import Gtk, Adw, GLib, Gio, Gdk, GdkPixbuf, Pango
+import subprocess
+import json
+import threading
+import hashlib
+import tempfile
+import os
+from dataclasses import dataclass, field
+from typing import Optional
+from datetime import datetime
+from pathlib import Path
+
+from aegis_gtk import COLORS, setup_css
+
+# App-specific CSS (extends base theme)
+APP_CSS = f"""
+.clipboard-item {{
+    background-color: {COLORS['mantle']};
+    border-radius: 12px;
+    padding: 12px 16px;
+    border: 1px solid {COLORS['surface0']};
+}}
+.clipboard-item:hover {{
+    border-color: {COLORS['surface1']};
+    background-color: {COLORS['surface0']}40;
+}}
+.clipboard-item.pinned {{
+    border-color: {COLORS['yellow']}60;
+    background-color: {COLORS['yellow']}10;
+}}
+.clipboard-text {{
+    font-size: 13px;
+    color: {COLORS['text']};
+}}
+.clipboard-preview {{
+    font-family: monospace;
+    font-size: 12px;
+    color: {COLORS['subtext0']};
+}}
+.clipboard-time {{
+    font-size: 10px;
+    color: {COLORS['overlay0']};
+}}
+.clipboard-type {{
+    font-size: 10px;
+    color: {COLORS['blue']};
+    background-color: {COLORS['blue']}20;
+    border-radius: 4px;
+    padding: 2px 8px;
+}}
+.clipboard-type.image {{
+    color: {COLORS['mauve']};
+    background-color: {COLORS['mauve']}20;
+}}
+.clipboard-type.file {{
+    color: {COLORS['green']};
+    background-color: {COLORS['green']}20;
+}}
+.pin-button {{
+    background-color: transparent;
+    color: {COLORS['overlay0']};
+    border-radius: 6px;
+    padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+}}
+.pin-button:hover {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['yellow']};
+}}
+.pin-button.pinned {{
+    color: {COLORS['yellow']};
+}}
+.action-button {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['text']};
+    border-radius: 6px;
+    padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+}}
+.action-button:hover {{
+    background-color: {COLORS['surface1']};
+}}
+.action-button.copy {{
+    background-color: {COLORS['blue']}20;
+    color: {COLORS['blue']};
+}}
+.action-button.copy:hover {{
+    background-color: {COLORS['blue']};
+    color: {COLORS['crust']};
+}}
+.search-entry {{
+    background-color: {COLORS['surface0']};
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: {COLORS['text']};
+    border: 1px solid {COLORS['surface1']};
+}}
+.search-entry:focus {{
+    border-color: {COLORS['blue']};
+}}
+.empty-state {{
+    padding: 48px;
+}}
+.empty-icon {{
+    font-size: 64px;
+    color: {COLORS['surface1']};
+}}
+.empty-title {{
+    font-size: 20px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.empty-description {{
+    font-size: 14px;
+    color: {COLORS['overlay0']};
+}}
+.stats-bar {{
+    background-color: {COLORS['surface0']}60;
+    border-radius: 8px;
+    padding: 8px 16px;
+}}
+.stats-label {{
+    font-size: 11px;
+    color: {COLORS['overlay0']};
+}}
+.stats-value {{
+    font-size: 13px;
+    font-weight: bold;
+    color: {COLORS['text']};
+}}
+.filter-button {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['overlay0']};
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+}}
+.filter-button:hover {{
+    background-color: {COLORS['surface1']};
+    color: {COLORS['text']};
+}}
+.filter-button.active {{
+    background-color: {COLORS['blue']};
+    color: {COLORS['crust']};
+}}
+.image-preview {{
+    border-radius: 8px;
+    background-color: {COLORS['crust']};
+    padding: 4px;
+}}
+.clear-button {{
+    background-color: {COLORS['red']}20;
+    color: {COLORS['red']};
+    border-radius: 6px;
+    padding: 6px 12px;
+}}
+.clear-button:hover {{
+    background-color: {COLORS['red']};
+    color: {COLORS['crust']};
+}}
+.section-header {{
+    font-size: 11px;
+    font-weight: bold;
+    color: {COLORS['overlay0']};
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 0;
+}}
+"""
+
+
+@dataclass
+class ClipboardItem:
+    id: str
+    content: str
+    content_type: str  # text, image, file, html
+    timestamp: float
+    pinned: bool = False
+    preview: str = ''
+    image_path: str | None = None
+    file_paths: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {
+            'id': self.id,
+            'content': self.content,
+            'content_type': self.content_type,
+            'timestamp': self.timestamp,
+            'pinned': self.pinned,
+            'preview': self.preview,
+            'image_path': self.image_path,
+            'file_paths': self.file_paths,
+        }
+
+    @staticmethod
+    def from_dict(data: dict) -> 'ClipboardItem':
+        return ClipboardItem(
+            id=data['id'],
+            content=data['content'],
+            content_type=data['content_type'],
+            timestamp=data['timestamp'],
+            pinned=data.get('pinned', False),
+            preview=data.get('preview', ''),
+            image_path=data.get('image_path'),
+            file_paths=data.get('file_paths', []),
+        )
+
+
+class ClipboardHistory:
+    """Manages clipboard history storage and retrieval."""
+
+    def __init__(self, max_items: int = 500):
+        self.max_items = max_items
+        self.config_dir = Path.home() / '.config' / 'aegis' / 'clipboard'
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.history_file = self.config_dir / 'history.json'
+        self.images_dir = self.config_dir / 'images'
+        self.images_dir.mkdir(exist_ok=True)
+
+        self.items: list[ClipboardItem] = []
+        self._load()
+
+    def _load(self):
+        """Load history from file."""
+        if self.history_file.exists():
+            try:
+                with open(self.history_file) as f:
+                    data = json.load(f)
+                    self.items = [ClipboardItem.from_dict(item) for item in data.get('items', [])]
+            except (json.JSONDecodeError, KeyError):
+                self.items = []
+
+    def _save(self):
+        """Save history to file."""
+        data = {'items': [item.to_dict() for item in self.items]}
+        with open(self.history_file, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    def add(
+        self, content: str, content_type: str = 'text', image_data: bytes = None, file_paths: list[str] = None
+    ) -> ClipboardItem:
+        """Add a new item to history."""
+        # Generate ID from content hash
+        item_id = hashlib.md5(content.encode() if isinstance(content, str) else content).hexdigest()[:12]
+
+        # Check if already exists (avoid duplicates)
+        existing = next((i for i in self.items if i.id == item_id), None)
+        if existing:
+            # Move to top
+            self.items.remove(existing)
+            existing.timestamp = datetime.now().timestamp()
+            self.items.insert(0, existing)
+            self._save()
+            return existing
+
+        # Generate preview
+        if content_type == 'text':
+            preview = content[:200].replace('\n', ' ')
+        elif content_type == 'image':
+            preview = 'Image'
+        elif content_type == 'file':
+            preview = f'{len(file_paths or [])} file(s)'
+        else:
+            preview = content_type
+
+        # Save image if provided
+        image_path = None
+        if image_data:
+            image_path = str(self.images_dir / f'{item_id}.png')
+            with open(image_path, 'wb') as f:
+                f.write(image_data)
+
+        item = ClipboardItem(
+            id=item_id,
+            content=content,
+            content_type=content_type,
+            timestamp=datetime.now().timestamp(),
+            preview=preview,
+            image_path=image_path,
+            file_paths=file_paths or [],
+        )
+
+        self.items.insert(0, item)
+
+        # Trim old items (keep pinned)
+        pinned = [i for i in self.items if i.pinned]
+        unpinned = [i for i in self.items if not i.pinned]
+        if len(unpinned) > self.max_items:
+            # Remove old unpinned items
+            to_remove = unpinned[self.max_items :]
+            for item in to_remove:
+                if item.image_path and os.path.exists(item.image_path):
+                    os.remove(item.image_path)
+            unpinned = unpinned[: self.max_items]
+        self.items = pinned + [i for i in unpinned if i not in pinned]
+
+        self._save()
+        return item
+
+    def remove(self, item_id: str):
+        """Remove an item from history."""
+        item = next((i for i in self.items if i.id == item_id), None)
+        if item:
+            if item.image_path and os.path.exists(item.image_path):
+                os.remove(item.image_path)
+            self.items.remove(item)
+            self._save()
+
+    def toggle_pin(self, item_id: str) -> bool:
+        """Toggle pin status. Returns new status."""
+        item = next((i for i in self.items if i.id == item_id), None)
+        if item:
+            item.pinned = not item.pinned
+            self._save()
+            return item.pinned
+        return False
+
+    def clear(self, keep_pinned: bool = True):
+        """Clear history."""
+        if keep_pinned:
+            to_remove = [i for i in self.items if not i.pinned]
+        else:
+            to_remove = self.items.copy()
+
+        for item in to_remove:
+            if item.image_path and os.path.exists(item.image_path):
+                os.remove(item.image_path)
+            self.items.remove(item)
+
+        self._save()
+
+    def search(self, query: str) -> list[ClipboardItem]:
+        """Search items by content."""
+        query = query.lower()
+        return [i for i in self.items if query in i.content.lower()]
+
+    def get_by_type(self, content_type: str) -> list[ClipboardItem]:
+        """Get items by type."""
+        return [i for i in self.items if i.content_type == content_type]
+
+
+class ClipboardItemWidget(Gtk.Box):
+    """Widget for displaying a clipboard item."""
+
+    def __init__(self, item: ClipboardItem, history: ClipboardHistory, on_refresh: callable):
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.item = item
+        self.history = history
+        self.on_refresh = on_refresh
+        self.add_css_class('clipboard-item')
+        if item.pinned:
+            self.add_css_class('pinned')
+
+        self._build_ui()
+
+    def _build_ui(self):
+        # Content area
+        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        content_box.set_hexpand(True)
+        self.append(content_box)
+
+        # Type and time header
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        content_box.append(header)
+
+        type_label = Gtk.Label(label=self.item.content_type.capitalize())
+        type_label.add_css_class('clipboard-type')
+        if self.item.content_type == 'image':
+            type_label.add_css_class('image')
+        elif self.item.content_type == 'file':
+            type_label.add_css_class('file')
+        header.append(type_label)
+
+        time_str = self._format_time(self.item.timestamp)
+        time_label = Gtk.Label(label=time_str)
+        time_label.add_css_class('clipboard-time')
+        header.append(time_label)
+
+        # Preview
+        if self.item.content_type == 'image' and self.item.image_path:
+            # Image preview
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(self.item.image_path, 200, 100, True)
+                image = Gtk.Image.new_from_pixbuf(pixbuf)
+                image.add_css_class('image-preview')
+                image.set_halign(Gtk.Align.START)
+                content_box.append(image)
+            except Exception:
+                pass
+        elif self.item.content_type == 'file':
+            # File list preview
+            files_text = '\n'.join(self.item.file_paths[:3])
+            if len(self.item.file_paths) > 3:
+                files_text += f'\n... and {len(self.item.file_paths) - 3} more'
+            preview_label = Gtk.Label(label=files_text)
+            preview_label.add_css_class('clipboard-preview')
+            preview_label.set_halign(Gtk.Align.START)
+            preview_label.set_ellipsize(Pango.EllipsizeMode.END)
+            preview_label.set_max_width_chars(60)
+            content_box.append(preview_label)
+        else:
+            # Text preview
+            preview_text = self.item.preview
+            if len(preview_text) > 100:
+                preview_text = preview_text[:100] + '...'
+            preview_label = Gtk.Label(label=preview_text)
+            preview_label.add_css_class('clipboard-preview')
+            preview_label.set_halign(Gtk.Align.START)
+            preview_label.set_ellipsize(Pango.EllipsizeMode.END)
+            preview_label.set_max_width_chars(60)
+            preview_label.set_wrap(True)
+            preview_label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            preview_label.set_lines(2)
+            content_box.append(preview_label)
+
+        # Actions
+        actions_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.append(actions_box)
+
+        # Copy button
+        copy_btn = Gtk.Button(icon_name='edit-copy-symbolic')
+        copy_btn.add_css_class('action-button')
+        copy_btn.add_css_class('copy')
+        copy_btn.set_tooltip_text('Copy to Clipboard')
+        copy_btn.connect('clicked', self._on_copy)
+        actions_box.append(copy_btn)
+
+        # Pin button
+        pin_btn = Gtk.Button()
+        pin_btn.set_icon_name('starred-symbolic' if self.item.pinned else 'non-starred-symbolic')
+        pin_btn.add_css_class('pin-button')
+        if self.item.pinned:
+            pin_btn.add_css_class('pinned')
+        pin_btn.set_tooltip_text('Unpin' if self.item.pinned else 'Pin')
+        pin_btn.connect('clicked', self._on_pin)
+        actions_box.append(pin_btn)
+
+        # Delete button
+        delete_btn = Gtk.Button(icon_name='user-trash-symbolic')
+        delete_btn.add_css_class('action-button')
+        delete_btn.set_tooltip_text('Delete')
+        delete_btn.connect('clicked', self._on_delete)
+        actions_box.append(delete_btn)
+
+    def _format_time(self, timestamp: float) -> str:
+        """Format timestamp as relative time."""
+        now = datetime.now().timestamp()
+        diff = now - timestamp
+
+        if diff < 60:
+            return 'Just now'
+        elif diff < 3600:
+            mins = int(diff / 60)
+            return f'{mins}m ago'
+        elif diff < 86400:
+            hours = int(diff / 3600)
+            return f'{hours}h ago'
+        else:
+            days = int(diff / 86400)
+            return f'{days}d ago'
+
+    def _on_copy(self, button):
+        """Copy item to clipboard."""
+        clipboard = Gdk.Display.get_default().get_clipboard()
+
+        if self.item.content_type == 'image' and self.item.image_path:
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file(self.item.image_path)
+                texture = Gdk.Texture.new_for_pixbuf(pixbuf)
+                clipboard.set(texture)
+            except Exception:
+                pass
+        else:
+            clipboard.set(self.item.content)
+
+        # Visual feedback
+        self.add_css_class('copied')
+        GLib.timeout_add(500, lambda: self.remove_css_class('copied'))
+
+    def _on_pin(self, button):
+        """Toggle pin status."""
+        pinned = self.history.toggle_pin(self.item.id)
+        button.set_icon_name('starred-symbolic' if pinned else 'non-starred-symbolic')
+        if pinned:
+            button.add_css_class('pinned')
+            self.add_css_class('pinned')
+        else:
+            button.remove_css_class('pinned')
+            self.remove_css_class('pinned')
+        button.set_tooltip_text('Unpin' if pinned else 'Pin')
+
+    def _on_delete(self, button):
+        """Delete item."""
+        self.history.remove(self.item.id)
+        self.on_refresh()
+
+
+class ClipboardWindow(Adw.ApplicationWindow):
+    """Main clipboard manager window."""
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.set_title('Aegis Clipboard')
+        self.set_default_size(600, 700)
+
+        self.history = ClipboardHistory()
+        self.current_filter = 'all'
+        self.search_query = ''
+
+        self._setup_css()
+        self._build_ui()
+        self._refresh()
+
+        # Watch clipboard for changes
+        self._setup_clipboard_watcher()
+
+    def _setup_css(self):
+        setup_css(self, APP_CSS)
+
+    def _setup_clipboard_watcher(self):
+        """Watch for clipboard changes."""
+        clipboard = Gdk.Display.get_default().get_clipboard()
+        clipboard.connect('changed', self._on_clipboard_changed)
+
+    def _on_clipboard_changed(self, clipboard):
+        """Handle clipboard change."""
+
+        def read_clipboard():
+            # Try to read text
+            clipboard.read_text_async(None, self._on_text_read)
+
+        GLib.idle_add(read_clipboard)
+
+    def _on_text_read(self, clipboard, result):
+        """Handle text read from clipboard."""
+        try:
+            text = clipboard.read_text_finish(result)
+            if text and text.strip():
+                self.history.add(text, 'text')
+                GLib.idle_add(self._refresh)
+        except Exception:
+            pass
+
+    def _build_ui(self):
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+        main_box.append(header)
+
+        # Clear button
+        clear_btn = Gtk.Button(label='Clear')
+        clear_btn.add_css_class('clear-button')
+        clear_btn.connect('clicked', self._on_clear)
+        header.pack_end(clear_btn)
+
+        # Search and filters
+        controls_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        controls_box.set_margin_start(16)
+        controls_box.set_margin_end(16)
+        controls_box.set_margin_top(16)
+        main_box.append(controls_box)
+
+        # Search entry
+        self.search_entry = Gtk.SearchEntry()
+        self.search_entry.set_placeholder_text('Search clipboard history...')
+        self.search_entry.add_css_class('search-entry')
+        self.search_entry.connect('search-changed', self._on_search_changed)
+        controls_box.append(self.search_entry)
+
+        # Filter buttons
+        filters_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        controls_box.append(filters_box)
+
+        self.filter_buttons = {}
+        filters = [
+            ('all', 'All'),
+            ('text', 'Text'),
+            ('image', 'Images'),
+            ('file', 'Files'),
+            ('pinned', 'Pinned'),
+        ]
+
+        for filter_id, label in filters:
+            btn = Gtk.ToggleButton(label=label)
+            btn.add_css_class('filter-button')
+            if filter_id == 'all':
+                btn.set_active(True)
+                btn.add_css_class('active')
+            btn.connect('toggled', self._on_filter_toggled, filter_id)
+            self.filter_buttons[filter_id] = btn
+            filters_box.append(btn)
+
+        # Stats bar
+        self.stats_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        self.stats_box.add_css_class('stats-bar')
+        self.stats_box.set_margin_top(8)
+        controls_box.append(self.stats_box)
+
+        self.total_label = self._create_stat('0', 'Total')
+        self.stats_box.append(self.total_label)
+
+        self.pinned_label = self._create_stat('0', 'Pinned')
+        self.stats_box.append(self.pinned_label)
+
+        # Scrollable list
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        main_box.append(scroll)
+
+        self.items_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.items_list.set_margin_start(16)
+        self.items_list.set_margin_end(16)
+        self.items_list.set_margin_top(16)
+        self.items_list.set_margin_bottom(24)
+        scroll.set_child(self.items_list)
+
+    def _create_stat(self, value: str, label: str) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+
+        value_label = Gtk.Label(label=value)
+        value_label.add_css_class('stats-value')
+        box.append(value_label)
+
+        label_widget = Gtk.Label(label=label)
+        label_widget.add_css_class('stats-label')
+        box.append(label_widget)
+
+        return box
+
+    def _on_search_changed(self, entry):
+        """Handle search query change."""
+        self.search_query = entry.get_text()
+        self._refresh()
+
+    def _on_filter_toggled(self, button, filter_id):
+        """Handle filter button toggle."""
+        if button.get_active():
+            self.current_filter = filter_id
+            # Deactivate other buttons
+            for fid, btn in self.filter_buttons.items():
+                if fid != filter_id:
+                    btn.set_active(False)
+                    btn.remove_css_class('active')
+                else:
+                    btn.add_css_class('active')
+            self._refresh()
+        elif self.current_filter == filter_id:
+            # Don't allow deselecting current filter
+            button.set_active(True)
+
+    def _on_clear(self, button):
+        """Clear history."""
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading='Clear Clipboard History?',
+            body='This will remove all unpinned items from history.',
+        )
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('clear', 'Clear')
+        dialog.set_response_appearance('clear', Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.connect('response', self._on_clear_response)
+        dialog.present()
+
+    def _on_clear_response(self, dialog, response):
+        if response == 'clear':
+            self.history.clear(keep_pinned=True)
+            self._refresh()
+
+    def _refresh(self):
+        """Refresh the items list."""
+        # Clear list
+        while child := self.items_list.get_first_child():
+            self.items_list.remove(child)
+
+        # Get filtered items
+        if self.search_query:
+            items = self.history.search(self.search_query)
+        elif self.current_filter == 'all':
+            items = self.history.items
+        elif self.current_filter == 'pinned':
+            items = [i for i in self.history.items if i.pinned]
+        else:
+            items = self.history.get_by_type(self.current_filter)
+
+        # Update stats
+        total = len(self.history.items)
+        pinned = len([i for i in self.history.items if i.pinned])
+        self.total_label.get_first_child().set_label(str(total))
+        self.pinned_label.get_first_child().set_label(str(pinned))
+
+        if not items:
+            # Empty state
+            empty = self._create_empty_state()
+            self.items_list.append(empty)
+        else:
+            # Separate pinned and unpinned
+            pinned_items = [i for i in items if i.pinned]
+            unpinned_items = [i for i in items if not i.pinned]
+
+            if pinned_items:
+                header = Gtk.Label(label='Pinned')
+                header.add_css_class('section-header')
+                header.set_halign(Gtk.Align.START)
+                self.items_list.append(header)
+
+                for item in pinned_items:
+                    widget = ClipboardItemWidget(item, self.history, self._refresh)
+                    self.items_list.append(widget)
+
+            if unpinned_items:
+                if pinned_items:
+                    header = Gtk.Label(label='Recent')
+                    header.add_css_class('section-header')
+                    header.set_halign(Gtk.Align.START)
+                    header.set_margin_top(16)
+                    self.items_list.append(header)
+
+                for item in unpinned_items:
+                    widget = ClipboardItemWidget(item, self.history, self._refresh)
+                    self.items_list.append(widget)
+
+    def _create_empty_state(self) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.add_css_class('empty-state')
+        box.set_valign(Gtk.Align.CENTER)
+        box.set_halign(Gtk.Align.CENTER)
+        box.set_vexpand(True)
+
+        icon_label = Gtk.Label(label='📋')
+        icon_label.add_css_class('empty-icon')
+        box.append(icon_label)
+
+        if self.search_query:
+            title = 'No Results'
+            desc = f"No items match '{self.search_query}'"
+        elif self.current_filter == 'pinned':
+            title = 'No Pinned Items'
+            desc = 'Pin important items to keep them here'
+        elif self.current_filter != 'all':
+            title = f'No {self.current_filter.capitalize()} Items'
+            desc = f'Copy some {self.current_filter} content to see it here'
+        else:
+            title = 'Clipboard Empty'
+            desc = 'Copy something to see it here'
+
+        title_label = Gtk.Label(label=title)
+        title_label.add_css_class('empty-title')
+        box.append(title_label)
+
+        desc_label = Gtk.Label(label=desc)
+        desc_label.add_css_class('empty-description')
+        box.append(desc_label)
+
+        return box
+
+
+class ClipboardApp(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id='com.aegis.clipboard', flags=Gio.ApplicationFlags.FLAGS_NONE)
+
+    def do_activate(self):
+        win = ClipboardWindow(self)
+        win.present()
+
+
+def main():
+    app = ClipboardApp()
+    app.run()
+
+
+if __name__ == '__main__':
+    main()

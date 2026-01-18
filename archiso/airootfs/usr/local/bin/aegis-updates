@@ -5,6 +5,7 @@ A friendly GUI for pacman and yay with Catppuccin theming.
 """
 
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Gio
@@ -12,7 +13,7 @@ import subprocess
 import threading
 import os
 from dataclasses import dataclass
-from typing import List
+
 from enum import Enum
 
 from aegis_gtk import COLORS, setup_css
@@ -142,11 +143,11 @@ APP_CSS = f"""
 
 
 class UpdateState(Enum):
-    CHECKING = "checking"
-    UP_TO_DATE = "up_to_date"
-    UPDATES_AVAILABLE = "updates_available"
-    UPDATING = "updating"
-    ERROR = "error"
+    CHECKING = 'checking'
+    UP_TO_DATE = 'up_to_date'
+    UPDATES_AVAILABLE = 'updates_available'
+    UPDATING = 'updating'
+    ERROR = 'error'
 
 
 @dataclass
@@ -156,7 +157,7 @@ class Package:
     new_version: str
     size: str
     source: str  # 'official' or 'aur'
-    description: str = ""
+    description: str = ''
 
 
 class UpdatesWindow(Adw.ApplicationWindow):
@@ -164,11 +165,11 @@ class UpdatesWindow(Adw.ApplicationWindow):
 
     def __init__(self, app):
         super().__init__(application=app)
-        self.set_title("Aegis Updates")
+        self.set_title('Aegis Updates')
         self.set_default_size(700, 600)
 
         self.state = UpdateState.CHECKING
-        self.packages: List[Package] = []
+        self.packages: list[Package] = []
         self.update_process = None
 
         self._setup_css()
@@ -190,14 +191,14 @@ class UpdatesWindow(Adw.ApplicationWindow):
         header.add_css_class('header-bar')
 
         # Refresh button
-        refresh_btn = Gtk.Button(icon_name="view-refresh-symbolic")
-        refresh_btn.set_tooltip_text("Check for updates")
+        refresh_btn = Gtk.Button(icon_name='view-refresh-symbolic')
+        refresh_btn.set_tooltip_text('Check for updates')
         refresh_btn.connect('clicked', self._on_refresh)
         header.pack_end(refresh_btn)
 
         # Settings button
-        settings_btn = Gtk.Button(icon_name="emblem-system-symbolic")
-        settings_btn.set_tooltip_text("Update settings")
+        settings_btn = Gtk.Button(icon_name='emblem-system-symbolic')
+        settings_btn.set_tooltip_text('Update settings')
         settings_btn.connect('clicked', self._on_settings)
         header.pack_end(settings_btn)
 
@@ -216,7 +217,7 @@ class UpdatesWindow(Adw.ApplicationWindow):
         self._build_updating_page()
         self._build_error_page()
 
-        self.content_stack.set_visible_child_name("checking")
+        self.content_stack.set_visible_child_name('checking')
 
     def _build_checking_page(self):
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
@@ -228,15 +229,15 @@ class UpdatesWindow(Adw.ApplicationWindow):
         spinner.start()
         page.append(spinner)
 
-        label = Gtk.Label(label="Checking for updates...")
+        label = Gtk.Label(label='Checking for updates...')
         label.add_css_class('status-title')
         page.append(label)
 
-        sublabel = Gtk.Label(label="This may take a moment")
+        sublabel = Gtk.Label(label='This may take a moment')
         sublabel.add_css_class('status-subtitle')
         page.append(sublabel)
 
-        self.content_stack.add_named(page, "checking")
+        self.content_stack.add_named(page, 'checking')
 
     def _build_up_to_date_page(self):
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
@@ -254,20 +255,20 @@ class UpdatesWindow(Adw.ApplicationWindow):
         icon.set_markup(f'<span size="72000" foreground="{COLORS["green"]}">✓</span>')
         card.append(icon)
 
-        title = Gtk.Label(label="System is up to date")
+        title = Gtk.Label(label='System is up to date')
         title.add_css_class('status-title')
         card.append(title)
 
-        subtitle = Gtk.Label(label="All packages are at their latest versions")
+        subtitle = Gtk.Label(label='All packages are at their latest versions')
         subtitle.add_css_class('status-subtitle')
         card.append(subtitle)
 
-        self.last_check_label = Gtk.Label(label="Last checked: just now")
+        self.last_check_label = Gtk.Label(label='Last checked: just now')
         self.last_check_label.add_css_class('status-subtitle')
         self.last_check_label.set_margin_top(8)
         card.append(self.last_check_label)
 
-        self.content_stack.add_named(page, "up_to_date")
+        self.content_stack.add_named(page, 'up_to_date')
 
     def _build_updates_page(self):
         scroll = Gtk.ScrolledWindow()
@@ -281,17 +282,17 @@ class UpdatesWindow(Adw.ApplicationWindow):
         header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         page.append(header)
 
-        title = Gtk.Label(label="Updates Available")
+        title = Gtk.Label(label='Updates Available')
         title.add_css_class('status-title')
         title.set_halign(Gtk.Align.START)
         header.append(title)
 
-        self.update_count_badge = Gtk.Label(label="0")
+        self.update_count_badge = Gtk.Label(label='0')
         self.update_count_badge.add_css_class('update-count')
         header.append(self.update_count_badge)
 
         # Update button (top)
-        self.update_btn_top = Gtk.Button(label="Update All")
+        self.update_btn_top = Gtk.Button(label='Update All')
         self.update_btn_top.add_css_class('update-button')
         self.update_btn_top.connect('clicked', self._on_update_all)
         self.update_btn_top.set_halign(Gtk.Align.END)
@@ -303,10 +304,10 @@ class UpdatesWindow(Adw.ApplicationWindow):
         info_box.add_css_class('info-banner')
         page.append(info_box)
 
-        info_icon = Gtk.Label(label="ℹ️")
+        info_icon = Gtk.Label(label='ℹ️')
         info_box.append(info_icon)
 
-        self.info_label = Gtk.Label(label="Review the packages below, then click Update All to install.")
+        self.info_label = Gtk.Label(label='Review the packages below, then click Update All to install.')
         self.info_label.set_wrap(True)
         self.info_label.set_hexpand(True)
         info_box.append(self.info_label)
@@ -320,13 +321,13 @@ class UpdatesWindow(Adw.ApplicationWindow):
         official_header.add_css_class('update-header')
         self.official_card.append(official_header)
 
-        official_title = Gtk.Label(label="Official Repositories")
+        official_title = Gtk.Label(label='Official Repositories')
         official_title.add_css_class('update-title')
         official_title.set_halign(Gtk.Align.START)
         official_title.set_hexpand(True)
         official_header.append(official_title)
 
-        self.official_count = Gtk.Label(label="0 packages")
+        self.official_count = Gtk.Label(label='0 packages')
         self.official_count.add_css_class('package-size')
         official_header.append(self.official_count)
 
@@ -342,20 +343,20 @@ class UpdatesWindow(Adw.ApplicationWindow):
         aur_header.add_css_class('update-header')
         self.aur_card.append(aur_header)
 
-        aur_title = Gtk.Label(label="AUR Packages")
+        aur_title = Gtk.Label(label='AUR Packages')
         aur_title.add_css_class('update-title')
         aur_title.set_halign(Gtk.Align.START)
         aur_title.set_hexpand(True)
         aur_header.append(aur_title)
 
-        self.aur_count = Gtk.Label(label="0 packages")
+        self.aur_count = Gtk.Label(label='0 packages')
         self.aur_count.add_css_class('package-size')
         aur_header.append(self.aur_count)
 
         self.aur_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.aur_card.append(self.aur_list)
 
-        self.content_stack.add_named(scroll, "updates")
+        self.content_stack.add_named(scroll, 'updates')
 
     def _build_updating_page(self):
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
@@ -373,7 +374,7 @@ class UpdatesWindow(Adw.ApplicationWindow):
         spinner.start()
         header.append(spinner)
 
-        self.updating_label = Gtk.Label(label="Updating system...")
+        self.updating_label = Gtk.Label(label='Updating system...')
         self.updating_label.add_css_class('status-title')
         header.append(self.updating_label)
 
@@ -395,7 +396,7 @@ class UpdatesWindow(Adw.ApplicationWindow):
         self.terminal_output.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
         terminal_scroll.set_child(self.terminal_output)
 
-        self.content_stack.add_named(page, "updating")
+        self.content_stack.add_named(page, 'updating')
 
     def _build_error_page(self):
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
@@ -413,29 +414,29 @@ class UpdatesWindow(Adw.ApplicationWindow):
         icon.set_markup(f'<span size="72000" foreground="{COLORS["red"]}">⚠️</span>')
         card.append(icon)
 
-        title = Gtk.Label(label="Update Check Failed")
+        title = Gtk.Label(label='Update Check Failed')
         title.add_css_class('status-title')
         card.append(title)
 
-        self.error_label = Gtk.Label(label="Could not check for updates. Please check your internet connection.")
+        self.error_label = Gtk.Label(label='Could not check for updates. Please check your internet connection.')
         self.error_label.add_css_class('status-subtitle')
         self.error_label.set_wrap(True)
         self.error_label.set_max_width_chars(50)
         card.append(self.error_label)
 
-        retry_btn = Gtk.Button(label="Retry")
+        retry_btn = Gtk.Button(label='Retry')
         retry_btn.add_css_class('refresh-button')
         retry_btn.connect('clicked', self._on_refresh)
         retry_btn.set_halign(Gtk.Align.CENTER)
         retry_btn.set_margin_top(8)
         card.append(retry_btn)
 
-        self.content_stack.add_named(page, "error")
+        self.content_stack.add_named(page, 'error')
 
     def _check_updates(self):
         """Check for available updates in background."""
         self.state = UpdateState.CHECKING
-        self.content_stack.set_visible_child_name("checking")
+        self.content_stack.set_visible_child_name('checking')
 
         thread = threading.Thread(target=self._do_check_updates)
         thread.daemon = True
@@ -449,10 +450,7 @@ class UpdatesWindow(Adw.ApplicationWindow):
 
         try:
             # Check official packages with checkupdates
-            result = subprocess.run(
-                ['checkupdates'],
-                capture_output=True, text=True, timeout=60
-            )
+            result = subprocess.run(['checkupdates'], capture_output=True, text=True, timeout=60)
 
             if result.returncode == 0 and result.stdout.strip():
                 for line in result.stdout.strip().split('\n'):
@@ -461,20 +459,13 @@ class UpdatesWindow(Adw.ApplicationWindow):
                         name = parts[0]
                         current = parts[1]
                         new = parts[3]
-                        self.packages.append(Package(
-                            name=name,
-                            current_version=current,
-                            new_version=new,
-                            size="",
-                            source='official'
-                        ))
+                        self.packages.append(
+                            Package(name=name, current_version=current, new_version=new, size='', source='official')
+                        )
 
             # Check AUR packages if yay is available
             if os.path.exists('/usr/bin/yay'):
-                aur_result = subprocess.run(
-                    ['yay', '-Qua'],
-                    capture_output=True, text=True, timeout=60
-                )
+                aur_result = subprocess.run(['yay', '-Qua'], capture_output=True, text=True, timeout=60)
 
                 if aur_result.returncode == 0 and aur_result.stdout.strip():
                     for line in aur_result.stdout.strip().split('\n'):
@@ -483,18 +474,14 @@ class UpdatesWindow(Adw.ApplicationWindow):
                             name = parts[0]
                             current = parts[1]
                             new = parts[3]
-                            self.packages.append(Package(
-                                name=name,
-                                current_version=current,
-                                new_version=new,
-                                size="",
-                                source='aur'
-                            ))
+                            self.packages.append(
+                                Package(name=name, current_version=current, new_version=new, size='', source='aur')
+                            )
 
             GLib.idle_add(self._update_ui_after_check)
 
         except subprocess.TimeoutExpired:
-            GLib.idle_add(self._show_error, "Update check timed out. Please try again.")
+            GLib.idle_add(self._show_error, 'Update check timed out. Please try again.')
         except Exception as e:
             GLib.idle_add(self._show_error, str(e))
 
@@ -502,11 +489,11 @@ class UpdatesWindow(Adw.ApplicationWindow):
         """Update UI after checking for updates."""
         if not self.packages:
             self.state = UpdateState.UP_TO_DATE
-            self.content_stack.set_visible_child_name("up_to_date")
+            self.content_stack.set_visible_child_name('up_to_date')
         else:
             self.state = UpdateState.UPDATES_AVAILABLE
             self._populate_packages_list()
-            self.content_stack.set_visible_child_name("updates")
+            self.content_stack.set_visible_child_name('updates')
 
     def _populate_packages_list(self):
         """Populate the packages lists."""
@@ -524,8 +511,8 @@ class UpdatesWindow(Adw.ApplicationWindow):
         # Update counts
         total = len(self.packages)
         self.update_count_badge.set_label(str(total))
-        self.official_count.set_label(f"{len(official)} packages")
-        self.aur_count.set_label(f"{len(aur)} packages")
+        self.official_count.set_label(f'{len(official)} packages')
+        self.aur_count.set_label(f'{len(aur)} packages')
 
         # Hide sections if empty
         self.official_card.set_visible(len(official) > 0)
@@ -577,7 +564,7 @@ class UpdatesWindow(Adw.ApplicationWindow):
     def _show_error(self, message: str):
         self.state = UpdateState.ERROR
         self.error_label.set_text(message)
-        self.content_stack.set_visible_child_name("error")
+        self.content_stack.set_visible_child_name('error')
 
     def _on_refresh(self, button=None):
         self._check_updates()
@@ -585,23 +572,21 @@ class UpdatesWindow(Adw.ApplicationWindow):
     def _on_settings(self, button):
         """Show update settings dialog."""
         dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading="Update Settings",
-            body="Configure automatic updates and mirror settings."
+            transient_for=self, heading='Update Settings', body='Configure automatic updates and mirror settings.'
         )
 
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("ok", "OK")
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('ok', 'OK')
         dialog.present()
 
     def _on_update_all(self, button):
         """Start updating all packages."""
         self.state = UpdateState.UPDATING
-        self.content_stack.set_visible_child_name("updating")
+        self.content_stack.set_visible_child_name('updating')
 
         # Clear terminal
         buffer = self.terminal_output.get_buffer()
-        buffer.set_text("")
+        buffer.set_text('')
 
         # Start update process
         thread = threading.Thread(target=self._do_update)
@@ -621,13 +606,7 @@ class UpdatesWindow(Adw.ApplicationWindow):
                 # Use pacman for official only
                 cmd = ['pkexec', 'pacman', '-Syu', '--noconfirm']
 
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
 
             for line in process.stdout:
                 GLib.idle_add(self._append_output, line)
@@ -640,7 +619,7 @@ class UpdatesWindow(Adw.ApplicationWindow):
                 GLib.idle_add(self._update_failed)
 
         except Exception as e:
-            GLib.idle_add(self._append_output, f"Error: {str(e)}\n")
+            GLib.idle_add(self._append_output, f'Error: {str(e)}\n')
             GLib.idle_add(self._update_failed)
 
     def _append_output(self, text: str):
@@ -655,32 +634,27 @@ class UpdatesWindow(Adw.ApplicationWindow):
 
     def _update_complete(self):
         """Called when update completes successfully."""
-        self.updating_label.set_text("Update Complete!")
-        self._append_output("\n✓ All packages updated successfully!\n")
+        self.updating_label.set_text('Update Complete!')
+        self._append_output('\n✓ All packages updated successfully!\n')
         self.progress_bar.set_fraction(1.0)
 
         # Show success dialog
         dialog = Adw.MessageDialog(
-            transient_for=self,
-            heading="Update Complete",
-            body="All packages have been updated successfully."
+            transient_for=self, heading='Update Complete', body='All packages have been updated successfully.'
         )
-        dialog.add_response("ok", "OK")
+        dialog.add_response('ok', 'OK')
         dialog.connect('response', lambda d, r: self._check_updates())
         dialog.present()
 
     def _update_failed(self):
         """Called when update fails."""
-        self.updating_label.set_text("Update Failed")
-        self._append_output("\n✗ Update failed. See output above for details.\n")
+        self.updating_label.set_text('Update Failed')
+        self._append_output('\n✗ Update failed. See output above for details.\n')
 
 
 class UpdatesApp(Adw.Application):
     def __init__(self):
-        super().__init__(
-            application_id='com.aegis.updates',
-            flags=Gio.ApplicationFlags.FLAGS_NONE
-        )
+        super().__init__(application_id='com.aegis.updates', flags=Gio.ApplicationFlags.FLAGS_NONE)
 
     def do_activate(self):
         win = UpdatesWindow(self)
