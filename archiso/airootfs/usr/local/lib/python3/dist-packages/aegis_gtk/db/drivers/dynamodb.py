@@ -31,9 +31,7 @@ def _ensure_boto3():
 
             boto3 = _boto3
         except ImportError as err:
-            raise ImportError(
-                'boto3 is required for DynamoDB support. Install it with: pip install boto3'
-            ) from err
+            raise ImportError('boto3 is required for DynamoDB support. Install it with: pip install boto3') from err
 
 
 class DynamoDBDriver(DatabaseDriver):
@@ -194,8 +192,12 @@ class DynamoDBDriver(DatabaseDriver):
             # Check if it's a PartiQL query or a simple table scan
             query = query.strip()
 
-            if query.upper().startswith('SELECT') or query.upper().startswith('INSERT') or \
-               query.upper().startswith('UPDATE') or query.upper().startswith('DELETE'):
+            if (
+                query.upper().startswith('SELECT')
+                or query.upper().startswith('INSERT')
+                or query.upper().startswith('UPDATE')
+                or query.upper().startswith('DELETE')
+            ):
                 return await self._execute_partiql(query, params, start)
             else:
                 # Treat as table name for scan
@@ -223,13 +225,9 @@ class DynamoDBDriver(DatabaseDriver):
             if params:
                 # Convert params to DynamoDB format
                 if isinstance(params, dict):
-                    request_params['Parameters'] = [
-                        self._python_to_dynamodb(v) for v in params.values()
-                    ]
+                    request_params['Parameters'] = [self._python_to_dynamodb(v) for v in params.values()]
                 else:
-                    request_params['Parameters'] = [
-                        self._python_to_dynamodb(v) for v in params
-                    ]
+                    request_params['Parameters'] = [self._python_to_dynamodb(v) for v in params]
 
             response = self._client.execute_statement(**request_params)
             execution_time = (time.time() - start) * 1000
@@ -307,10 +305,7 @@ class DynamoDBDriver(DatabaseDriver):
             for item in items:
                 all_keys.update(item.keys())
 
-            columns = [
-                ColumnInfo(name=key, type_name='variant', python_type=str)
-                for key in sorted(all_keys)
-            ]
+            columns = [ColumnInfo(name=key, type_name='variant', python_type=str) for key in sorted(all_keys)]
 
             # Convert all items to rows
             rows = []
@@ -452,8 +447,7 @@ class DynamoDBDriver(DatabaseDriver):
             # Key schema
             key_schema = table_info.get('KeySchema', [])
             attribute_defs = {
-                attr['AttributeName']: attr['AttributeType']
-                for attr in table_info.get('AttributeDefinitions', [])
+                attr['AttributeName']: attr['AttributeType'] for attr in table_info.get('AttributeDefinitions', [])
             }
 
             for key in key_schema:

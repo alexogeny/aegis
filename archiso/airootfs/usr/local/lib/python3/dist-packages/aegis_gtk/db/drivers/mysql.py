@@ -32,9 +32,7 @@ def _ensure_aiomysql():
 
             aiomysql = _aiomysql
         except ImportError as err:
-            raise ImportError(
-                'aiomysql is required for MySQL support. Install it with: pip install aiomysql'
-            ) from err
+            raise ImportError('aiomysql is required for MySQL support. Install it with: pip install aiomysql') from err
 
 
 class MySQLDriver(DatabaseDriver):
@@ -109,6 +107,7 @@ class MySQLDriver(DatabaseDriver):
         ssl_ctx = None
         if config.get('ssl', False):
             import ssl
+
             ssl_ctx = ssl.create_default_context()
 
         self._pool = await aiomysql.create_pool(
@@ -140,6 +139,7 @@ class MySQLDriver(DatabaseDriver):
             ssl_ctx = None
             if config.get('ssl', False):
                 import ssl
+
                 ssl_ctx = ssl.create_default_context()
 
             conn = await aiomysql.connect(
@@ -263,7 +263,7 @@ class MySQLDriver(DatabaseDriver):
 
     async def get_schemas(self) -> list[str]:
         """Get list of databases (MySQL uses databases as schemas)."""
-        query = "SHOW DATABASES"
+        query = 'SHOW DATABASES'
         result = await self.execute(query)
 
         if not result.is_success:

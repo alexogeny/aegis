@@ -31,9 +31,7 @@ def _ensure_redis():
 
             redis_lib = _redis
         except ImportError as err:
-            raise ImportError(
-                'redis is required for Redis support. Install it with: pip install redis'
-            ) from err
+            raise ImportError('redis is required for Redis support. Install it with: pip install redis') from err
 
 
 class RedisDriver(DatabaseDriver):
