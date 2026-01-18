@@ -90,10 +90,10 @@ jobs:
           # Add calamares from EndeavourOS repo
           echo "calamares" >> /tmp/aegis-profile/packages.x86_64
 
-          # Move custom calamares configs temporarily (conflicts with package defaults)
+          # Save our custom calamares configs - we'll apply them via pacman hook
+          # The calamares package will install its defaults, then our configs overlay them
           if [ -d "/tmp/aegis-profile/airootfs/etc/calamares" ]; then
-              mv /tmp/aegis-profile/airootfs/etc/calamares /tmp/aegis-calamares-custom
-              rm -f /tmp/aegis-profile/airootfs/usr/share/applications/calamares.desktop 2>/dev/null || true
+              echo "Custom Calamares configs found, will be included in ISO"
           fi
 
       - name: Check available disk space
@@ -107,72 +107,6 @@ jobs:
           # Use workspace directory which has more space than /tmp in containers
           mkdir -p $GITHUB_WORKSPACE/aegis-work $GITHUB_WORKSPACE/aegis-out
           mkarchiso -v -w $GITHUB_WORKSPACE/aegis-work -o $GITHUB_WORKSPACE/aegis-out /tmp/aegis-profile
-
-      - name: Apply custom Calamares configs
-        run: |
-          WORK_DIR="$GITHUB_WORKSPACE/aegis-work"
-          OUT_DIR="$GITHUB_WORKSPACE/aegis-out"
-
-          # Restore custom calamares configs over package defaults
-          if [ -d "/tmp/aegis-calamares-custom" ]; then
-              # mkarchiso creates: work/x86_64/airootfs and work/x86_64/iso
-              # install_dir from profiledef.sh is "aegis"
-              AIROOTFS_DIR="$WORK_DIR/x86_64/airootfs"
-              ISO_DIR="$WORK_DIR/x86_64/iso"
-              INSTALL_DIR="aegis"
-
-              echo "=== Debug: Listing work directory structure ==="
-              ls -la "$WORK_DIR/x86_64/" || true
-              ls -la "$ISO_DIR/" 2>/dev/null || echo "iso/ directory not found"
-
-              echo "=== Copying custom Calamares configs ==="
-              cp -rf /tmp/aegis-calamares-custom/* "$AIROOTFS_DIR/etc/calamares/"
-
-              # Remove old squashfs and ISO to free space before rebuilding
-              rm -f "$WORK_DIR/x86_64/airootfs.sfs"
-              rm -f "$OUT_DIR"/*.iso
-
-              echo "=== Rebuilding squashfs ==="
-              cd "$WORK_DIR/x86_64"
-              mksquashfs airootfs airootfs.sfs -comp zstd -Xcompression-level 12 -b 1M
-
-              # The squashfs goes in iso/<install_dir>/x86_64/
-              SFS_DEST="$ISO_DIR/$INSTALL_DIR/x86_64"
-              echo "=== Copying squashfs to $SFS_DEST ==="
-
-              if [ -d "$SFS_DEST" ]; then
-                  cp airootfs.sfs "$SFS_DEST/"
-              else
-                  echo "Expected path not found, searching for correct location..."
-                  find "$ISO_DIR" -type d -name "x86_64" 2>/dev/null
-                  # Try to find any x86_64 directory under iso/
-                  FOUND_DIR=$(find "$ISO_DIR" -type d -name "x86_64" | head -1)
-                  if [ -n "$FOUND_DIR" ]; then
-                      echo "Found: $FOUND_DIR"
-                      cp airootfs.sfs "$FOUND_DIR/"
-                  else
-                      echo "ERROR: Cannot find squashfs destination!"
-                      exit 1
-                  fi
-              fi
-
-              echo "=== Rebuilding ISO ==="
-              xorriso -as mkisofs \
-                  -iso-level 3 -full-iso9660-filenames -joliet -joliet-long -rational-rock \
-                  -volid "AEGIS_$(date +%Y%m)" \
-                  -appid "Aegis Linux Live/Installer" \
-                  -publisher "Aegis Linux <https://github.com/aegis-linux>" \
-                  -preparer "mkarchiso" \
-                  -eltorito-boot syslinux/isolinux.bin \
-                  -eltorito-catalog syslinux/boot.cat \
-                  -no-emul-boot -boot-load-size 4 -boot-info-table \
-                  -isohybrid-mbr /usr/lib/syslinux/bios/isohdpfx.bin \
-                  -eltorito-alt-boot \
-                  -e EFI/efiboot.img \
-                  -no-emul-boot -isohybrid-gpt-basdat \
-                  -output "$OUT_DIR/aegis-linux.iso" \
-                  "$ISO_DIR/"
-          fi
 
       - name: Generate checksums
         run: |
@@ -217,8 +151,8 @@ jobs:
             ### Features
             - Security-focused Arch Linux with AppArmor and kernel hardening
             - Hyprland Wayland compositor with Catppuccin Mocha theme
-            - Developer tools: Rust, Python, Go, Docker, K8s
-            - Content creator ready: OBS, EasyEffects, Elgato support
+            - Modular installation: choose dev tools, containers, drivers during setup
+            - Optional packages: VS Code, Docker/Podman, OBS, gaming tools via installer
 
             ### Verification
             ```bash

@@ -740,63 +740,63 @@ export function AnimatedDbDemo() {
 
           {/* Results Table */}
           <div className="flex-1 overflow-auto bg-base">
-              {results.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-overlay0">
-                  <span className="text-2xl mb-2">📊</span>
-                  <span className="text-xs">Run a query to see results</span>
-                </div>
-              ) : (
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-mantle">
-                    <tr>
-                      {["id", "name", "email", "status"].map((col) => (
-                        <th
-                          key={col}
-                          className="text-left px-3 py-2 text-text font-bold border-b-2 border-surface0"
-                        >
-                          {col}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map(
-                      (row: (typeof mockResults)[number], idx: number) => (
-                        <tr
-                          key={row.id}
-                          className={`border-b border-surface0/30 animate-fadeIn cursor-pointer transition-colors ${
-                            expandedRowIndex === idx
-                              ? "bg-mauve/20 border-l-2 border-l-mauve"
-                              : idx % 2 === 1
-                                ? "bg-surface0/10 hover:bg-surface0/30"
-                                : "hover:bg-surface0/30"
-                          }`}
-                          style={{ animationDelay: `${idx * 50}ms` }}
-                          onClick={() => {
-                            setIsAnimating(false);
-                            setExpandedRowIndex(
-                              expandedRowIndex === idx ? null : idx,
-                            );
-                          }}
-                        >
-                          <td className="px-3 py-2 font-mono text-overlay0">
-                            {row.id}
-                          </td>
-                          <td className="px-3 py-2 text-text">{row.name}</td>
-                          <td className="px-3 py-2 font-mono text-subtext0">
-                            {row.email}
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
-                              {row.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
-              )}
+            {results.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-overlay0">
+                <span className="text-2xl mb-2">📊</span>
+                <span className="text-xs">Run a query to see results</span>
+              </div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-mantle">
+                  <tr>
+                    {["id", "name", "email", "status"].map((col) => (
+                      <th
+                        key={col}
+                        className="text-left px-3 py-2 text-text font-bold border-b-2 border-surface0"
+                      >
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map(
+                    (row: (typeof mockResults)[number], idx: number) => (
+                      <tr
+                        key={row.id}
+                        className={`border-b border-surface0/30 animate-fadeIn cursor-pointer transition-colors ${
+                          expandedRowIndex === idx
+                            ? "bg-mauve/20 border-l-2 border-l-mauve"
+                            : idx % 2 === 1
+                              ? "bg-surface0/10 hover:bg-surface0/30"
+                              : "hover:bg-surface0/30"
+                        }`}
+                        style={{ animationDelay: `${idx * 50}ms` }}
+                        onClick={() => {
+                          setIsAnimating(false);
+                          setExpandedRowIndex(
+                            expandedRowIndex === idx ? null : idx,
+                          );
+                        }}
+                      >
+                        <td className="px-3 py-2 font-mono text-overlay0">
+                          {row.id}
+                        </td>
+                        <td className="px-3 py-2 text-text">{row.name}</td>
+                        <td className="px-3 py-2 font-mono text-subtext0">
+                          {row.email}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>
@@ -851,43 +851,39 @@ export function AnimatedDbDemo() {
 
             {/* Fields View */}
             <div className="p-3 space-y-2 max-h-[200px] overflow-auto">
-              {Object.entries(results[expandedRowIndex]).map(
-                ([key, value]) => (
-                  <div
-                    key={key}
-                    className="bg-surface0/30 rounded-lg p-2.5 border border-surface0"
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px]">
-                        {key === "id"
-                          ? "🔑"
-                          : key === "email"
-                            ? "📧"
-                            : key === "status"
-                              ? "🏷️"
-                              : "📊"}
-                      </span>
-                      <span className="text-[10px] text-overlay0 uppercase tracking-wide font-medium">
-                        {key}
-                      </span>
-                      <span className="text-[10px] text-yellow font-mono ml-auto">
-                        {typeof value === "number"
-                          ? "integer"
-                          : typeof value}
-                      </span>
-                    </div>
-                    <div className="text-xs text-text font-mono pl-5">
-                      {key === "status" ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
-                          {String(value)}
-                        </span>
-                      ) : (
-                        String(value)
-                      )}
-                    </div>
+              {Object.entries(results[expandedRowIndex]).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="bg-surface0/30 rounded-lg p-2.5 border border-surface0"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px]">
+                      {key === "id"
+                        ? "🔑"
+                        : key === "email"
+                          ? "📧"
+                          : key === "status"
+                            ? "🏷️"
+                            : "📊"}
+                    </span>
+                    <span className="text-[10px] text-overlay0 uppercase tracking-wide font-medium">
+                      {key}
+                    </span>
+                    <span className="text-[10px] text-yellow font-mono ml-auto">
+                      {typeof value === "number" ? "integer" : typeof value}
+                    </span>
                   </div>
-                ),
-              )}
+                  <div className="text-xs text-text font-mono pl-5">
+                    {key === "status" ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
+                        {String(value)}
+                      </span>
+                    ) : (
+                      String(value)
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* JSON Preview Panel */}
@@ -901,7 +897,7 @@ export function AnimatedDbDemo() {
                 </button>
               </div>
               <pre className="text-[10px] text-subtext0 font-mono whitespace-pre-wrap bg-crust rounded p-2 max-h-[60px] overflow-auto">
-{JSON.stringify(results[expandedRowIndex], null, 2)}
+                {JSON.stringify(results[expandedRowIndex], null, 2)}
               </pre>
             </div>
           </div>
