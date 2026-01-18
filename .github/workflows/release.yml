@@ -68,7 +68,8 @@ jobs:
           cp -r archiso /tmp/aegis-profile
           # Add calamares from EndeavourOS repo
           echo "calamares" >> /tmp/aegis-profile/packages.x86_64
-          # Remove custom .desktop to avoid conflict with package
+          # Move custom calamares configs temporarily (conflicts with package)
+          mv /tmp/aegis-profile/airootfs/etc/calamares /tmp/aegis-calamares-custom
           rm -f /tmp/aegis-profile/airootfs/usr/share/applications/calamares.desktop
           # Sync pacman database with all repos
           pacman -Sy
@@ -77,15 +78,38 @@ jobs:
         run: |
           mkdir -p /tmp/aegis-work out
           mkarchiso -v -w /tmp/aegis-work -o out /tmp/aegis-profile
+          # Restore our custom calamares configs over package defaults
+          cp -rf /tmp/aegis-calamares-custom/* /tmp/aegis-work/x86_64/airootfs/etc/calamares/
 
-      - name: Rename and generate checksums
+      - name: Rebuild squashfs and ISO with custom configs
+        run: |
+          cd /tmp/aegis-work/x86_64
+          # Rebuild squashfs
+          rm -f airootfs.sfs
+          mksquashfs airootfs airootfs.sfs -comp zstd -Xcompression-level 15 -b 1M
+          # Copy to iso directory
+          cp airootfs.sfs iso/aegis/x86_64/
+          # Rebuild ISO using the same method as mkarchiso
+          rm -f $GITHUB_WORKSPACE/out/aegis-*.iso
+          xorriso -as mkisofs \
+            -iso-level 3 -full-iso9660-filenames -joliet -joliet-long -rational-rock \
+            -volid "AEGIS_$(date +%Y%m)" \
+            -appid "Aegis Linux Live/Installer" \
+            -publisher "Aegis Linux <https://github.com/aegis-linux>" \
+            -preparer "mkarchiso" \
+            -eltorito-boot syslinux/isolinux.bin \
+            -eltorito-catalog syslinux/boot.cat \
+            -no-emul-boot -boot-load-size 4 -boot-info-table \
+            -isohybrid-mbr /usr/lib/syslinux/bios/isohdpfx.bin \
+            -eltorito-alt-boot \
+            -e EFI/efiboot.img \
+            -no-emul-boot -isohybrid-gpt-basdat \
+            -output $GITHUB_WORKSPACE/out/aegis-linux.iso \
+            iso/
+
+      - name: Generate checksums
         run: |
           cd out
-          # Rename to consistent filename for easy download links
-          for iso in aegis-*.iso; do
-              mv "$iso" "aegis-linux.iso"
-              break
-          done
           sha256sum "aegis-linux.iso" > "aegis-linux.iso.sha256"
           b2sum "aegis-linux.iso" > "aegis-linux.iso.b2sum"
 
