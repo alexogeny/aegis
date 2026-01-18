@@ -39,8 +39,10 @@ jobs:
 
       - name: Set up EndeavourOS repository (for calamares)
         run: |
-          # Install keyring and mirrorlist packages directly (avoids keyserver issues)
-          pacman -U --noconfirm "https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64/endeavouros-keyring-20231222-1-any.pkg.tar.zst"
+          # Import EndeavourOS key and install keyring
+          curl -fsSL "https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64/endeavouros-keyring-20231222-1-any.pkg.tar.zst" -o /tmp/eos-keyring.pkg.tar.zst
+          pacman -U --noconfirm --config <(echo -e "[options]\nSigLevel = Never") /tmp/eos-keyring.pkg.tar.zst
+          pacman-key --populate endeavouros
           pacman -U --noconfirm "https://mirror.alpix.eu/endeavouros/repo/endeavouros/x86_64/endeavouros-mirrorlist-26-1-any.pkg.tar.zst"
           echo "" >> /etc/pacman.conf
           echo "[endeavouros]" >> /etc/pacman.conf
