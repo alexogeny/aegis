@@ -81,6 +81,8 @@ jobs:
               echo "SigLevel = Optional TrustAll" >> /tmp/aegis-profile/pacman.conf
               echo "Server = file:///tmp/localrepo" >> /tmp/aegis-profile/pacman.conf
               echo "calamares" >> /tmp/aegis-profile/packages.x86_64
+              # Remove custom .desktop to avoid conflict with package
+              rm -f /tmp/aegis-profile/airootfs/usr/share/applications/calamares.desktop
           fi
 
       - name: Build ISO
@@ -88,13 +90,16 @@ jobs:
           mkdir -p /tmp/aegis-work out
           mkarchiso -v -w /tmp/aegis-work -o out /tmp/aegis-profile
 
-      - name: Generate checksums
+      - name: Rename and generate checksums
         run: |
           cd out
-          for iso in *.iso; do
-              sha256sum "$iso" > "$iso.sha256"
-              b2sum "$iso" > "$iso.b2sum"
+          # Rename to consistent filename for easy download links
+          for iso in aegis-*.iso; do
+              mv "$iso" "aegis-linux.iso"
+              break
           done
+          sha256sum "aegis-linux.iso" > "aegis-linux.iso.sha256"
+          b2sum "aegis-linux.iso" > "aegis-linux.iso.b2sum"
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
