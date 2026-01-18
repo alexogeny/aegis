@@ -147,9 +147,9 @@ jobs:
           echo "Squashfs rebuilt successfully:"
           ls -lh airootfs.sfs
 
-          echo "=== Rebuilding ISO with xorriso ==="
-          # Install xorriso and syslinux (for isohdpfx.bin)
-          pacman -S --noconfirm --needed xorriso syslinux
+          echo "=== Updating ISO with xorriso ==="
+          # Install xorriso
+          pacman -S --noconfirm --needed xorriso
 
           # Get the original ISO
           ORIG_ISO=$(ls "$OUT_DIR"/*.iso 2>/dev/null | head -1)
@@ -159,68 +159,21 @@ jobs:
           fi
           echo "Original ISO: $ORIG_ISO"
 
-          # Extract ISO to temp directory
-          ISO_EXTRACT="/tmp/iso-extract"
-          mkdir -p "$ISO_EXTRACT"
-          xorriso -osirrox on -indev "$ORIG_ISO" -extract / "$ISO_EXTRACT"
+          # Use xorriso to update the squashfs in-place, preserving all boot structures
+          # This avoids having to reconstruct the complex EFI/BIOS boot setup
+          xorriso -indev "$ORIG_ISO" \
+              -outdev "$OUT_DIR/aegis-updated.iso" \
+              -boot_image any replay \
+              -rm aegis/x86_64/airootfs.sfs -- \
+              -map "$WORK_DIR/x86_64/airootfs.sfs" /aegis/x86_64/airootfs.sfs \
+              -end
 
-          # Show extracted structure for debugging
-          echo "Extracted ISO structure:"
-          find "$ISO_EXTRACT" -maxdepth 3 -type d | head -20
-
-          # Replace the squashfs in the extracted ISO
-          SQUASHFS_PATH=$(find "$ISO_EXTRACT" -name "airootfs.sfs" | head -1)
-          if [ -z "$SQUASHFS_PATH" ]; then
-              echo "ERROR: Could not find airootfs.sfs in extracted ISO"
-              exit 1
-          fi
-          echo "Replacing squashfs at: $SQUASHFS_PATH"
-          cp -f "$WORK_DIR/x86_64/airootfs.sfs" "$SQUASHFS_PATH"
-
-          # Find EFI boot image
-          EFI_IMG=$(find "$ISO_EXTRACT" -name "*.img" -path "*/EFI/*" | head -1)
-          if [ -z "$EFI_IMG" ]; then
-              # Try alternate location
-              EFI_IMG=$(find "$ISO_EXTRACT" -name "efiboot.img" | head -1)
-          fi
-          EFI_IMG_REL="${EFI_IMG#$ISO_EXTRACT/}"
-          echo "EFI boot image: $EFI_IMG_REL"
-
-          # Find BIOS boot files
-          ISOLINUX_BIN=$(find "$ISO_EXTRACT" -name "isolinux.bin" | head -1)
-          ISOLINUX_BIN_REL="${ISOLINUX_BIN#$ISO_EXTRACT/}"
-          BOOT_CAT_REL="${ISOLINUX_BIN_REL%/*}/boot.cat"
-          echo "BIOS boot: $ISOLINUX_BIN_REL"
-
-          # Rebuild ISO using xorriso (preserving EFI boot structure)
-          NEW_ISO="$OUT_DIR/aegis-$(date +%Y.%m.%d)-x86_64.iso"
+          # Replace original with updated
           rm -f "$ORIG_ISO"
+          mv "$OUT_DIR/aegis-updated.iso" "$ORIG_ISO"
 
-          xorriso -as mkisofs \
-              -iso-level 3 \
-              -full-iso9660-filenames \
-              -joliet \
-              -joliet-long \
-              -rational-rock \
-              -volid "AEGIS_$(date +%Y%m)" \
-              -appid "Aegis Linux Live/Installer" \
-              -publisher "Aegis Linux <https://github.com/aegis-linux>" \
-              -preparer "mkarchiso" \
-              -eltorito-boot "$ISOLINUX_BIN_REL" \
-              -eltorito-catalog "$BOOT_CAT_REL" \
-              -no-emul-boot \
-              -boot-load-size 4 \
-              -boot-info-table \
-              -isohybrid-mbr /usr/lib/syslinux/bios/isohdpfx.bin \
-              -eltorito-alt-boot \
-              -e "$EFI_IMG_REL" \
-              -no-emul-boot \
-              -isohybrid-gpt-basdat \
-              -output "$NEW_ISO" \
-              "$ISO_EXTRACT"
-
-          echo "=== ISO rebuild complete ==="
-          ls -lh "$NEW_ISO"
+          echo "=== ISO update complete ==="
+          ls -lh "$ORIG_ISO"
 
       - name: Generate checksums
         run: |
