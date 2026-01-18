@@ -48,6 +48,7 @@ log_info "Project directory: $PROJECT_DIR"
 log_info "Output directory: $OUTPUT_DIR"
 
 # Build command - must set up repos BEFORE building
+# shellcheck disable=SC2016  # Variables intentionally expand inside container, not host
 BUILD_CMD='
 set -e
 echo "=== Initializing pacman keyring ==="
