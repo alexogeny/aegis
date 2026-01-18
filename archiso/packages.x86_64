@@ -134,6 +134,7 @@ colloid-catppuccin-gtk-theme-git
 catppuccin-cursors-mocha
 catppuccin-mocha-grub-theme-git
 papirus-icon-theme
+gtk-engine-murrine
 
 # -----------------------------------------------------------------------------
 # Fonts
@@ -175,6 +176,7 @@ inotify-tools
 # Security - Additional Tools
 # -----------------------------------------------------------------------------
 firejail
+xdg-dbus-proxy
 keepassxc
 gnupg
 pass
@@ -408,6 +410,7 @@ dconf-editor
 # - aegis-macropad: Macro button controller (works with Stream Deck)
 # - aegis-lighting: Smart light controller (works with Elgato Key Light)
 # - aegis-armor: Security configuration (AppArmor, firewall, hardening)
+# - aegis-dbview: Database viewer (PostgreSQL, SQLite, MySQL, etc.)
 # -----------------------------------------------------------------------------
 libadwaita
 python-gobject
@@ -424,3 +427,9 @@ nss-mdns
 
 # PipeWire routing (for advanced users)
 qpwgraph
+
+# -----------------------------------------------------------------------------
+# Database Drivers for aegis-dbview
+# -----------------------------------------------------------------------------
+python-asyncpg
+python-pygments

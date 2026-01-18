@@ -33,4 +33,5 @@ file_permissions=(
   ["/usr/local/bin/aegis-elgato"]="0:0:755"
   ["/usr/local/bin/aegis-audio-status"]="0:0:755"
   ["/usr/local/bin/aegis-dev-setup"]="0:0:755"
+  ["/usr/local/bin/aegis-dbview"]="0:0:755"
 )

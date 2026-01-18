@@ -32,6 +32,12 @@ configure_apparmor() {
         systemctl enable apparmor.service
     fi
 
+    # Load firejail AppArmor profile for integration
+    if [[ -f /etc/apparmor.d/firejail-default ]]; then
+        log "Loading firejail AppArmor profile..."
+        apparmor_parser -r /etc/apparmor.d/firejail-default 2>/dev/null || true
+    fi
+
     # Load all profiles
     if [[ -d /etc/apparmor.d ]]; then
         log "Loading AppArmor profiles..."
@@ -44,6 +50,29 @@ configure_apparmor() {
     fi
 
     log "AppArmor configured"
+}
+
+# Configure GTK4 theme for all users
+configure_gtk_theme() {
+    log "Configuring GTK4 theme..."
+
+    while IFS=: read -r username _ uid _ _ home _; do
+        if [[ $uid -ge 1000 && $uid -lt 65534 && -d "$home" ]]; then
+            # Create GTK4 config directory
+            mkdir -p "$home/.config/gtk-4.0"
+
+            # Symlink Colloid Catppuccin theme for GTK4 apps
+            local theme_dir="/usr/share/themes/Colloid-Dark-Catppuccin/gtk-4.0"
+            if [[ -d "$theme_dir" ]]; then
+                ln -sf "$theme_dir/assets" "$home/.config/gtk-4.0/" 2>/dev/null || true
+                ln -sf "$theme_dir/gtk.css" "$home/.config/gtk-4.0/" 2>/dev/null || true
+                ln -sf "$theme_dir/gtk-dark.css" "$home/.config/gtk-4.0/" 2>/dev/null || true
+            fi
+
+            chown -R "$username:$username" "$home/.config/gtk-4.0" 2>/dev/null || true
+            log "Configured GTK4 theme for user: $username"
+        fi
+    done < /etc/passwd
 }
 
 # Check system security status
@@ -111,10 +140,12 @@ main() {
         # Running from Calamares installer
         log "Running in install mode"
         configure_apparmor
+        configure_gtk_theme
     else
         # Running on actual first boot
         log "Running on first boot"
         configure_apparmor
+        configure_gtk_theme
         setup_user_dirs
         security_check
     fi

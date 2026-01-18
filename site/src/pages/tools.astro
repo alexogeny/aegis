@@ -1,0 +1,393 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { ArmorAppMockup } from "../components/ArmorAppMockup";
+import { WelcomeAppMockup } from "../components/WelcomeAppMockup";
+import { UpdatesAppMockup } from "../components/UpdatesAppMockup";
+import { BackupAppMockup } from "../components/BackupAppMockup";
+import { DisplaysAppMockup } from "../components/DisplaysAppMockup";
+
+const tools = [
+  {
+    name: "Aegis Armor",
+    icon: "🛡️",
+    desc: "Security configuration and hardening management",
+    color: "mauve",
+    features: [
+      "Real-time security status",
+      "Toggle AppArmor, firewall, encrypted DNS",
+      "Run security audits with Lynis",
+      "Hardening recommendations",
+    ],
+  },
+  {
+    name: "Aegis Welcome",
+    icon: "🎉",
+    desc: "First-run onboarding and setup wizard",
+    color: "teal",
+    features: [
+      "Keyboard shortcuts introduction",
+      "Theme customization",
+      "Initial configuration",
+      "Feature tour",
+    ],
+  },
+  {
+    name: "Aegis Updates",
+    icon: "📦",
+    desc: "Graphical package manager for pacman and AUR",
+    color: "green",
+    features: [
+      "Check for system updates",
+      "View package details",
+      "Install from AUR",
+      "Transaction history",
+    ],
+  },
+  {
+    name: "Aegis Displays",
+    icon: "🖥️",
+    desc: "Monitor configuration and arrangement",
+    color: "blue",
+    features: [
+      "Multi-monitor setup",
+      "Resolution and refresh rate",
+      "Scaling options",
+      "VRR/G-Sync toggle",
+    ],
+  },
+  {
+    name: "Aegis Backup",
+    icon: "💾",
+    desc: "System snapshot and restore management",
+    color: "peach",
+    features: [
+      "Create system snapshots",
+      "Automatic scheduling",
+      "Restore to previous states",
+      "Timeshift/Snapper integration",
+    ],
+  },
+  {
+    name: "Aegis Mixer",
+    icon: "🎛️",
+    desc: "Virtual audio mixer for streamers",
+    color: "sky",
+    features: [
+      "Multi-channel mixing",
+      "Per-app volume routing",
+      "EasyEffects integration",
+      "OBS audio source management",
+    ],
+  },
+  {
+    name: "Aegis Elgato",
+    icon: "💡",
+    desc: "Control Elgato Stream Deck and lighting",
+    color: "yellow",
+    features: [
+      "Stream Deck key mapping",
+      "Key Light control",
+      "Lighting presets",
+      "Scene integration",
+    ],
+  },
+  {
+    name: "Aegis Database Viewer",
+    icon: "🗄️",
+    desc: "SQL and NoSQL database client",
+    color: "lavender",
+    features: [
+      "SQL syntax highlighting",
+      "Virtual scrolling",
+      "Inline data editing",
+      "Multi-database support",
+    ],
+  },
+  {
+    name: "Aegis Containers",
+    icon: "🐳",
+    desc: "Docker and Podman container manager",
+    color: "sapphire",
+    features: [
+      "View running containers",
+      "Image management",
+      "Container logs",
+      "Resource monitoring",
+    ],
+  },
+  {
+    name: "Aegis Clipboard",
+    icon: "📋",
+    desc: "Clipboard history with search and pinning",
+    color: "green",
+    features: [
+      "Persistent history",
+      "Full-text search",
+      "Pin important items",
+      "Image preview",
+    ],
+  },
+];
+---
+
+<BaseLayout
+  title="System Tools - Aegis Linux"
+  description="Custom GTK4/Libadwaita apps for common system tasks. Beautiful, consistent, and designed for the Catppuccin theme."
+>
+  <Header />
+
+  <main class="pt-24">
+    <!-- Hero -->
+    <section class="px-4 py-16 md:py-24">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-12">
+          <div class="text-6xl mb-6">🔧</div>
+          <h1 class="text-4xl md:text-5xl font-bold text-text mb-4">
+            System Tools <span class="text-peach">Made Beautiful</span>
+          </h1>
+          <p class="text-xl text-subtext0 max-w-2xl mx-auto">
+            Custom GTK4/Libadwaita apps for common system tasks. Beautiful,
+            consistent, and designed for the Catppuccin theme.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tools Grid -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-6xl">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {
+            tools.map((tool) => (
+              <div
+                class={`bg-surface0/30 rounded-xl p-6 border border-surface0 hover:border-${tool.color} transition-colors`}
+              >
+                <div
+                  class={`w-12 h-12 rounded-lg bg-${tool.color}/20 flex items-center justify-center text-${tool.color} text-2xl mb-4`}
+                >
+                  {tool.icon}
+                </div>
+                <h3 class="text-xl font-bold text-text mb-2">{tool.name}</h3>
+                <p class="text-subtext0 text-sm mb-4">{tool.desc}</p>
+                <ul class="space-y-1 text-xs text-overlay0">
+                  {tool.features.map((feature) => (
+                    <li class="flex items-center gap-2">
+                      <span class="text-green">✓</span>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Tool Showcases -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-16">
+          <h2 class="text-3xl font-bold text-text mb-4">
+            App <span class="text-peach">Showcases</span>
+          </h2>
+          <p class="text-subtext0">See some of our tools in action</p>
+        </div>
+
+        <!-- Armor -->
+        <div class="grid md:grid-cols-2 gap-8 items-center mb-20">
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <span
+                class="w-10 h-10 rounded-lg bg-mauve/20 flex items-center justify-center text-xl"
+                >🛡️</span
+              >
+              <div>
+                <h3 class="text-xl font-bold text-text">Aegis Armor</h3>
+                <span class="text-xs bg-mauve/20 text-mauve px-2 py-0.5 rounded"
+                  >Security</span
+                >
+              </div>
+            </div>
+            <p class="text-subtext0 mb-4">
+              Your security command center. Toggle protection features, view
+              security status, and run audits - all without touching the
+              terminal.
+            </p>
+            <a
+              href="/security"
+              class="text-mauve hover:text-pink transition-colors text-sm font-medium"
+            >
+              Learn more about security →
+            </a>
+          </div>
+          <ArmorAppMockup client:visible />
+        </div>
+
+        <!-- Welcome -->
+        <div class="grid md:grid-cols-2 gap-8 items-center mb-20">
+          <div class="order-2 md:order-1">
+            <WelcomeAppMockup client:visible />
+          </div>
+          <div class="order-1 md:order-2">
+            <div class="flex items-center gap-3 mb-4">
+              <span
+                class="w-10 h-10 rounded-lg bg-teal/20 flex items-center justify-center text-xl"
+                >🎉</span
+              >
+              <div>
+                <h3 class="text-xl font-bold text-text">Aegis Welcome</h3>
+                <span class="text-xs bg-teal/20 text-teal px-2 py-0.5 rounded"
+                  >Onboarding</span
+                >
+              </div>
+            </div>
+            <p class="text-subtext0 mb-4">
+              Your first encounter with Aegis. Learn keyboard shortcuts, explore
+              features, and customize your experience from day one.
+            </p>
+          </div>
+        </div>
+
+        <!-- Updates -->
+        <div class="grid md:grid-cols-2 gap-8 items-center mb-20">
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <span
+                class="w-10 h-10 rounded-lg bg-green/20 flex items-center justify-center text-xl"
+                >📦</span
+              >
+              <div>
+                <h3 class="text-xl font-bold text-text">Aegis Updates</h3>
+                <span class="text-xs bg-green/20 text-green px-2 py-0.5 rounded"
+                  >Package Manager</span
+                >
+              </div>
+            </div>
+            <p class="text-subtext0 mb-4">
+              A friendly GUI for pacman and yay. Check for updates, review
+              packages, and install with a single click. Works with both
+              official repos and AUR.
+            </p>
+          </div>
+          <UpdatesAppMockup client:visible />
+        </div>
+
+        <!-- Displays -->
+        <div class="grid md:grid-cols-2 gap-8 items-center mb-20">
+          <div class="order-2 md:order-1">
+            <DisplaysAppMockup client:visible />
+          </div>
+          <div class="order-1 md:order-2">
+            <div class="flex items-center gap-3 mb-4">
+              <span
+                class="w-10 h-10 rounded-lg bg-blue/20 flex items-center justify-center text-xl"
+                >🖥️</span
+              >
+              <div>
+                <h3 class="text-xl font-bold text-text">Aegis Displays</h3>
+                <span class="text-xs bg-blue/20 text-blue px-2 py-0.5 rounded"
+                  >Monitor Config</span
+                >
+              </div>
+            </div>
+            <p class="text-subtext0 mb-4">
+              Configure monitor arrangement, resolution, refresh rate, scaling,
+              and VRR. Changes persist via Hyprland configuration files.
+            </p>
+            <a
+              href="/nvidia"
+              class="text-blue hover:text-sapphire transition-colors text-sm font-medium"
+            >
+              Learn about NVIDIA support →
+            </a>
+          </div>
+        </div>
+
+        <!-- Backup -->
+        <div class="grid md:grid-cols-2 gap-8 items-center">
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <span
+                class="w-10 h-10 rounded-lg bg-peach/20 flex items-center justify-center text-xl"
+                >💾</span
+              >
+              <div>
+                <h3 class="text-xl font-bold text-text">Aegis Backup</h3>
+                <span class="text-xs bg-peach/20 text-peach px-2 py-0.5 rounded"
+                  >Snapshots</span
+                >
+              </div>
+            </div>
+            <p class="text-subtext0 mb-4">
+              Create and restore system snapshots with Timeshift or Snapper.
+              Automatic scheduling keeps your system protected.
+            </p>
+          </div>
+          <BackupAppMockup client:visible />
+        </div>
+      </div>
+    </section>
+
+    <!-- Design Philosophy -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-4xl text-center">
+        <h2 class="text-3xl font-bold text-text mb-6">
+          Design <span class="text-peach">Philosophy</span>
+        </h2>
+        <p class="text-subtext0 text-lg mb-12">
+          Every tool in Aegis is built with the same principles
+        </p>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          <div>
+            <div class="text-4xl mb-4">🎨</div>
+            <h3 class="text-lg font-bold text-text mb-2">Consistent Theming</h3>
+            <p class="text-subtext0 text-sm">
+              All apps use Catppuccin Mocha colors and follow Libadwaita design
+              patterns
+            </p>
+          </div>
+          <div>
+            <div class="text-4xl mb-4">⚡</div>
+            <h3 class="text-lg font-bold text-text mb-2">Native Performance</h3>
+            <p class="text-subtext0 text-sm">
+              Built with Python and GTK4, not Electron. Fast startup and minimal
+              resource usage
+            </p>
+          </div>
+          <div>
+            <div class="text-4xl mb-4">🔧</div>
+            <h3 class="text-lg font-bold text-text mb-2">CLI Under the Hood</h3>
+            <p class="text-subtext0 text-sm">
+              GUIs wrap powerful CLI tools. You can always drop to terminal for
+              more control
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-4xl text-center">
+        <h2 class="text-3xl font-bold text-text mb-4">
+          Tools That Respect Your Time
+        </h2>
+        <p class="text-subtext0 text-lg mb-8">
+          Download Aegis and experience system tools done right.
+        </p>
+        <a
+          href="/download"
+          class="inline-block bg-peach hover:bg-yellow text-crust font-semibold px-10 py-4 rounded-lg transition-colors duration-200 text-xl"
+        >
+          Download Now
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>

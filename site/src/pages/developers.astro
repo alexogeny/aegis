@@ -5,6 +5,7 @@ import Footer from "../components/Footer.astro";
 import { InteractiveTerminal } from "../components/InteractiveTerminal";
 import { InteractiveContainers } from "../components/developers/InteractiveContainers";
 import { InteractiveClipboard } from "../components/developers/InteractiveClipboard";
+import { InteractiveDbView } from "../components/developers/InteractiveDbView";
 
 // Simple Icons SVG paths
 const icons = {
@@ -732,7 +733,7 @@ const vscodeExtensions = [
         </div>
 
         <!-- Clipboard Tool -->
-        <div class="grid md:grid-cols-2 gap-8 items-start">
+        <div class="grid md:grid-cols-2 gap-8 items-start mb-16">
           <div>
             <div class="flex items-center gap-3 mb-4">
               <span class="text-3xl">📋</span>
@@ -772,6 +773,49 @@ const vscodeExtensions = [
             </ul>
           </div>
           <InteractiveClipboard client:visible />
+        </div>
+
+        <!-- Database Viewer Tool -->
+        <div class="grid md:grid-cols-2 gap-8 items-start">
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <span class="text-3xl">🗄️</span>
+              <div>
+                <h3 class="text-xl font-bold text-text">Aegis Database Viewer</h3>
+                <span class="text-xs bg-blue/20 text-blue px-2 py-0.5 rounded"
+                  >SQL/NoSQL</span
+                >
+              </div>
+            </div>
+            <p class="text-subtext0 mb-4">
+              A powerful database client with syntax-highlighted SQL editor,
+              virtual scrolling for large result sets, and inline data editing.
+              Connect to PostgreSQL, MySQL, SQLite, and more.
+            </p>
+            <ul class="space-y-2 text-sm text-subtext0">
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                SQL syntax highlighting with Catppuccin colors
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Virtual scrolling for 100k+ row results
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Inline data editing with confirmation
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Export to CSV, JSON, SQL, Markdown
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Secure credential storage via Keyring
+              </li>
+            </ul>
+          </div>
+          <InteractiveDbView client:visible />
         </div>
       </div>
     </section>

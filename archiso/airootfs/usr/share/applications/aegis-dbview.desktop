@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Aegis Database Viewer
+Comment=View and query databases with a modern interface
+GenericName=Database Viewer
+Exec=aegis-dbview
+Icon=utilities-system-monitor
+Terminal=false
+Type=Application
+Categories=Development;Database;Utility;
+Keywords=database;sql;postgresql;sqlite;mysql;query;
+StartupNotify=true

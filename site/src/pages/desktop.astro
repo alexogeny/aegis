@@ -1,0 +1,353 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { DesktopPreview } from "../components/desktop-preview/DesktopPreview";
+
+const features = [
+  {
+    icon: "✨",
+    title: "60fps Animations",
+    desc: "Smooth window transitions, workspace switching, and window effects",
+    color: "mauve",
+  },
+  {
+    icon: "⌨️",
+    title: "Keyboard-First",
+    desc: "Vim-style navigation with Super key as your primary modifier",
+    color: "blue",
+  },
+  {
+    icon: "🎨",
+    title: "Catppuccin Theme",
+    desc: "Consistent theming across every app and interface element",
+    color: "pink",
+  },
+  {
+    icon: "🔍",
+    title: "Anyrun Launcher",
+    desc: "Spotlight-like application launcher with fuzzy search",
+    color: "green",
+  },
+  {
+    icon: "📊",
+    title: "Waybar Status",
+    desc: "Customizable status bar with workspaces, system info, and more",
+    color: "peach",
+  },
+  {
+    icon: "🖼️",
+    title: "Window Blur",
+    desc: "Beautiful blur effects on windows and menus with rounded corners",
+    color: "teal",
+  },
+];
+
+const keybindings = [
+  { keys: "Super + Enter", action: "Open terminal (Kitty)" },
+  { keys: "Super + D", action: "Application launcher (Anyrun)" },
+  { keys: "Super + Q", action: "Close window" },
+  { keys: "Super + 1-9", action: "Switch workspace" },
+  { keys: "Super + Shift + 1-9", action: "Move window to workspace" },
+  { keys: "Super + F", action: "Toggle fullscreen" },
+  { keys: "Super + V", action: "Toggle floating" },
+  { keys: "Super + Arrow", action: "Move focus" },
+  { keys: "Super + Tab", action: "Window switcher" },
+  { keys: "Super + L", action: "Lock screen" },
+];
+---
+
+<BaseLayout
+  title="Hyprland Desktop - Aegis Linux"
+  description="Beautiful Hyprland compositor with buttery smooth animations, Catppuccin theming, and keyboard-first workflow. A desktop that's a joy to use."
+>
+  <Header />
+
+  <main class="pt-24">
+    <!-- Hero -->
+    <section class="px-4 py-16 md:py-24">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-12">
+          <div class="text-6xl mb-6">🖥️</div>
+          <h1 class="text-4xl md:text-5xl font-bold text-text mb-4">
+            Beautiful <span class="text-pink">and Fast</span>
+          </h1>
+          <p class="text-xl text-subtext0 max-w-2xl mx-auto">
+            Hyprland compositor with buttery smooth animations, rounded corners,
+            and blur effects. A desktop that's a joy to use.
+          </p>
+        </div>
+
+        <!-- Desktop Preview -->
+        <div class="mb-12">
+          <DesktopPreview client:load />
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold text-text mb-4">
+            Desktop <span class="text-pink">Features</span>
+          </h2>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {
+            features.map((feature) => (
+              <div
+                class={`bg-surface0/30 rounded-xl p-6 border border-surface0 hover:border-${feature.color} transition-colors`}
+              >
+                <div
+                  class={`w-12 h-12 rounded-lg bg-${feature.color}/20 flex items-center justify-center text-${feature.color} text-2xl mb-4`}
+                >
+                  {feature.icon}
+                </div>
+                <h3 class="text-xl font-bold text-text mb-2">{feature.title}</h3>
+                <p class="text-subtext0 text-sm">{feature.desc}</p>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Keybindings -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-4xl">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold text-text mb-4">
+            Keyboard <span class="text-blue">Shortcuts</span>
+          </h2>
+          <p class="text-subtext0">
+            Vim-inspired keybindings that let you fly through your workflow
+          </p>
+        </div>
+
+        <div class="bg-surface0/30 rounded-xl border border-surface0 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-mantle border-b border-surface0">
+                <th class="text-left py-3 px-6 text-text font-bold">Keys</th>
+                <th class="text-left py-3 px-6 text-text font-bold">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                keybindings.map((kb, idx) => (
+                  <tr
+                    class={`border-b border-surface0/50 ${idx % 2 === 1 ? "bg-surface0/10" : ""}`}
+                  >
+                    <td class="py-3 px-6">
+                      <span class="font-mono text-mauve bg-crust px-2 py-1 rounded">
+                        {kb.keys}
+                      </span>
+                    </td>
+                    <td class="py-3 px-6 text-subtext0">{kb.action}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <p class="text-center text-overlay0 text-sm mt-4">
+          All keybindings are customizable in
+          <code class="font-mono text-mauve">~/.config/hypr/hyprland.conf</code>
+        </p>
+      </div>
+    </section>
+
+    <!-- Applications -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold text-text mb-4">
+            Pre-installed <span class="text-green">Apps</span>
+          </h2>
+          <p class="text-subtext0">
+            A curated selection of apps, all themed with Catppuccin Mocha
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-4 gap-4">
+          <div class="bg-surface0/50 rounded-lg p-4 text-center">
+            <div class="text-3xl mb-2">🖥️</div>
+            <div class="text-text font-bold">Kitty</div>
+            <div class="text-xs text-subtext0">Terminal</div>
+          </div>
+          <div class="bg-surface0/50 rounded-lg p-4 text-center">
+            <div class="text-3xl mb-2">🦊</div>
+            <div class="text-text font-bold">Firefox</div>
+            <div class="text-xs text-subtext0">Browser</div>
+          </div>
+          <div class="bg-surface0/50 rounded-lg p-4 text-center">
+            <div class="text-3xl mb-2">📁</div>
+            <div class="text-text font-bold">Nautilus</div>
+            <div class="text-xs text-subtext0">Files</div>
+          </div>
+          <div class="bg-surface0/50 rounded-lg p-4 text-center">
+            <div class="text-3xl mb-2">💻</div>
+            <div class="text-text font-bold">VSCode</div>
+            <div class="text-xs text-subtext0">Editor</div>
+          </div>
+          <div class="bg-surface0/50 rounded-lg p-4 text-center">
+            <div class="text-3xl mb-2">🔍</div>
+            <div class="text-text font-bold">Anyrun</div>
+            <div class="text-xs text-subtext0">Launcher</div>
+          </div>
+          <div class="bg-surface0/50 rounded-lg p-4 text-center">
+            <div class="text-3xl mb-2">📊</div>
+            <div class="text-text font-bold">Waybar</div>
+            <div class="text-xs text-subtext0">Status Bar</div>
+          </div>
+          <div class="bg-surface0/50 rounded-lg p-4 text-center">
+            <div class="text-3xl mb-2">🔔</div>
+            <div class="text-text font-bold">Mako</div>
+            <div class="text-xs text-subtext0">Notifications</div>
+          </div>
+          <div class="bg-surface0/50 rounded-lg p-4 text-center">
+            <div class="text-3xl mb-2">🔒</div>
+            <div class="text-text font-bold">Hyprlock</div>
+            <div class="text-xs text-subtext0">Lock Screen</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Theming -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-6xl">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <span
+              class="inline-block bg-pink/20 text-pink px-4 py-1 rounded-full text-sm font-medium mb-4"
+            >
+              Catppuccin Mocha
+            </span>
+            <h2 class="text-3xl font-bold text-text mb-4">
+              Consistent <span class="text-pink">Theming</span>
+            </h2>
+            <p class="text-subtext0 mb-6">
+              Every app, from terminal to browser to system settings, uses the
+              same beautiful color palette. No jarring color clashes or
+              inconsistent interfaces.
+            </p>
+            <ul class="space-y-3 text-sm text-subtext0">
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                GTK4 and Qt5/6 apps themed
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Terminal colors configured
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Firefox with custom theme
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Cursors and icons matched
+              </li>
+            </ul>
+          </div>
+
+          <!-- Color Palette Preview -->
+          <div class="bg-surface0/30 rounded-xl p-6 border border-surface0">
+            <h3 class="text-lg font-bold text-text mb-4">Color Palette</h3>
+            <div class="grid grid-cols-4 gap-3">
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-rosewater"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Rosewater</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-flamingo"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Flamingo</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-pink"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Pink</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-mauve"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Mauve</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-red"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Red</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-maroon"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Maroon</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-peach"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Peach</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-yellow"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Yellow</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-green"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Green</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-teal"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Teal</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-sky"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Sky</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-sapphire"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Sapphire</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-blue"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Blue</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-lavender"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Lavender</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-text"></div>
+                <div class="text-[10px] text-overlay0 mt-1">Text</div>
+              </div>
+              <div class="text-center">
+                <div class="w-full h-12 rounded-lg bg-base border border-surface0"
+                ></div>
+                <div class="text-[10px] text-overlay0 mt-1">Base</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-4xl text-center">
+        <h2 class="text-3xl font-bold text-text mb-4">
+          Experience the Desktop
+        </h2>
+        <p class="text-subtext0 text-lg mb-8">
+          Download Aegis and try the most beautiful Linux desktop.
+        </p>
+        <a
+          href="/download"
+          class="inline-block bg-pink hover:bg-mauve text-crust font-semibold px-10 py-4 rounded-lg transition-colors duration-200 text-xl"
+        >
+          Download Now
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>

@@ -1,0 +1,295 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { ArmorAppMockup } from "../components/ArmorAppMockup";
+import { FeatureShowcase } from "../components/FeatureShowcase";
+---
+
+<BaseLayout
+  title="Security Features - Aegis Linux"
+  description="Security hardened from the kernel up. AppArmor, UFW firewall, encrypted DNS, and more. Aegis provides enterprise-grade protection without complexity."
+>
+  <Header />
+
+  <main class="pt-24">
+    <!-- Hero -->
+    <section class="px-4 py-16 md:py-24">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-12">
+          <div class="text-6xl mb-6">🛡️</div>
+          <h1 class="text-4xl md:text-5xl font-bold text-text mb-4">
+            Security <span class="text-mauve">by Default</span>
+          </h1>
+          <p class="text-xl text-subtext0 max-w-2xl mx-auto">
+            No telemetry. No tracking. Just a secure system that respects your
+            privacy. Multiple layers of protection work together silently.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature Showcase -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-6xl">
+        <FeatureShowcase client:visible />
+      </div>
+    </section>
+
+    <!-- Security Layers -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-6xl">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold text-text mb-4">
+            Defense in <span class="text-mauve">Depth</span>
+          </h2>
+          <p class="text-subtext0 max-w-2xl mx-auto">
+            Multiple security layers working together to protect your system
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- AppArmor -->
+          <div
+            class="bg-surface0/30 rounded-xl p-6 border border-surface0 hover:border-mauve transition-colors"
+          >
+            <div
+              class="w-12 h-12 rounded-lg bg-mauve/20 flex items-center justify-center text-mauve text-2xl mb-4"
+            >
+              🔒
+            </div>
+            <h3 class="text-xl font-bold text-text mb-2">AppArmor</h3>
+            <p class="text-subtext0 text-sm mb-4">
+              Mandatory access control that restricts what applications can do.
+              Even if compromised, apps can't access unauthorized resources.
+            </p>
+            <div class="text-xs text-overlay0 font-mono">
+              Status: <span class="text-green">Enforcing</span>
+            </div>
+          </div>
+
+          <!-- UFW Firewall -->
+          <div
+            class="bg-surface0/30 rounded-xl p-6 border border-surface0 hover:border-blue transition-colors"
+          >
+            <div
+              class="w-12 h-12 rounded-lg bg-blue/20 flex items-center justify-center text-blue text-2xl mb-4"
+            >
+              🧱
+            </div>
+            <h3 class="text-xl font-bold text-text mb-2">UFW Firewall</h3>
+            <p class="text-subtext0 text-sm mb-4">
+              Uncomplicated Firewall enabled by default. Blocks all incoming
+              connections while allowing outgoing traffic.
+            </p>
+            <div class="text-xs text-overlay0 font-mono">
+              Default: <span class="text-green">Deny incoming</span>
+            </div>
+          </div>
+
+          <!-- Encrypted DNS -->
+          <div
+            class="bg-surface0/30 rounded-xl p-6 border border-surface0 hover:border-teal transition-colors"
+          >
+            <div
+              class="w-12 h-12 rounded-lg bg-teal/20 flex items-center justify-center text-teal text-2xl mb-4"
+            >
+              🌐
+            </div>
+            <h3 class="text-xl font-bold text-text mb-2">Encrypted DNS</h3>
+            <p class="text-subtext0 text-sm mb-4">
+              DNS queries encrypted via DNS-over-HTTPS. Your ISP can't see what
+              websites you visit.
+            </p>
+            <div class="text-xs text-overlay0 font-mono">
+              Provider: <span class="text-teal">Quad9 (no logging)</span>
+            </div>
+          </div>
+
+          <!-- Secure Boot -->
+          <div
+            class="bg-surface0/30 rounded-xl p-6 border border-surface0 hover:border-green transition-colors"
+          >
+            <div
+              class="w-12 h-12 rounded-lg bg-green/20 flex items-center justify-center text-green text-2xl mb-4"
+            >
+              ✓
+            </div>
+            <h3 class="text-xl font-bold text-text mb-2">Secure Boot</h3>
+            <p class="text-subtext0 text-sm mb-4">
+              Full Secure Boot support with signed bootloader and kernel.
+              Protects against bootkit attacks.
+            </p>
+            <div class="text-xs text-overlay0 font-mono">
+              Keys: <span class="text-green">Signed</span>
+            </div>
+          </div>
+
+          <!-- LUKS Encryption -->
+          <div
+            class="bg-surface0/30 rounded-xl p-6 border border-surface0 hover:border-peach transition-colors"
+          >
+            <div
+              class="w-12 h-12 rounded-lg bg-peach/20 flex items-center justify-center text-peach text-2xl mb-4"
+            >
+              🔐
+            </div>
+            <h3 class="text-xl font-bold text-text mb-2">LUKS Encryption</h3>
+            <p class="text-subtext0 text-sm mb-4">
+              Full disk encryption available during installation. Protect your
+              data even if your device is stolen.
+            </p>
+            <div class="text-xs text-overlay0 font-mono">
+              Algorithm: <span class="text-peach">AES-256-XTS</span>
+            </div>
+          </div>
+
+          <!-- No Telemetry -->
+          <div
+            class="bg-surface0/30 rounded-xl p-6 border border-surface0 hover:border-red transition-colors"
+          >
+            <div
+              class="w-12 h-12 rounded-lg bg-red/20 flex items-center justify-center text-red text-2xl mb-4"
+            >
+              🚫
+            </div>
+            <h3 class="text-xl font-bold text-text mb-2">No Telemetry</h3>
+            <p class="text-subtext0 text-sm mb-4">
+              Zero data collection. No analytics, no tracking, no phone-home
+              features. Your data stays yours.
+            </p>
+            <div class="text-xs text-overlay0 font-mono">
+              Data sent: <span class="text-red">None</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Aegis Armor App -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-6xl">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <span
+              class="inline-block bg-mauve/20 text-mauve px-4 py-1 rounded-full text-sm font-medium mb-4"
+            >
+              Aegis Armor App
+            </span>
+            <h2 class="text-3xl font-bold text-text mb-4">
+              Manage Security <span class="text-mauve">Visually</span>
+            </h2>
+            <p class="text-subtext0 mb-6">
+              A beautiful GTK4 app to configure your security settings. Toggle
+              features, view status, and run security audits - all without
+              touching the terminal.
+            </p>
+            <ul class="space-y-3 text-sm text-subtext0">
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Real-time security status overview
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                One-click feature toggles
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Hardening recommendations
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-green">✓</span>
+                Lynis security audit integration
+              </li>
+            </ul>
+          </div>
+          <div>
+            <ArmorAppMockup client:visible />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Security Comparison -->
+    <section class="px-4 py-16">
+      <div class="mx-auto max-w-4xl">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold text-text mb-4">
+            How Aegis <span class="text-mauve">Compares</span>
+          </h2>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-surface0">
+                <th class="text-left py-3 px-4 text-text">Feature</th>
+                <th class="text-center py-3 px-4 text-mauve">Aegis</th>
+                <th class="text-center py-3 px-4 text-overlay0">Ubuntu</th>
+                <th class="text-center py-3 px-4 text-overlay0">Fedora</th>
+                <th class="text-center py-3 px-4 text-overlay0">Arch</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-surface0/50">
+                <td class="py-3 px-4 text-subtext0">Firewall enabled</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+              </tr>
+              <tr class="border-b border-surface0/50">
+                <td class="py-3 px-4 text-subtext0">AppArmor/SELinux</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+              </tr>
+              <tr class="border-b border-surface0/50">
+                <td class="py-3 px-4 text-subtext0">Encrypted DNS</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+              </tr>
+              <tr class="border-b border-surface0/50">
+                <td class="py-3 px-4 text-subtext0">No telemetry</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+                <td class="text-center py-3 px-4 text-yellow">~</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+              </tr>
+              <tr class="border-b border-surface0/50">
+                <td class="py-3 px-4 text-subtext0">Security GUI</td>
+                <td class="text-center py-3 px-4 text-green">✓</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+                <td class="text-center py-3 px-4 text-red">✗</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="px-4 py-16 bg-mantle/50">
+      <div class="mx-auto max-w-4xl text-center">
+        <h2 class="text-3xl font-bold text-text mb-4">
+          Security Without Complexity
+        </h2>
+        <p class="text-subtext0 text-lg mb-8">
+          Download Aegis and get enterprise-grade security out of the box.
+        </p>
+        <a
+          href="/download"
+          class="inline-block bg-mauve hover:bg-pink text-crust font-semibold px-10 py-4 rounded-lg transition-colors duration-200 text-xl"
+        >
+          Download Now
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>

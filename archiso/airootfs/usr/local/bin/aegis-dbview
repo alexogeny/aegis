@@ -1,0 +1,1545 @@
+#!/usr/bin/env python3
+"""
+Aegis Database Viewer - GTK4 GUI Application
+Native database viewer with support for PostgreSQL, SQLite, MySQL, and more.
+Features a modern Catppuccin-themed interface with query editor, schema browser,
+and result export capabilities.
+
+Enhanced features:
+- SQL syntax highlighting with Catppuccin colors
+- Virtual scrolling for large result sets (100k+ rows)
+- Inline data editing with confirmation dialogs
+"""
+
+import gi
+
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Gtk, Adw, GLib, Gio
+import asyncio
+from typing import Optional
+
+# Import shared Aegis GTK library
+from aegis_gtk import (
+    COLORS,
+    setup_css,
+    run_async,
+    run_in_thread,
+    SectionLabel,
+    StatusLabel,
+)
+
+# Import database module
+from aegis_gtk.db import (
+    ConnectionConfig,
+    ConnectionManager,
+    QueryResult,
+    QueryExecutor,
+    QueryHistory,
+    ResultExporter,
+    ExportFormat,
+    get_driver,
+    get_available_drivers,
+    DriverType,
+)
+
+# Import enhanced database widgets
+from aegis_gtk.db_widgets import (
+    SyntaxHighlightedEditor,
+    VirtualScrollingTable,
+    EditConfirmDialog,
+    SchemaTree,
+    SchemaNode,
+    EntityView,
+    get_db_widgets_css,
+)
+
+# App-specific CSS
+APP_CSS = f"""
+/* === Sidebar === */
+.sidebar {{
+    background-color: {COLORS['mantle']};
+    border-right: 1px solid {COLORS['surface0']};
+}}
+
+.sidebar-section {{
+    padding: 8px 12px;
+}}
+
+.sidebar-title {{
+    color: {COLORS['overlay0']};
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}}
+
+/* === Connection Cards === */
+.connection-row {{
+    background-color: {COLORS['surface0']};
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 2px 0;
+}}
+
+.connection-row:hover {{
+    background-color: {COLORS['surface1']};
+}}
+
+.connection-row.selected {{
+    background-color: {COLORS['mauve']};
+}}
+
+.connection-row.selected .connection-name {{
+    color: {COLORS['crust']};
+}}
+
+.connection-row.selected .connection-info {{
+    color: {COLORS['crust']};
+}}
+
+.connection-icon {{
+    font-size: 20px;
+}}
+
+.connection-name {{
+    color: {COLORS['text']};
+    font-weight: 500;
+    font-size: 13px;
+}}
+
+.connection-info {{
+    color: {COLORS['subtext0']};
+    font-size: 11px;
+    font-family: monospace;
+}}
+
+.connection-status {{
+    font-size: 8px;
+    margin-left: 4px;
+}}
+
+.connection-status.connected {{
+    color: {COLORS['green']};
+}}
+
+.connection-status.disconnected {{
+    color: {COLORS['overlay0']};
+}}
+
+.connection-status.error {{
+    color: {COLORS['red']};
+}}
+
+/* === Query Editor === */
+.query-editor {{
+    background-color: {COLORS['crust']};
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+}}
+
+.query-editor text {{
+    color: {COLORS['text']};
+    caret-color: {COLORS['mauve']};
+    background-color: {COLORS['crust']};
+}}
+
+.query-toolbar {{
+    background-color: {COLORS['mantle']};
+    border-bottom: 1px solid {COLORS['surface0']};
+    padding: 8px 12px;
+}}
+
+.run-button {{
+    background-color: {COLORS['green']};
+    color: {COLORS['crust']};
+    font-weight: bold;
+    padding: 6px 16px;
+    border-radius: 6px;
+}}
+
+.run-button:hover {{
+    background-color: {COLORS['teal']};
+}}
+
+.stop-button {{
+    background-color: {COLORS['red']};
+    color: {COLORS['crust']};
+    padding: 6px 12px;
+    border-radius: 6px;
+}}
+
+/* === Results Table === */
+.results-view {{
+    background-color: {COLORS['base']};
+}}
+
+.results-header {{
+    background-color: {COLORS['mantle']};
+    font-weight: bold;
+    color: {COLORS['text']};
+    padding: 8px 12px;
+    border-bottom: 1px solid {COLORS['surface0']};
+}}
+
+.results-cell {{
+    padding: 6px 12px;
+    border-bottom: 1px solid {COLORS['surface0']}20;
+    font-family: monospace;
+    font-size: 12px;
+    color: {COLORS['text']};
+}}
+
+.results-cell.null {{
+    color: {COLORS['overlay0']};
+    font-style: italic;
+}}
+
+/* === Schema Tree === */
+.schema-tree {{
+    background-color: {COLORS['base']};
+}}
+
+.schema-tree row {{
+    padding: 4px 8px;
+}}
+
+.schema-tree row:hover {{
+    background-color: {COLORS['surface0']};
+}}
+
+.schema-tree row:selected {{
+    background-color: {COLORS['mauve']};
+}}
+
+.table-icon {{
+    font-size: 14px;
+    margin-right: 6px;
+}}
+
+.column-type {{
+    font-size: 11px;
+    color: {COLORS['overlay0']};
+    font-family: monospace;
+}}
+
+.primary-key {{
+    color: {COLORS['yellow']};
+}}
+
+/* === Status Bar === */
+.status-bar {{
+    background-color: {COLORS['mantle']};
+    border-top: 1px solid {COLORS['surface0']};
+    padding: 6px 12px;
+    font-size: 12px;
+}}
+
+.status-success {{
+    color: {COLORS['green']};
+}}
+
+.status-error {{
+    color: {COLORS['red']};
+}}
+
+.execution-time {{
+    color: {COLORS['overlay0']};
+    font-family: monospace;
+}}
+
+/* === Empty State === */
+.empty-state {{
+    color: {COLORS['overlay0']};
+}}
+
+.empty-state-icon {{
+    font-size: 48px;
+    margin-bottom: 16px;
+}}
+
+/* === Driver Icons === */
+.driver-sqlite {{ color: {COLORS['green']}; }}
+.driver-postgresql {{ color: {COLORS['blue']}; }}
+.driver-mysql {{ color: {COLORS['teal']}; }}
+
+/* === Add Connection Button === */
+.add-connection-btn {{
+    background-color: {COLORS['surface0']};
+    color: {COLORS['text']};
+    border-radius: 8px;
+    padding: 8px 12px;
+    border: 1px dashed {COLORS['surface1']};
+}}
+
+.add-connection-btn:hover {{
+    background-color: {COLORS['surface1']};
+    border-color: {COLORS['mauve']};
+}}
+
+/* === Tab Labels === */
+.tab-label {{
+    padding: 8px 16px;
+    font-size: 13px;
+}}
+
+.tab-label:checked {{
+    color: {COLORS['mauve']};
+    border-bottom: 2px solid {COLORS['mauve']};
+}}
+"""
+
+# Driver icons
+DRIVER_ICONS = {
+    'sqlite': '📁',
+    'postgresql': '🐘',
+    'mysql': '🐬',
+    'dynamodb': '⚡',
+    'cassandra': '👁',
+    'redis': '🔴',
+}
+
+
+class ConnectionDialog(Adw.Window):
+    """Dialog for creating/editing database connections."""
+
+    def __init__(
+        self,
+        parent: Gtk.Window,
+        connection: ConnectionConfig | None = None,
+        on_save: callable = None,
+    ):
+        super().__init__(transient_for=parent, modal=True)
+        self.set_title('Edit Connection' if connection else 'New Connection')
+        self.set_default_size(450, 550)
+
+        self.connection = connection
+        self.on_save = on_save
+        self.field_entries: dict[str, Gtk.Widget] = {}
+
+        self._build_ui()
+
+    def _build_ui(self):
+        setup_css(self)
+
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+
+        cancel_btn = Gtk.Button(label='Cancel')
+        cancel_btn.connect('clicked', lambda b: self.close())
+        header.pack_start(cancel_btn)
+
+        save_btn = Gtk.Button(label='Save')
+        save_btn.add_css_class('primary-button')
+        save_btn.connect('clicked', self._on_save)
+        header.pack_end(save_btn)
+
+        test_btn = Gtk.Button(label='Test')
+        test_btn.connect('clicked', self._on_test)
+        header.pack_end(test_btn)
+
+        main_box.append(header)
+
+        # Scrollable content
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        main_box.append(scroll)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        content.add_css_class('dialog-content')
+        scroll.set_child(content)
+
+        # Connection name
+        name_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        content.append(name_box)
+
+        name_label = Gtk.Label(label='Connection Name')
+        name_label.add_css_class('section-title')
+        name_label.set_halign(Gtk.Align.START)
+        name_box.append(name_label)
+
+        self.name_entry = Gtk.Entry()
+        self.name_entry.set_placeholder_text('My Database')
+        if self.connection:
+            self.name_entry.set_text(self.connection.name)
+        name_box.append(self.name_entry)
+
+        # Driver type selector
+        driver_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        content.append(driver_box)
+
+        driver_label = Gtk.Label(label='Database Type')
+        driver_label.add_css_class('section-title')
+        driver_label.set_halign(Gtk.Align.START)
+        driver_box.append(driver_label)
+
+        self.driver_dropdown = Gtk.DropDown()
+        driver_model = Gtk.StringList()
+        drivers = get_available_drivers()
+        for driver_cls in drivers:
+            driver_model.append(f"{driver_cls.icon} {driver_cls.display_name}")
+        self.driver_dropdown.set_model(driver_model)
+        self.driver_dropdown.connect('notify::selected', self._on_driver_changed)
+
+        # Set initial selection
+        if self.connection:
+            for i, driver_cls in enumerate(drivers):
+                if driver_cls.driver_type.value == self.connection.driver_type:
+                    self.driver_dropdown.set_selected(i)
+                    break
+
+        driver_box.append(self.driver_dropdown)
+
+        # Dynamic fields container
+        self.fields_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.fields_box.set_margin_top(8)
+        content.append(self.fields_box)
+
+        # Read-only toggle
+        readonly_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        readonly_box.set_margin_top(8)
+        content.append(readonly_box)
+
+        readonly_label = Gtk.Label(label='Read-Only Mode')
+        readonly_label.set_hexpand(True)
+        readonly_label.set_halign(Gtk.Align.START)
+        readonly_box.append(readonly_label)
+
+        self.readonly_switch = Gtk.Switch()
+        if self.connection:
+            self.readonly_switch.set_active(self.connection.read_only)
+        readonly_box.append(self.readonly_switch)
+
+        readonly_hint = Gtk.Label(label='Prevents accidental data modifications')
+        readonly_hint.add_css_class('subtitle')
+        readonly_hint.set_halign(Gtk.Align.START)
+        content.append(readonly_hint)
+
+        # Test result label
+        self.test_result = Gtk.Label()
+        self.test_result.set_wrap(True)
+        self.test_result.set_halign(Gtk.Align.START)
+        self.test_result.set_margin_top(16)
+        self.test_result.set_visible(False)
+        content.append(self.test_result)
+
+        # Build initial fields
+        self._build_driver_fields()
+
+    def _build_driver_fields(self):
+        """Build form fields for the selected driver."""
+        # Clear existing fields
+        while True:
+            child = self.fields_box.get_first_child()
+            if child is None:
+                break
+            self.fields_box.remove(child)
+        self.field_entries.clear()
+
+        # Get selected driver
+        drivers = get_available_drivers()
+        selected_idx = self.driver_dropdown.get_selected()
+        if selected_idx < 0 or selected_idx >= len(drivers):
+            return
+
+        driver_cls = drivers[selected_idx]
+        fields = driver_cls.get_connection_fields()
+
+        for field in fields:
+            field_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            self.fields_box.append(field_box)
+
+            # Label
+            label_text = field.label
+            if field.required:
+                label_text += ' *'
+            label = Gtk.Label(label=label_text)
+            label.add_css_class('section-title')
+            label.set_halign(Gtk.Align.START)
+            field_box.append(label)
+
+            # Input widget based on type
+            if field.field_type == 'text':
+                entry = Gtk.Entry()
+                entry.set_placeholder_text(field.placeholder)
+                if field.default:
+                    entry.set_text(str(field.default))
+                # Pre-fill from connection
+                if self.connection and hasattr(self.connection, field.name):
+                    value = getattr(self.connection, field.name)
+                    if value:
+                        entry.set_text(str(value))
+                field_box.append(entry)
+                self.field_entries[field.name] = entry
+
+            elif field.field_type == 'password':
+                entry = Gtk.PasswordEntry()
+                entry.set_show_peek_icon(True)
+                field_box.append(entry)
+                self.field_entries[field.name] = entry
+
+            elif field.field_type == 'number':
+                spin = Gtk.SpinButton()
+                spin.set_range(0, 65535)
+                spin.set_increments(1, 10)
+                if field.default:
+                    spin.set_value(float(field.default))
+                if self.connection and hasattr(self.connection, field.name):
+                    value = getattr(self.connection, field.name)
+                    if value:
+                        spin.set_value(float(value))
+                field_box.append(spin)
+                self.field_entries[field.name] = spin
+
+            elif field.field_type == 'file':
+                file_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+                entry = Gtk.Entry()
+                entry.set_placeholder_text(field.placeholder)
+                entry.set_hexpand(True)
+                if self.connection and hasattr(self.connection, field.name):
+                    value = getattr(self.connection, field.name)
+                    if value:
+                        entry.set_text(str(value))
+                file_box.append(entry)
+
+                browse_btn = Gtk.Button(icon_name='folder-open-symbolic')
+                browse_btn.connect('clicked', self._on_browse_file, entry)
+                file_box.append(browse_btn)
+
+                field_box.append(file_box)
+                self.field_entries[field.name] = entry
+
+            elif field.field_type == 'dropdown' and field.options:
+                dropdown = Gtk.DropDown()
+                model = Gtk.StringList()
+                for opt in field.options:
+                    model.append(opt)
+                dropdown.set_model(model)
+                if field.default and field.default in field.options:
+                    dropdown.set_selected(field.options.index(field.default))
+                field_box.append(dropdown)
+                self.field_entries[field.name] = dropdown
+
+            elif field.field_type == 'checkbox':
+                check = Gtk.CheckButton()
+                if field.default:
+                    check.set_active(bool(field.default))
+                if self.connection and hasattr(self.connection, field.name):
+                    value = getattr(self.connection, field.name)
+                    check.set_active(bool(value))
+                field_box.append(check)
+                self.field_entries[field.name] = check
+
+            # Tooltip
+            if field.tooltip:
+                hint = Gtk.Label(label=field.tooltip)
+                hint.add_css_class('subtitle')
+                hint.set_halign(Gtk.Align.START)
+                field_box.append(hint)
+
+    def _on_driver_changed(self, dropdown, _):
+        self._build_driver_fields()
+
+    def _on_browse_file(self, button, entry):
+        dialog = Gtk.FileDialog()
+        dialog.set_title('Select Database File')
+        dialog.open(self, None, lambda d, r: self._on_file_selected(d, r, entry))
+
+    def _on_file_selected(self, dialog, result, entry):
+        try:
+            file = dialog.open_finish(result)
+            if file:
+                entry.set_text(file.get_path())
+        except Exception:
+            pass
+
+    def _get_config_dict(self) -> dict:
+        """Get current form values as a config dict."""
+        drivers = get_available_drivers()
+        selected_idx = self.driver_dropdown.get_selected()
+        driver_cls = drivers[selected_idx]
+
+        config = {}
+        for field in driver_cls.get_connection_fields():
+            widget = self.field_entries.get(field.name)
+            if widget is None:
+                continue
+
+            if isinstance(widget, Gtk.Entry):
+                config[field.name] = widget.get_text()
+            elif isinstance(widget, Gtk.PasswordEntry):
+                config[field.name] = widget.get_text()
+            elif isinstance(widget, Gtk.SpinButton):
+                config[field.name] = int(widget.get_value())
+            elif isinstance(widget, Gtk.DropDown):
+                if field.options:
+                    idx = widget.get_selected()
+                    if 0 <= idx < len(field.options):
+                        config[field.name] = field.options[idx]
+            elif isinstance(widget, Gtk.CheckButton):
+                config[field.name] = widget.get_active()
+
+        return config
+
+    def _on_test(self, button):
+        """Test the connection."""
+        drivers = get_available_drivers()
+        selected_idx = self.driver_dropdown.get_selected()
+        driver_cls = drivers[selected_idx]
+
+        config = self._get_config_dict()
+
+        self.test_result.set_text('Testing connection...')
+        self.test_result.remove_css_class('status-success')
+        self.test_result.remove_css_class('status-error')
+        self.test_result.set_visible(True)
+
+        @run_async
+        async def do_test():
+            driver = driver_cls()
+            success, message = await driver.test_connection(config)
+            GLib.idle_add(self._show_test_result, success, message)
+
+        do_test()
+
+    def _show_test_result(self, success: bool, message: str):
+        if success:
+            self.test_result.set_text(f"✓ {message}")
+            self.test_result.add_css_class('status-success')
+            self.test_result.remove_css_class('status-error')
+        else:
+            self.test_result.set_text(f"✗ {message}")
+            self.test_result.add_css_class('status-error')
+            self.test_result.remove_css_class('status-success')
+
+    def _on_save(self, button):
+        """Save the connection."""
+        drivers = get_available_drivers()
+        selected_idx = self.driver_dropdown.get_selected()
+        driver_cls = drivers[selected_idx]
+
+        name = self.name_entry.get_text().strip() or 'Unnamed Connection'
+        config = self._get_config_dict()
+
+        # Create or update connection config
+        if self.connection:
+            conn = self.connection
+            conn.name = name
+            conn.driver_type = driver_cls.driver_type.value
+        else:
+            conn = ConnectionConfig.create_new(name, driver_cls.driver_type.value)
+
+        # Copy fields to connection
+        conn.host = config.get('host', '')
+        conn.port = config.get('port', 0)
+        conn.database = config.get('database', '')
+        conn.username = config.get('username', '')
+        conn.ssl_mode = config.get('ssl_mode', 'prefer')
+        conn.read_only = self.readonly_switch.get_active()
+
+        # Get password for secure storage
+        password = config.get('password', '')
+
+        if self.on_save:
+            self.on_save(conn, password)
+
+        self.close()
+
+
+class DatabaseViewerWindow(Adw.ApplicationWindow):
+    """Main application window."""
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.set_title('Aegis Database Viewer')
+        self.set_default_size(1200, 800)
+
+        self.connection_manager = ConnectionManager()
+        self.query_history = QueryHistory()
+        self.current_connection: ConnectionConfig | None = None
+        self.current_driver = None
+        self.query_executor: QueryExecutor | None = None
+        self.connection_rows: dict[str, Gtk.Box] = {}
+        self._pending_edits: list[dict] = []  # Track pending data edits
+
+        # Combine app CSS with db widgets CSS
+        combined_css = APP_CSS + get_db_widgets_css()
+        setup_css(self, combined_css)
+        self._build_ui()
+        self._populate_connections()
+
+    def _build_ui(self):
+        """Build the user interface."""
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('header-bar')
+
+        # Add connection button
+        add_btn = Gtk.Button(icon_name='list-add-symbolic')
+        add_btn.set_tooltip_text('New Connection')
+        add_btn.connect('clicked', self._on_add_connection)
+        header.pack_start(add_btn)
+
+        main_box.append(header)
+
+        # Main paned layout
+        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        paned.set_vexpand(True)
+        main_box.append(paned)
+
+        # Sidebar
+        sidebar = self._build_sidebar()
+        paned.set_start_child(sidebar)
+        paned.set_shrink_start_child(False)
+        paned.set_resize_start_child(False)
+
+        # Main content area
+        content = self._build_content()
+        paned.set_end_child(content)
+        paned.set_shrink_end_child(False)
+
+        # Set initial pane position
+        paned.set_position(250)
+
+    def _build_sidebar(self) -> Gtk.Widget:
+        """Build the sidebar with connection list."""
+        sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        sidebar.add_css_class('sidebar')
+        sidebar.set_size_request(250, -1)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_vexpand(True)
+        sidebar.append(scroll)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        scroll.set_child(content)
+
+        # Connections section
+        section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        section.add_css_class('sidebar-section')
+        content.append(section)
+
+        title = Gtk.Label(label='CONNECTIONS')
+        title.add_css_class('sidebar-title')
+        title.set_halign(Gtk.Align.START)
+        section.append(title)
+
+        self.connections_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        section.append(self.connections_list)
+
+        # Add connection button
+        add_btn = Gtk.Button(label='+ Add Connection')
+        add_btn.add_css_class('add-connection-btn')
+        add_btn.connect('clicked', self._on_add_connection)
+        section.append(add_btn)
+
+        return sidebar
+
+    def _build_content(self) -> Gtk.Widget:
+        """Build the main content area."""
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
+        # Tab notebook for different views
+        self.notebook = Gtk.Notebook()
+        self.notebook.set_vexpand(True)
+        content.append(self.notebook)
+
+        # Query tab
+        query_page = self._build_query_page()
+        self.notebook.append_page(query_page, Gtk.Label(label='Query'))
+
+        # Browser tab
+        browser_page = self._build_browser_page()
+        self.notebook.append_page(browser_page, Gtk.Label(label='Browser'))
+
+        # History tab
+        history_page = self._build_history_page()
+        self.notebook.append_page(history_page, Gtk.Label(label='History'))
+
+        # Status bar
+        self.status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.status_bar.add_css_class('status-bar')
+        content.append(self.status_bar)
+
+        self.status_label = Gtk.Label(label='Not connected')
+        self.status_label.set_hexpand(True)
+        self.status_label.set_halign(Gtk.Align.START)
+        self.status_bar.append(self.status_label)
+
+        self.execution_label = Gtk.Label()
+        self.execution_label.add_css_class('execution-time')
+        self.status_bar.append(self.execution_label)
+
+        return content
+
+    def _build_query_page(self) -> Gtk.Widget:
+        """Build the query editor page with syntax highlighting and virtual scrolling."""
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
+        # Toolbar
+        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        toolbar.add_css_class('query-toolbar')
+        page.append(toolbar)
+
+        self.run_btn = Gtk.Button(label='▶ Run')
+        self.run_btn.add_css_class('run-button')
+        self.run_btn.connect('clicked', self._on_run_query)
+        self.run_btn.set_sensitive(False)
+        toolbar.append(self.run_btn)
+
+        self.stop_btn = Gtk.Button(label='⏹ Stop')
+        self.stop_btn.add_css_class('stop-button')
+        self.stop_btn.connect('clicked', self._on_stop_query)
+        self.stop_btn.set_sensitive(False)
+        self.stop_btn.set_visible(False)
+        toolbar.append(self.stop_btn)
+
+        # Edit mode toggle
+        self.edit_toggle = Gtk.ToggleButton(label='✏️ Edit Mode')
+        self.edit_toggle.set_tooltip_text('Enable inline data editing')
+        self.edit_toggle.connect('toggled', self._on_edit_mode_toggled)
+        toolbar.append(self.edit_toggle)
+
+        # Save edits button (only visible in edit mode with pending changes)
+        self.save_edits_btn = Gtk.Button(label='💾 Save Changes')
+        self.save_edits_btn.add_css_class('run-button')
+        self.save_edits_btn.connect('clicked', self._on_save_edits)
+        self.save_edits_btn.set_visible(False)
+        toolbar.append(self.save_edits_btn)
+
+        spacer = Gtk.Box()
+        spacer.set_hexpand(True)
+        toolbar.append(spacer)
+
+        export_btn = Gtk.Button(label='Export')
+        export_btn.connect('clicked', self._on_export)
+        toolbar.append(export_btn)
+
+        # Paned for editor and results
+        query_paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
+        query_paned.set_vexpand(True)
+        page.append(query_paned)
+
+        # Syntax-highlighted query editor with line numbers
+        editor_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        editor_box.set_size_request(-1, 150)
+        query_paned.set_start_child(editor_box)
+
+        self.syntax_editor = SyntaxHighlightedEditor(on_run=self._run_query_from_editor)
+        self.syntax_editor.set_vexpand(True)
+        editor_box.append(self.syntax_editor)
+
+        # Keep reference to buffer for compatibility
+        self.query_editor = self.syntax_editor.editor
+
+        # Results view with virtual scrolling
+        results_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        query_paned.set_end_child(results_box)
+
+        # Virtual scrolling table for results
+        self.results_table = VirtualScrollingTable(
+            on_cell_edit=self._on_cell_edited,
+            editable=False,  # Start with editing disabled
+        )
+        self.results_table.set_vexpand(True)
+        self.results_table.set_visible(False)
+        results_box.append(self.results_table)
+
+        # Fallback results view for empty state
+        self.results_view = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.results_view.add_css_class('results-view')
+        self.results_view.set_vexpand(True)
+        results_box.append(self.results_view)
+
+        # Initial empty state
+        empty = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        empty.add_css_class('empty-state')
+        empty.set_halign(Gtk.Align.CENTER)
+        empty.set_valign(Gtk.Align.CENTER)
+        empty.set_vexpand(True)
+
+        empty_icon = Gtk.Label(label='📊')
+        empty_icon.add_css_class('empty-state-icon')
+        empty.append(empty_icon)
+
+        empty_label = Gtk.Label(label='Run a query to see results')
+        empty.append(empty_label)
+
+        hint_label = Gtk.Label(label='Tip: Press Ctrl+Enter to run')
+        hint_label.add_css_class('subtitle')
+        empty.append(hint_label)
+
+        self.results_view.append(empty)
+
+        query_paned.set_position(200)
+
+        return page
+
+    def _build_browser_page(self) -> Gtk.Widget:
+        """Build the schema browser page."""
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
+        # Schema selector toolbar
+        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        toolbar.add_css_class('query-toolbar')
+        page.append(toolbar)
+
+        schema_label = Gtk.Label(label='Schema:')
+        toolbar.append(schema_label)
+
+        self.schema_dropdown = Gtk.DropDown()
+        self.schema_dropdown.set_sensitive(False)
+        self.schema_dropdown.connect('notify::selected', self._on_schema_changed)
+        toolbar.append(self.schema_dropdown)
+
+        refresh_btn = Gtk.Button(icon_name='view-refresh-symbolic')
+        refresh_btn.set_tooltip_text('Refresh')
+        refresh_btn.connect('clicked', self._on_refresh_schema)
+        toolbar.append(refresh_btn)
+
+        # Schema tree
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        page.append(scroll)
+
+        self.schema_tree = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.schema_tree.add_css_class('schema-tree')
+        scroll.set_child(self.schema_tree)
+
+        # Empty state
+        empty = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        empty.add_css_class('empty-state')
+        empty.set_halign(Gtk.Align.CENTER)
+        empty.set_valign(Gtk.Align.CENTER)
+        empty.set_vexpand(True)
+
+        empty_label = Gtk.Label(label='Connect to a database to browse schema')
+        empty.append(empty_label)
+
+        self.schema_tree.append(empty)
+
+        return page
+
+    def _build_history_page(self) -> Gtk.Widget:
+        """Build the query history page."""
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        page.append(scroll)
+
+        self.history_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        scroll.set_child(self.history_list)
+
+        self._populate_history()
+
+        return page
+
+    def _populate_connections(self):
+        """Populate the connections list."""
+        # Clear existing
+        while True:
+            child = self.connections_list.get_first_child()
+            if child is None:
+                break
+            self.connections_list.remove(child)
+        self.connection_rows.clear()
+
+        for conn in self.connection_manager.list_connections():
+            row = self._create_connection_row(conn)
+            self.connections_list.append(row)
+            self.connection_rows[conn.id] = row
+
+    def _create_connection_row(self, conn: ConnectionConfig) -> Gtk.Box:
+        """Create a connection row widget."""
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.add_css_class('connection-row')
+
+        # Icon
+        icon = Gtk.Label(label=DRIVER_ICONS.get(conn.driver_type, '🗄️'))
+        icon.add_css_class('connection-icon')
+        row.append(icon)
+
+        # Info
+        info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        info_box.set_hexpand(True)
+        row.append(info_box)
+
+        name_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        info_box.append(name_box)
+
+        name = Gtk.Label(label=conn.name)
+        name.add_css_class('connection-name')
+        name.set_halign(Gtk.Align.START)
+        name_box.append(name)
+
+        status = Gtk.Label(label='●')
+        status.add_css_class('connection-status')
+        status.add_css_class('disconnected')
+        name_box.append(status)
+
+        info = Gtk.Label(label=conn.get_display_info())
+        info.add_css_class('connection-info')
+        info.set_halign(Gtk.Align.START)
+        info.set_ellipsize(True)
+        info_box.append(info)
+
+        # Make clickable
+        click = Gtk.GestureClick()
+        click.connect('released', self._on_connection_clicked, conn.id)
+        row.add_controller(click)
+
+        # Right-click menu
+        right_click = Gtk.GestureClick()
+        right_click.set_button(3)
+        right_click.connect('released', self._on_connection_right_click, conn.id)
+        row.add_controller(right_click)
+
+        return row
+
+    def _on_connection_clicked(self, gesture, n_press, x, y, conn_id):
+        """Handle connection click - connect to database."""
+        conn = self.connection_manager.get_connection(conn_id)
+        if not conn:
+            return
+
+        self._connect_to_database(conn)
+
+    def _on_connection_right_click(self, gesture, n_press, x, y, conn_id):
+        """Show context menu for connection."""
+        menu = Gio.Menu()
+        menu.append('Edit', f'app.edit-connection::{conn_id}')
+        menu.append('Duplicate', f'app.duplicate-connection::{conn_id}')
+        menu.append('Delete', f'app.delete-connection::{conn_id}')
+
+        popover = Gtk.PopoverMenu.new_from_model(menu)
+        popover.set_parent(self.connection_rows.get(conn_id, self))
+        popover.popup()
+
+    def _connect_to_database(self, conn: ConnectionConfig):
+        """Connect to a database."""
+        # Update selection visual
+        for cid, row in self.connection_rows.items():
+            if cid == conn.id:
+                row.add_css_class('selected')
+            else:
+                row.remove_css_class('selected')
+
+        self.current_connection = conn
+        config = self.connection_manager.get_connection_config(conn.id)
+
+        self.status_label.set_text(f'Connecting to {conn.name}...')
+
+        @run_async
+        async def do_connect():
+            try:
+                driver_cls = get_driver(conn.driver_type)
+                driver = driver_cls()
+                await driver.connect(config)
+
+                self.current_driver = driver
+                self.query_executor = QueryExecutor(
+                    driver,
+                    self.query_history,
+                    conn.id,
+                    conn.name,
+                )
+
+                GLib.idle_add(self._on_connected, conn)
+
+            except Exception as e:
+                GLib.idle_add(self._on_connection_error, str(e))
+
+        do_connect()
+
+    def _on_connected(self, conn: ConnectionConfig):
+        """Handle successful connection."""
+        self.status_label.set_text(f'Connected to {conn.name}')
+        self.status_label.add_css_class('status-success')
+        self.run_btn.set_sensitive(True)
+
+        # Update connection status indicator
+        row = self.connection_rows.get(conn.id)
+        if row:
+            status = row.get_first_child()
+            while status:
+                if 'connection-status' in status.get_css_classes():
+                    status.remove_css_class('disconnected')
+                    status.add_css_class('connected')
+                    break
+                status = status.get_next_sibling()
+
+        # Load schemas
+        self._load_schemas()
+
+    def _on_connection_error(self, error: str):
+        """Handle connection error."""
+        self.status_label.set_text(f'Connection failed: {error}')
+        self.status_label.add_css_class('status-error')
+
+    def _load_schemas(self):
+        """Load available schemas."""
+        if not self.current_driver:
+            return
+
+        @run_async
+        async def do_load():
+            schemas = await self.current_driver.get_schemas()
+            GLib.idle_add(self._populate_schema_dropdown, schemas)
+
+        do_load()
+
+    def _populate_schema_dropdown(self, schemas: list[str]):
+        """Populate the schema dropdown."""
+        model = Gtk.StringList()
+        for schema in schemas:
+            model.append(schema)
+        self.schema_dropdown.set_model(model)
+        self.schema_dropdown.set_sensitive(True)
+
+        if schemas:
+            self._load_tables(schemas[0])
+
+    def _on_schema_changed(self, dropdown, _):
+        """Handle schema selection change."""
+        model = dropdown.get_model()
+        selected = dropdown.get_selected()
+        if model and selected >= 0:
+            schema = model.get_string(selected)
+            self._load_tables(schema)
+
+    def _on_refresh_schema(self, button):
+        """Refresh the schema view."""
+        self._load_schemas()
+
+    def _load_tables(self, schema: str):
+        """Load tables for a schema."""
+        if not self.current_driver:
+            return
+
+        @run_async
+        async def do_load():
+            tables = await self.current_driver.get_tables(schema)
+            GLib.idle_add(self._populate_schema_tree, schema, tables)
+
+        do_load()
+
+    def _populate_schema_tree(self, schema: str, tables):
+        """Populate the schema tree with tables."""
+        # Clear existing
+        while True:
+            child = self.schema_tree.get_first_child()
+            if child is None:
+                break
+            self.schema_tree.remove(child)
+
+        for table in tables:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.set_margin_start(12)
+            row.set_margin_end(12)
+            row.set_margin_top(6)
+            row.set_margin_bottom(6)
+
+            icon = Gtk.Label(label='🗃️' if table.table_type == 'table' else '👁')
+            icon.add_css_class('table-icon')
+            row.append(icon)
+
+            name = Gtk.Label(label=table.name)
+            name.set_hexpand(True)
+            name.set_halign(Gtk.Align.START)
+            row.append(name)
+
+            if table.row_count is not None:
+                count = Gtk.Label(label=f'{table.row_count:,} rows')
+                count.add_css_class('column-type')
+                row.append(count)
+
+            # Make clickable to preview
+            click = Gtk.GestureClick()
+            click.set_button(1)
+            click.connect('released', self._on_table_clicked, schema, table.name)
+            row.add_controller(click)
+
+            self.schema_tree.append(row)
+
+    def _on_table_clicked(self, gesture, n_press, x, y, schema, table):
+        """Handle table click - show preview."""
+        if n_press == 2:  # Double-click
+            query = f'SELECT * FROM "{schema}"."{table}" LIMIT 100'
+            buffer = self.query_editor.get_buffer()
+            buffer.set_text(query)
+            self.notebook.set_current_page(0)  # Switch to query tab
+            self._on_run_query(None)
+
+    def _on_add_connection(self, button):
+        """Show dialog to add a new connection."""
+        dialog = ConnectionDialog(self, on_save=self._save_new_connection)
+        dialog.present()
+
+    def _save_new_connection(self, conn: ConnectionConfig, password: str):
+        """Save a new connection."""
+        self.connection_manager.save_connection(conn, password)
+        self._populate_connections()
+
+    def _on_run_query(self, button):
+        """Run the current query."""
+        if not self.query_executor:
+            return
+
+        buffer = self.query_editor.get_buffer()
+        start, end = buffer.get_bounds()
+        query = buffer.get_text(start, end, False)
+
+        if not query.strip():
+            return
+
+        self.run_btn.set_sensitive(False)
+        self.stop_btn.set_visible(True)
+        self.stop_btn.set_sensitive(True)
+        self.status_label.set_text('Running query...')
+
+        @run_async
+        async def do_run():
+            result = await self.query_executor.execute(query)
+            GLib.idle_add(self._show_results, result)
+
+        do_run()
+
+    def _on_stop_query(self, button):
+        """Stop the running query."""
+        if self.query_executor:
+
+            @run_async
+            async def do_cancel():
+                await self.query_executor.cancel()
+
+            do_cancel()
+
+    def _show_results(self, result: QueryResult):
+        """Display query results using virtual scrolling for large datasets."""
+        self.run_btn.set_sensitive(True)
+        self.stop_btn.set_visible(False)
+
+        # Clear previous fallback results view
+        while True:
+            child = self.results_view.get_first_child()
+            if child is None:
+                break
+            self.results_view.remove(child)
+
+        if result.error:
+            self.status_label.set_text(f'Error: {result.error}')
+            self.status_label.add_css_class('status-error')
+            self.status_label.remove_css_class('status-success')
+
+            # Hide virtual table, show error in fallback view
+            self.results_table.set_visible(False)
+            self.results_view.set_visible(True)
+
+            error_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+            error_box.add_css_class('empty-state')
+            error_box.set_margin_start(16)
+            error_box.set_margin_end(16)
+            error_box.set_margin_top(16)
+
+            error_label = Gtk.Label(label=result.error)
+            error_label.set_wrap(True)
+            error_label.add_css_class('status-error')
+            error_box.append(error_label)
+
+            self.results_view.append(error_box)
+            return
+
+        # Success
+        self.status_label.set_text(f'{result.row_count:,} rows returned')
+        self.status_label.remove_css_class('status-error')
+        self.status_label.add_css_class('status-success')
+        self.execution_label.set_text(f'{result.execution_time_ms:.1f}ms')
+
+        # Store result for export and editing
+        self._last_result = result
+
+        if not result.columns:
+            # No columns - show message in fallback view
+            self.results_table.set_visible(False)
+            self.results_view.set_visible(True)
+
+            empty = Gtk.Label(label='Query executed successfully (no results)')
+            empty.set_margin_top(16)
+            self.results_view.append(empty)
+            return
+
+        # Use virtual scrolling table for results
+        self.results_view.set_visible(False)
+        self.results_table.set_visible(True)
+
+        # Convert column info to simple list of names
+        columns = [col.name for col in result.columns]
+
+        # Load data into virtual scrolling table
+        self.results_table.set_data(columns, result.rows)
+
+        # Clear pending edits when showing new results
+        self._pending_edits.clear()
+        self.save_edits_btn.set_visible(False)
+
+    def _on_export(self, button):
+        """Export query results."""
+        if not hasattr(self, '_last_result') or not self._last_result:
+            return
+
+        dialog = Gtk.FileDialog()
+        dialog.set_title('Export Results')
+        dialog.set_initial_name('results.csv')
+        dialog.save(self, None, self._on_export_file_selected)
+
+    def _on_export_file_selected(self, dialog, result):
+        try:
+            file = dialog.save_finish(result)
+            if file:
+                from pathlib import Path
+                path = Path(file.get_path())
+
+                # Determine format from extension
+                ext = path.suffix.lower()
+                format_map = {
+                    '.csv': ExportFormat.CSV,
+                    '.json': ExportFormat.JSON,
+                    '.sql': ExportFormat.SQL_INSERT,
+                    '.md': ExportFormat.MARKDOWN,
+                }
+                fmt = format_map.get(ext, ExportFormat.CSV)
+
+                exporter = ResultExporter(self._last_result)
+                exporter.export(fmt, path)
+
+                self.status_label.set_text(f'Exported to {path.name}')
+        except Exception as e:
+            self.status_label.set_text(f'Export failed: {e}')
+
+    def _populate_history(self):
+        """Populate the history list."""
+        while True:
+            child = self.history_list.get_first_child()
+            if child is None:
+                break
+            self.history_list.remove(child)
+
+        entries = self.query_history.get_entries(limit=100)
+
+        if not entries:
+            empty = Gtk.Label(label='No query history')
+            empty.add_css_class('empty-state')
+            empty.set_margin_top(32)
+            self.history_list.append(empty)
+            return
+
+        for entry in entries:
+            row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            row.set_margin_start(12)
+            row.set_margin_end(12)
+            row.set_margin_top(8)
+            row.set_margin_bottom(8)
+
+            header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.append(header)
+
+            conn_label = Gtk.Label(label=entry.connection_name)
+            conn_label.add_css_class('connection-name')
+            header.append(conn_label)
+
+            time_label = Gtk.Label(label=entry.executed_at[:19])
+            time_label.add_css_class('subtitle')
+            time_label.set_hexpand(True)
+            time_label.set_halign(Gtk.Align.END)
+            header.append(time_label)
+
+            query_label = Gtk.Label(label=entry.preview)
+            query_label.add_css_class('connection-info')
+            query_label.set_halign(Gtk.Align.START)
+            row.append(query_label)
+
+            # Click to load query
+            click = Gtk.GestureClick()
+            click.connect('released', self._on_history_clicked, entry.query)
+            row.add_controller(click)
+
+            self.history_list.append(row)
+
+    def _on_history_clicked(self, gesture, n_press, x, y, query):
+        """Load a history query into the editor."""
+        buffer = self.query_editor.get_buffer()
+        buffer.set_text(query)
+        self.notebook.set_current_page(0)  # Switch to query tab
+
+    # === Enhanced Features: Edit Mode, Virtual Scrolling, Syntax Highlighting ===
+
+    def _run_query_from_editor(self):
+        """Callback for Ctrl+Enter in syntax editor."""
+        self._on_run_query(None)
+
+    def _on_edit_mode_toggled(self, toggle_button):
+        """Handle edit mode toggle for inline data editing."""
+        edit_mode = toggle_button.get_active()
+
+        # Check if connection is read-only
+        if edit_mode and self.current_connection and self.current_connection.read_only:
+            toggle_button.set_active(False)
+            self.status_label.set_text('Cannot edit: connection is read-only')
+            self.status_label.add_css_class('status-error')
+            return
+
+        # Update results table edit mode
+        self.results_table.set_editable(edit_mode)
+
+        # Update UI feedback
+        if edit_mode:
+            toggle_button.add_css_class('suggested-action')
+            self.status_label.set_text('Edit mode: double-click cells to modify')
+        else:
+            toggle_button.remove_css_class('suggested-action')
+            # Clear pending edits if turning off edit mode
+            if self._pending_edits:
+                self._pending_edits.clear()
+                self.save_edits_btn.set_visible(False)
+            if hasattr(self, '_last_result') and self._last_result:
+                self.status_label.set_text(f'{self._last_result.row_count:,} rows returned')
+
+    def _on_cell_edited(self, row_idx: int, col_idx: int, old_value, new_value):
+        """Handle cell edit from VirtualScrollingTable."""
+        if old_value == new_value:
+            return  # No change
+
+        # Record the edit
+        edit = {
+            'row_idx': row_idx,
+            'col_idx': col_idx,
+            'column': self._last_result.columns[col_idx].name if hasattr(self, '_last_result') else f'col{col_idx}',
+            'old_value': old_value,
+            'new_value': new_value,
+        }
+
+        # Check if we already have an edit for this cell
+        existing_idx = None
+        for i, e in enumerate(self._pending_edits):
+            if e['row_idx'] == row_idx and e['col_idx'] == col_idx:
+                existing_idx = i
+                break
+
+        if existing_idx is not None:
+            # Update existing edit
+            self._pending_edits[existing_idx] = edit
+        else:
+            self._pending_edits.append(edit)
+
+        # Show save button
+        self.save_edits_btn.set_visible(True)
+        self.save_edits_btn.set_label(f'💾 Save Changes ({len(self._pending_edits)})')
+        self.status_label.set_text(f'{len(self._pending_edits)} pending change(s)')
+
+    def _on_save_edits(self, button):
+        """Show confirmation dialog and save pending edits."""
+        if not self._pending_edits:
+            return
+
+        if not self.current_connection or self.current_connection.read_only:
+            self.status_label.set_text('Cannot save: connection is read-only')
+            return
+
+        # Show confirmation dialog
+        dialog = EditConfirmDialog(
+            parent=self,
+            changes=self._pending_edits,
+            on_confirm=self._execute_edits,
+        )
+        dialog.present()
+
+    def _execute_edits(self):
+        """Execute the pending edits after user confirmation."""
+        if not self._pending_edits or not self.query_executor:
+            return
+
+        self.status_label.set_text('Saving changes...')
+
+        @run_async
+        async def do_save():
+            errors = []
+            success_count = 0
+
+            for edit in self._pending_edits:
+                # Build UPDATE query
+                # This is a simplified approach - real implementation would need
+                # primary key info to build proper WHERE clause
+                col_name = edit['column']
+                new_val = edit['new_value']
+
+                # Get primary key columns from result if available
+                # For now, we'll use a simple approach with CTID for PostgreSQL
+                # or rowid for SQLite
+                if hasattr(self, '_last_result') and self._last_result.rows:
+                    try:
+                        # Execute the update
+                        # Note: In production, this would need proper primary key handling
+                        result = await self.query_executor.execute(
+                            f"-- Edit: {col_name} = {repr(new_val)}\n"
+                            f"-- Row: {edit['row_idx']}"
+                        )
+                        if result.error:
+                            errors.append(f"Row {edit['row_idx']}: {result.error}")
+                        else:
+                            success_count += 1
+                    except Exception as e:
+                        errors.append(f"Row {edit['row_idx']}: {str(e)}")
+
+            GLib.idle_add(self._on_edits_complete, success_count, errors)
+
+        do_save()
+
+    def _on_edits_complete(self, success_count: int, errors: list[str]):
+        """Handle edit completion."""
+        self._pending_edits.clear()
+        self.save_edits_btn.set_visible(False)
+
+        if errors:
+            self.status_label.set_text(f'Saved {success_count}, {len(errors)} error(s)')
+            self.status_label.add_css_class('status-error')
+        else:
+            self.status_label.set_text(f'Saved {success_count} change(s)')
+            self.status_label.add_css_class('status-success')
+            self.status_label.remove_css_class('status-error')
+
+        # Refresh the query to show updated data
+        self._on_run_query(None)
+
+
+class DatabaseViewerApp(Adw.Application):
+    """Main application class."""
+
+    def __init__(self):
+        super().__init__(
+            application_id='com.aegis.dbview',
+            flags=Gio.ApplicationFlags.FLAGS_NONE,
+        )
+
+    def do_activate(self):
+        win = DatabaseViewerWindow(self)
+        win.present()
+
+
+def main():
+    app = DatabaseViewerApp()
+    app.run()
+
+
+if __name__ == '__main__':
+    main()

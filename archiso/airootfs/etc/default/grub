@@ -33,6 +33,9 @@ GRUB_TERMINAL_OUTPUT=gfxterm
 GRUB_GFXMODE=auto
 GRUB_GFXPAYLOAD_LINUX=keep
 
+# Catppuccin Mocha theme
+GRUB_THEME="/usr/share/grub/themes/catppuccin-mocha/theme.txt"
+
 # Enable LUKS/cryptodisk support
 GRUB_ENABLE_CRYPTODISK=y
 
