@@ -186,14 +186,8 @@ gnupg
 pass
 lynis
 
-# File integrity monitoring
-aide
-
-# Rootkit detection
+# Rootkit detection (rkhunter is in extra repo)
 rkhunter
-
-# AppArmor profile management tools
-apparmor-utils
 
 # -----------------------------------------------------------------------------
 # Networking
