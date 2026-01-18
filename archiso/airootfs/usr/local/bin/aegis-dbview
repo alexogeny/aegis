@@ -51,7 +51,7 @@ from aegis_gtk.db_widgets import (
     SchemaTree,
     SchemaNode,
     EntityView,
-    RowDetailView,
+    RowDetailWindow,
     get_db_widgets_css,
 )
 
@@ -848,9 +848,10 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         results_paned.set_vexpand(True)
         query_paned.set_end_child(results_paned)
 
-        # Left side: Results table
+        # Results area (no longer using paned - window-based detail view)
         results_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         results_box.set_hexpand(True)
+        results_box.set_vexpand(True)
         results_paned.set_start_child(results_box)
         results_paned.set_shrink_start_child(False)
 
@@ -884,22 +885,14 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         empty_label = Gtk.Label(label='Run a query to see results')
         empty.append(empty_label)
 
-        hint_label = Gtk.Label(label='Tip: Press Ctrl+Enter to run, click row to view details')
+        hint_label = Gtk.Label(label='Tip: Press Ctrl+Enter to run, double-click row to view details')
         hint_label.add_css_class('subtitle')
         empty.append(hint_label)
 
         self.results_view.append(empty)
 
-        # Right side: Row detail view (initially hidden)
-        self.row_detail_view = RowDetailView(
-            on_close=self._on_row_detail_close,
-            on_edit=self._on_row_detail_edit,
-        )
-        self.row_detail_view.set_size_request(350, -1)
-        self.row_detail_view.set_visible(False)
-        results_paned.set_end_child(self.row_detail_view)
-        results_paned.set_shrink_end_child(False)
-        results_paned.set_resize_end_child(False)
+        # Track row detail window
+        self._row_detail_window: RowDetailWindow | None = None
 
         query_paned.set_position(200)
 
@@ -1295,8 +1288,10 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         self.run_btn.set_sensitive(True)
         self.stop_btn.set_visible(False)
 
-        # Hide and clear row detail view when new results come in
-        self.row_detail_view.set_visible(False)
+        # Close row detail window when new results come in
+        if self._row_detail_window is not None:
+            self._row_detail_window.close()
+            self._row_detail_window = None
 
         # Clear previous fallback results view
         while True:
@@ -1589,28 +1584,44 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
         # Refresh the query to show updated data
         self._on_run_query(None)
 
-    # === Row Detail View ===
+    # === Row Detail Window ===
 
     def _on_row_selected(self, row_idx: int, row_data: tuple):
-        """Handle row selection - show detail view."""
+        """Handle row selection - open detail window."""
         if not hasattr(self, '_last_result') or not self._last_result:
             return
 
-        # Get column names
+        # Get column names and all rows
         columns = [col.name for col in self._last_result.columns]
+        rows = list(self._last_result.rows)
 
-        # Show the detail view
-        self.row_detail_view.show_row(columns, row_data, row_idx)
-        self.row_detail_view.set_visible(True)
+        # Get table name from last query if available
+        table_name = ''
+        if hasattr(self, '_last_query') and self._last_query:
+            # Try to extract table name from query
+            import re
 
-    def _on_row_detail_close(self):
-        """Handle closing the row detail view."""
-        self.row_detail_view.set_visible(False)
-        # Deselect the row in the table
-        self.results_table.select_row(None)
+            match = re.search(r'\bFROM\s+(\w+)', self._last_query, re.IGNORECASE)
+            if match:
+                table_name = match.group(1)
 
-    def _on_row_detail_edit(self, column: str, old_value, new_value):
-        """Handle field edit from row detail view."""
+        # Close existing window if open
+        if self._row_detail_window is not None:
+            self._row_detail_window.close()
+
+        # Open new detail window
+        self._row_detail_window = RowDetailWindow(
+            parent=self,
+            columns=columns,
+            rows=rows,
+            current_index=row_idx,
+            table_name=table_name,
+            on_edit=self._on_row_detail_edit if self.results_table.editable else None,
+        )
+        self._row_detail_window.present()
+
+    def _on_row_detail_edit(self, row_idx: int, column: str, old_value, new_value):
+        """Handle field edit from row detail window."""
         if not hasattr(self, '_last_result') or not self._last_result:
             return
 
@@ -1623,13 +1634,6 @@ class DatabaseViewerWindow(Adw.ApplicationWindow):
 
         if col_idx is None:
             return
-
-        # Get the currently selected row
-        selected = self.results_table.get_selected_row()
-        if selected is None:
-            return
-
-        row_idx, _ = selected
 
         # Use the existing cell edit handler
         self._on_cell_edited(row_idx, col_idx, old_value, new_value)

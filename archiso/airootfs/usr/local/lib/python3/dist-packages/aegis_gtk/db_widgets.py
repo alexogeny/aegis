@@ -1656,6 +1656,456 @@ class RowDetailView(Gtk.Box):
             self.on_close()
 
 
+class RowDetailWindow(Adw.Window):
+    """
+    Dedicated window for viewing row details with plenty of space.
+    Shows data in multiple formats: fields, JSON, and raw values.
+    Supports navigation between rows and inline editing.
+    """
+
+    def __init__(
+        self,
+        parent: Gtk.Window,
+        columns: list[str],
+        rows: list[tuple],
+        current_index: int = 0,
+        table_name: str = '',
+        on_edit: Callable[[int, str, Any, Any], None] | None = None,
+    ):
+        super().__init__()
+        self.set_transient_for(parent)
+        self.set_modal(False)  # Allow interaction with main window
+        self.set_default_size(700, 600)
+        self.set_title(f'Row Details - {table_name}' if table_name else 'Row Details')
+        self.add_css_class('row-detail-window')
+
+        self._columns = columns
+        self._rows = rows
+        self._current_index = current_index
+        self._table_name = table_name
+        self.on_edit = on_edit
+        self._view_mode = 'fields'
+
+        # Build UI
+        self._build_ui()
+        self._update_content()
+
+    def _build_ui(self):
+        """Build the window UI."""
+        # Main container
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class('flat')
+        main_box.append(header)
+
+        # Navigation buttons in header
+        nav_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        nav_box.add_css_class('linked')
+        header.pack_start(nav_box)
+
+        self.prev_btn = Gtk.Button()
+        self.prev_btn.set_icon_name('go-previous-symbolic')
+        self.prev_btn.set_tooltip_text('Previous row (←)')
+        self.prev_btn.connect('clicked', self._on_prev)
+        nav_box.append(self.prev_btn)
+
+        self.next_btn = Gtk.Button()
+        self.next_btn.set_icon_name('go-next-symbolic')
+        self.next_btn.set_tooltip_text('Next row (→)')
+        self.next_btn.connect('clicked', self._on_next)
+        nav_box.append(self.next_btn)
+
+        # Row counter
+        self.row_counter = Gtk.Label()
+        self.row_counter.add_css_class('dim-label')
+        self.row_counter.set_margin_start(12)
+        header.pack_start(self.row_counter)
+
+        # View mode toggle in header
+        mode_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        mode_box.add_css_class('linked')
+        header.pack_end(mode_box)
+
+        self.raw_btn = Gtk.ToggleButton(label='Raw')
+        self.raw_btn.connect('toggled', self._on_mode_changed, 'raw')
+        mode_box.append(self.raw_btn)
+
+        self.json_btn = Gtk.ToggleButton(label='JSON')
+        self.json_btn.connect('toggled', self._on_mode_changed, 'json')
+        mode_box.append(self.json_btn)
+
+        self.fields_btn = Gtk.ToggleButton(label='Fields')
+        self.fields_btn.set_active(True)
+        self.fields_btn.connect('toggled', self._on_mode_changed, 'fields')
+        mode_box.append(self.fields_btn)
+
+        # Content area with horizontal paned for fields + JSON preview
+        self.content_paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        self.content_paned.set_vexpand(True)
+        main_box.append(self.content_paned)
+
+        # Left side: Fields view (main content)
+        left_scroll = Gtk.ScrolledWindow()
+        left_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        left_scroll.set_hexpand(True)
+        self.content_paned.set_start_child(left_scroll)
+        self.content_paned.set_shrink_start_child(False)
+
+        self.fields_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.fields_box.set_margin_start(16)
+        self.fields_box.set_margin_end(16)
+        self.fields_box.set_margin_top(12)
+        self.fields_box.set_margin_bottom(16)
+        left_scroll.set_child(self.fields_box)
+
+        # Right side: JSON preview panel
+        right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        right_box.set_size_request(280, -1)
+        right_box.add_css_class('row-detail-json-panel')
+        self.content_paned.set_end_child(right_box)
+        self.content_paned.set_shrink_end_child(False)
+        self.content_paned.set_resize_end_child(False)
+
+        # JSON panel header
+        json_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        json_header.set_margin_start(12)
+        json_header.set_margin_end(12)
+        json_header.set_margin_top(8)
+        json_header.set_margin_bottom(8)
+        right_box.append(json_header)
+
+        json_title = Gtk.Label(label='JSON Preview')
+        json_title.set_halign(Gtk.Align.START)
+        json_title.set_hexpand(True)
+        json_title.add_css_class('heading')
+        json_header.append(json_title)
+
+        copy_btn = Gtk.Button()
+        copy_btn.set_icon_name('edit-copy-symbolic')
+        copy_btn.set_tooltip_text('Copy JSON')
+        copy_btn.add_css_class('flat')
+        copy_btn.connect('clicked', self._on_copy_json)
+        json_header.append(copy_btn)
+
+        # JSON content
+        json_scroll = Gtk.ScrolledWindow()
+        json_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        json_scroll.set_vexpand(True)
+        right_box.append(json_scroll)
+
+        self.json_view = Gtk.TextView()
+        self.json_view.set_editable(False)
+        self.json_view.set_monospace(True)
+        self.json_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        self.json_view.add_css_class('row-detail-json-preview')
+        self.json_view.set_left_margin(12)
+        self.json_view.set_right_margin(12)
+        self.json_view.set_top_margin(8)
+        self.json_view.set_bottom_margin(8)
+        json_scroll.set_child(self.json_view)
+
+        # Set initial paned position
+        self.content_paned.set_position(400)
+
+        # Keyboard shortcuts
+        key_controller = Gtk.EventControllerKey()
+        key_controller.connect('key-pressed', self._on_key_pressed)
+        self.add_controller(key_controller)
+
+    def _on_key_pressed(self, controller, keyval, keycode, state):
+        """Handle keyboard navigation."""
+        if keyval == Gdk.KEY_Left or keyval == Gdk.KEY_Up:
+            self._on_prev(None)
+            return True
+        elif keyval == Gdk.KEY_Right or keyval == Gdk.KEY_Down:
+            self._on_next(None)
+            return True
+        elif keyval == Gdk.KEY_Escape:
+            self.close()
+            return True
+        return False
+
+    def _on_prev(self, button):
+        """Navigate to previous row."""
+        if self._current_index > 0:
+            self._current_index -= 1
+            self._update_content()
+
+    def _on_next(self, button):
+        """Navigate to next row."""
+        if self._current_index < len(self._rows) - 1:
+            self._current_index += 1
+            self._update_content()
+
+    def _on_mode_changed(self, button, mode: str):
+        """Handle view mode toggle."""
+        if not button.get_active():
+            return
+
+        self._view_mode = mode
+
+        # Update toggle states
+        if mode != 'fields':
+            self.fields_btn.set_active(False)
+        if mode != 'json':
+            self.json_btn.set_active(False)
+        if mode != 'raw':
+            self.raw_btn.set_active(False)
+
+        self._update_content()
+
+    def _update_content(self):
+        """Update display for current row."""
+        # Update navigation state
+        self.prev_btn.set_sensitive(self._current_index > 0)
+        self.next_btn.set_sensitive(self._current_index < len(self._rows) - 1)
+        self.row_counter.set_label(f'Row {self._current_index + 1} of {len(self._rows)}')
+
+        # Get current row data
+        row_data = self._rows[self._current_index]
+        row_dict = dict(zip(self._columns, row_data, strict=False))
+
+        # Update JSON preview
+        import json
+
+        try:
+            json_str = json.dumps(row_dict, indent=2, default=str)
+        except (TypeError, ValueError):
+            json_str = str(row_dict)
+        self.json_view.get_buffer().set_text(json_str)
+
+        # Clear fields box
+        while True:
+            child = self.fields_box.get_first_child()
+            if child is None:
+                break
+            self.fields_box.remove(child)
+
+        # Build content based on view mode
+        if self._view_mode == 'fields':
+            self._build_fields_view(row_dict)
+            self.content_paned.get_end_child().set_visible(True)
+        elif self._view_mode == 'json':
+            self._build_full_json_view(json_str)
+            self.content_paned.get_end_child().set_visible(False)
+        elif self._view_mode == 'raw':
+            self._build_raw_view(row_data)
+            self.content_paned.get_end_child().set_visible(False)
+
+    def _build_fields_view(self, row_dict: dict):
+        """Build field-by-field view with card-style layout."""
+        for col in self._columns:
+            value = row_dict.get(col)
+
+            # Field card
+            card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            card.add_css_class('row-detail-field-card')
+            card.set_margin_bottom(8)
+
+            # Field header (name + type)
+            header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            card.append(header)
+
+            name_label = Gtk.Label(label=col)
+            name_label.set_halign(Gtk.Align.START)
+            name_label.add_css_class('row-detail-field-name')
+            header.append(name_label)
+
+            type_str = self._get_type_string(value)
+            type_badge = Gtk.Label(label=type_str)
+            type_badge.add_css_class('row-detail-type-badge')
+            header.append(type_badge)
+
+            # Spacer
+            spacer = Gtk.Box()
+            spacer.set_hexpand(True)
+            header.append(spacer)
+
+            # Edit button (if editable)
+            if self.on_edit:
+                edit_btn = Gtk.Button()
+                edit_btn.set_icon_name('document-edit-symbolic')
+                edit_btn.add_css_class('flat')
+                edit_btn.add_css_class('circular')
+                edit_btn.set_tooltip_text('Edit value')
+                edit_btn.connect('clicked', self._on_edit_field, col, value)
+                header.append(edit_btn)
+
+            # Value display
+            if self._is_complex_value(value):
+                self._build_complex_value_card(card, value)
+            else:
+                value_label = Gtk.Label(label=self._format_value(value))
+                value_label.set_halign(Gtk.Align.START)
+                value_label.set_selectable(True)
+                value_label.set_wrap(True)
+                value_label.set_xalign(0)
+                value_label.add_css_class('row-detail-field-value')
+                if value is None:
+                    value_label.add_css_class('row-detail-null')
+                card.append(value_label)
+
+            self.fields_box.append(card)
+
+    def _build_complex_value_card(self, card: Gtk.Box, value: Any):
+        """Build expandable view for complex values."""
+        import json
+
+        try:
+            if isinstance(value, str):
+                parsed = json.loads(value)
+                formatted = json.dumps(parsed, indent=2)
+            else:
+                formatted = json.dumps(value, indent=2, default=str)
+        except (json.JSONDecodeError, TypeError):
+            formatted = str(value)
+
+        # Use expander for complex values
+        expander = Gtk.Expander(label=f'{len(formatted)} chars')
+        expander.set_expanded(len(formatted) < 500)
+        expander.add_css_class('row-detail-expander')
+
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_monospace(True)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.add_css_class('row-detail-complex-value')
+        text_view.get_buffer().set_text(formatted)
+
+        expander.set_child(text_view)
+        card.append(expander)
+
+    def _build_full_json_view(self, json_str: str):
+        """Build full-width JSON view."""
+        frame = Gtk.Frame()
+        frame.add_css_class('row-detail-json-frame')
+
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_monospace(True)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.add_css_class('row-detail-json')
+        text_view.set_left_margin(16)
+        text_view.set_right_margin(16)
+        text_view.set_top_margin(12)
+        text_view.set_bottom_margin(12)
+        text_view.get_buffer().set_text(json_str)
+
+        frame.set_child(text_view)
+        self.fields_box.append(frame)
+
+    def _build_raw_view(self, row_data: tuple):
+        """Build raw tuple view."""
+        raw_values = [repr(v) for v in row_data]
+        raw_str = f'({", ".join(raw_values)})'
+
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_monospace(True)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.add_css_class('row-detail-raw')
+        text_view.set_left_margin(16)
+        text_view.set_right_margin(16)
+        text_view.set_top_margin(12)
+        text_view.set_bottom_margin(12)
+        text_view.get_buffer().set_text(raw_str)
+
+        self.fields_box.append(text_view)
+
+    def _on_edit_field(self, button, column: str, old_value: Any):
+        """Handle edit button click for a field."""
+        # Create edit dialog
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading=f'Edit {column}',
+            body='Enter new value:',
+        )
+        dialog.add_response('cancel', 'Cancel')
+        dialog.add_response('save', 'Save')
+        dialog.set_response_appearance('save', Adw.ResponseAppearance.SUGGESTED)
+
+        # Entry for new value
+        entry = Gtk.Entry()
+        entry.set_text(str(old_value) if old_value is not None else '')
+        entry.set_margin_start(24)
+        entry.set_margin_end(24)
+        dialog.set_extra_child(entry)
+
+        def on_response(dialog, response):
+            if response == 'save' and self.on_edit:
+                new_value = entry.get_text()
+                self.on_edit(self._current_index, column, old_value, new_value)
+            dialog.close()
+
+        dialog.connect('response', on_response)
+        dialog.present()
+
+    def _on_copy_json(self, button):
+        """Copy JSON to clipboard."""
+        clipboard = Gdk.Display.get_default().get_clipboard()
+        buffer = self.json_view.get_buffer()
+        start, end = buffer.get_bounds()
+        json_str = buffer.get_text(start, end, False)
+        clipboard.set(json_str)
+
+        # Show feedback toast
+        toast = Adw.Toast(title='JSON copied to clipboard')
+        toast.set_timeout(2)
+        # Find the toast overlay (if we had one - for now just change button temporarily)
+        button.set_icon_name('emblem-ok-symbolic')
+        GLib.timeout_add(1500, lambda: button.set_icon_name('edit-copy-symbolic') or False)
+
+    def _get_type_string(self, value: Any) -> str:
+        """Get a short type indicator string."""
+        if value is None:
+            return 'null'
+        elif isinstance(value, bool):
+            return 'bool'
+        elif isinstance(value, int):
+            return 'int'
+        elif isinstance(value, float):
+            return 'float'
+        elif isinstance(value, str):
+            if value.startswith(('{', '[')):
+                return 'json'
+            return 'str'
+        elif isinstance(value, (list, tuple)):
+            return 'array'
+        elif isinstance(value, dict):
+            return 'object'
+        else:
+            return type(value).__name__[:6]
+
+    def _is_complex_value(self, value: Any) -> bool:
+        """Check if a value should be shown in expandable view."""
+        if isinstance(value, (dict, list, tuple)):
+            return True
+        if isinstance(value, str):
+            if len(value) > 100 or value.startswith(('{', '[')):
+                return True
+        return False
+
+    def _format_value(self, value: Any) -> str:
+        """Format a value for display."""
+        if value is None:
+            return 'NULL'
+        elif isinstance(value, bool):
+            return 'true' if value else 'false'
+        elif isinstance(value, str):
+            return value
+        else:
+            return str(value)
+
+    def navigate_to_row(self, index: int):
+        """Navigate to a specific row index."""
+        if 0 <= index < len(self._rows):
+            self._current_index = index
+            self._update_content()
+
+
 # Additional CSS for the new widgets
 DB_WIDGETS_CSS = f"""
 /* === Syntax Editor === */
@@ -2024,6 +2474,43 @@ DB_WIDGETS_CSS = f"""
     background-color: {COLORS['crust']};
     font-size: 11px;
     padding: 8px;
+}}
+
+/* === Row Detail Window === */
+.row-detail-window {{
+    background-color: {COLORS['base']};
+}}
+
+.row-detail-json-panel {{
+    background-color: {COLORS['mantle']};
+    border-left: 1px solid {COLORS['surface0']};
+}}
+
+.row-detail-json-preview text {{
+    color: {COLORS['text']};
+    background-color: {COLORS['mantle']};
+    font-size: 12px;
+}}
+
+.row-detail-field-card {{
+    background-color: {COLORS['surface0']}20;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid {COLORS['surface0']}40;
+}}
+
+.row-detail-field-card:hover {{
+    background-color: {COLORS['surface0']}40;
+    border-color: {COLORS['surface0']};
+}}
+
+.row-detail-type-badge {{
+    background-color: {COLORS['surface1']};
+    color: {COLORS['subtext0']};
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: monospace;
 }}
 """
 

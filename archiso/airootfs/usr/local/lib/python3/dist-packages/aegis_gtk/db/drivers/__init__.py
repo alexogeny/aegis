@@ -19,6 +19,9 @@ from .base import (
 # Import drivers - they register themselves
 from . import sqlite as _sqlite
 from . import postgresql as _postgresql
+from . import mysql as _mysql
+from . import redis as _redis
+from . import dynamodb as _dynamodb
 
 # Driver registry
 _DRIVERS: dict[DriverType, type[DatabaseDriver]] = {}
@@ -46,6 +49,9 @@ def get_available_drivers() -> list[type[DatabaseDriver]]:
 # Register built-in drivers
 register_driver(_sqlite.SQLiteDriver)
 register_driver(_postgresql.PostgreSQLDriver)
+register_driver(_mysql.MySQLDriver)
+register_driver(_redis.RedisDriver)
+register_driver(_dynamodb.DynamoDBDriver)
 
 __all__ = [
     'DatabaseDriver',

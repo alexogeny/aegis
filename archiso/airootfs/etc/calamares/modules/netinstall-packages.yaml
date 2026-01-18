@@ -1,13 +1,13 @@
-# Aegis Linux - Optional Package Groups
-# These packages are installed from repositories during the installation process.
+# Aegis Linux - Package Selection
+# Choose your setup based on how you'll use this system.
 
 - name: "Graphics Drivers"
-  description: "GPU drivers for hardware acceleration"
+  description: "Select your GPU manufacturer for hardware acceleration"
   critical: false
   expanded: true
   subgroups:
-    - name: "NVIDIA (Proprietary)"
-      description: "NVIDIA open kernel modules - recommended for RTX 20/30/40 series"
+    - name: "NVIDIA (RTX 20/30/40 Series)"
+      description: "Open kernel modules for modern NVIDIA GPUs"
       critical: false
       selected: false
       packages:
@@ -18,8 +18,8 @@
         - libva-nvidia-driver
         - egl-wayland
 
-    - name: "NVIDIA (Legacy)"
-      description: "NVIDIA proprietary drivers - for GTX 900/1000 series"
+    - name: "NVIDIA (GTX 900/1000 Series)"
+      description: "Proprietary drivers for older NVIDIA GPUs"
       critical: false
       selected: false
       packages:
@@ -28,8 +28,8 @@
         - nvidia-settings
         - lib32-nvidia-utils
 
-    - name: "AMD (Open Source)"
-      description: "Mesa RADV drivers - already included, select for VA-API"
+    - name: "AMD"
+      description: "Mesa RADV drivers with Vulkan and VA-API"
       critical: false
       selected: false
       packages:
@@ -38,8 +38,8 @@
         - vulkan-radeon
         - lib32-vulkan-radeon
 
-    - name: "Intel (Open Source)"
-      description: "Intel graphics drivers and VA-API support"
+    - name: "Intel"
+      description: "Intel graphics with Vulkan and VA-API"
       critical: false
       selected: false
       packages:
@@ -48,31 +48,38 @@
         - vulkan-intel
         - lib32-vulkan-intel
 
-- name: "Development Tools"
-  description: "Programming languages and development utilities"
+- name: "Software Developer"
+  description: "Programming languages, editors, and dev tools"
   critical: false
-  expanded: false
+  expanded: true
   subgroups:
-    - name: "Rust Development"
+    - name: "VS Code"
+      description: "Visual Studio Code editor"
+      critical: false
+      selected: false
+      packages:
+        - code
+
+    - name: "Rust"
       description: "Rust compiler, cargo, and rust-analyzer"
       critical: false
-      selected: true
+      selected: false
       packages:
         - rust
         - rust-src
         - rust-analyzer
 
-    - name: "Go Development"
+    - name: "Go"
       description: "Go programming language"
       critical: false
-      selected: true
+      selected: false
       packages:
         - go
 
-    - name: "C/C++ Development"
-      description: "GCC, Clang, and build tools"
+    - name: "C/C++"
+      description: "GCC, Clang, LLVM, CMake, Ninja"
       critical: false
-      selected: true
+      selected: false
       packages:
         - gcc
         - clang
@@ -80,29 +87,28 @@
         - cmake
         - ninja
 
-    - name: "Python Development"
+    - name: "Python"
       description: "Python with uv package manager"
       critical: false
-      selected: true
+      selected: false
       packages:
-        - python
         - python-pip
         - uv
 
     - name: "JavaScript/TypeScript"
-      description: "Bun runtime and package manager"
+      description: "Bun - fast JS runtime and package manager"
       critical: false
-      selected: true
+      selected: false
       packages:
         - bun
 
-- name: "Containers & Kubernetes"
-  description: "Container runtimes and orchestration tools"
+- name: "Containers & Cloud"
+  description: "Container runtimes and orchestration"
   critical: false
   expanded: false
   subgroups:
     - name: "Docker"
-      description: "Docker container runtime"
+      description: "Docker Engine with Compose and Buildx"
       critical: false
       selected: false
       packages:
@@ -111,14 +117,15 @@
         - docker-buildx
 
     - name: "Podman"
-      description: "Rootless container runtime"
+      description: "Rootless, daemonless container runtime"
       critical: false
-      selected: true
+      selected: false
       packages:
         - podman
+        - podman-compose
 
     - name: "Kubernetes Tools"
-      description: "kubectl, k9s, and helm"
+      description: "kubectl, k9s, and Helm"
       critical: false
       selected: false
       packages:
@@ -126,29 +133,64 @@
         - k9s
         - helm
 
-- name: "Content Creation"
-  description: "Streaming, recording, and media production"
+- name: "Databases"
+  description: "Database servers and tools"
+  critical: false
+  expanded: false
+  subgroups:
+    - name: "PostgreSQL"
+      description: "PostgreSQL server and client"
+      critical: false
+      selected: false
+      packages:
+        - postgresql
+
+    - name: "Redis"
+      description: "In-memory data store"
+      critical: false
+      selected: false
+      packages:
+        - redis
+
+    - name: "MariaDB"
+      description: "MySQL-compatible database"
+      critical: false
+      selected: false
+      packages:
+        - mariadb
+
+- name: "Streaming & Content Creation"
+  description: "Tools for streamers and content creators"
   critical: false
   expanded: false
   subgroups:
     - name: "OBS Studio"
-      description: "Open Broadcaster Software for streaming/recording"
+      description: "Streaming and recording software"
       critical: false
       selected: false
       packages:
         - obs-studio
 
     - name: "Audio Production"
-      description: "EasyEffects, LSP plugins, and Calf"
+      description: "EasyEffects, LSP plugins, Calf, and qpwgraph"
       critical: false
-      selected: true
+      selected: false
       packages:
         - easyeffects
         - lsp-plugins
         - calf
+        - qpwgraph
+
+    - name: "DAW (Digital Audio)"
+      description: "Qtractor DAW and FluidSynth"
+      critical: false
+      selected: false
+      packages:
+        - qtractor
+        - fluidsynth
 
 - name: "Gaming"
-  description: "Gaming platforms and compatibility tools"
+  description: "Gaming platforms and tools"
   critical: false
   expanded: false
   subgroups:
@@ -168,7 +210,7 @@
         - winetricks
 
     - name: "Gamepad Support"
-      description: "Controller drivers and configuration"
+      description: "Controller drivers and mapping"
       critical: false
       selected: false
       packages:
@@ -176,7 +218,7 @@
         - antimicrox
 
 - name: "Office & Productivity"
-  description: "Office suites and productivity applications"
+  description: "Office suites and document tools"
   critical: false
   expanded: false
   subgroups:
@@ -194,3 +236,31 @@
       packages:
         - evince
         - pdfarranger
+
+- name: "Network & Security Tools"
+  description: "Additional networking and security utilities"
+  critical: false
+  expanded: false
+  subgroups:
+    - name: "Wireshark"
+      description: "Network protocol analyzer"
+      critical: false
+      selected: false
+      packages:
+        - wireshark-qt
+
+    - name: "Nmap"
+      description: "Network scanner and security auditing"
+      critical: false
+      selected: false
+      packages:
+        - nmap
+
+    - name: "VPN Clients"
+      description: "WireGuard and OpenVPN"
+      critical: false
+      selected: false
+      packages:
+        - wireguard-tools
+        - openvpn
+        - networkmanager-openvpn

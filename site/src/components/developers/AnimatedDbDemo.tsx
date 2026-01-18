@@ -738,12 +738,8 @@ export function AnimatedDbDemo() {
             </div>
           </div>
 
-          {/* Results with Row Detail Panel */}
-          <div className="flex-1 flex overflow-hidden bg-base">
-            {/* Results Table */}
-            <div
-              className={`${expandedRowIndex !== null ? "w-1/2" : "flex-1"} overflow-auto transition-all duration-300`}
-            >
+          {/* Results Table */}
+          <div className="flex-1 overflow-auto bg-base">
               {results.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-overlay0">
                   <span className="text-2xl mb-2">📊</span>
@@ -801,103 +797,116 @@ export function AnimatedDbDemo() {
                   </tbody>
                 </table>
               )}
-            </div>
-
-            {/* Row Detail Panel */}
-            {expandedRowIndex !== null && results[expandedRowIndex] && (
-              <div className="w-1/2 border-l border-surface0 bg-mantle flex flex-col animate-slide-in-right">
-                {/* Header */}
-                <div className="px-3 py-2 border-b border-surface0 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">📋</span>
-                    <span className="text-xs font-bold text-text">
-                      Row Details
-                    </span>
-                    <span className="text-[10px] text-overlay0 font-mono">
-                      #Row {expandedRowIndex + 1}
-                    </span>
-                  </div>
-                  {/* View mode toggle */}
-                  <div className="flex items-center gap-1">
-                    <button className="px-2 py-1 text-[10px] bg-mauve text-crust rounded font-medium">
-                      Fields
-                    </button>
-                    <button className="px-2 py-1 text-[10px] bg-surface0 text-overlay0 rounded hover:text-text transition-colors">
-                      JSON
-                    </button>
-                    <button
-                      className="ml-2 px-1.5 py-1 text-xs text-overlay0 hover:text-text transition-colors"
-                      onClick={() => setExpandedRowIndex(null)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-
-                {/* Fields View */}
-                <div className="flex-1 overflow-auto p-3 space-y-2">
-                  {Object.entries(results[expandedRowIndex]).map(
-                    ([key, value]) => (
-                      <div
-                        key={key}
-                        className="bg-surface0/30 rounded-lg p-2.5 border border-surface0"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px]">
-                            {key === "id"
-                              ? "🔑"
-                              : key === "email"
-                                ? "📧"
-                                : key === "status"
-                                  ? "🏷️"
-                                  : "📊"}
-                          </span>
-                          <span className="text-[10px] text-overlay0 uppercase tracking-wide font-medium">
-                            {key}
-                          </span>
-                          <span className="text-[10px] text-yellow font-mono ml-auto">
-                            {typeof value === "number"
-                              ? "integer"
-                              : typeof value}
-                          </span>
-                        </div>
-                        <div className="text-xs text-text font-mono pl-5">
-                          {key === "status" ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
-                              {String(value)}
-                            </span>
-                          ) : (
-                            String(value)
-                          )}
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
-
-                {/* JSON Preview (collapsed) */}
-                <div className="px-3 py-2 border-t border-surface0 bg-crust/50">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-overlay0 uppercase">
-                      JSON
-                    </span>
-                    <button className="text-[10px] text-mauve hover:text-pink transition-colors">
-                      Copy
-                    </button>
-                  </div>
-                  <pre className="text-[10px] text-subtext0 font-mono mt-1 whitespace-pre-wrap">
-                    {JSON.stringify(results[expandedRowIndex], null, 2)
-                      .split("\n")
-                      .slice(0, 3)
-                      .join("\n")}
-                    ...
-                  </pre>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Row Detail Window (floating overlay) */}
+      {expandedRowIndex !== null && results[expandedRowIndex] && (
+        <div className="absolute inset-0 flex items-center justify-center bg-crust/60 backdrop-blur-sm z-40 animate-fadeIn">
+          <div className="w-[340px] bg-mantle rounded-xl border-2 border-surface0 shadow-2xl overflow-hidden animate-scale-in">
+            {/* Window Title Bar */}
+            <div className="bg-crust px-3 py-2 flex items-center justify-between border-b border-surface0">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red/80"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow/80"></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-green/80"></div>
+                </div>
+                <span className="text-xs font-bold text-text ml-2">
+                  Row Details
+                </span>
+              </div>
+              <button
+                className="text-xs text-overlay0 hover:text-text transition-colors"
+                onClick={() => setExpandedRowIndex(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Window Header with Navigation */}
+            <div className="px-3 py-2 border-b border-surface0 flex items-center justify-between bg-base/50">
+              <div className="flex items-center gap-2">
+                <button className="px-2 py-1 text-xs bg-surface0 text-overlay0 rounded hover:text-text transition-colors">
+                  ◀ Prev
+                </button>
+                <span className="text-[10px] text-overlay0 font-mono">
+                  Row {expandedRowIndex + 1} of {results.length}
+                </span>
+                <button className="px-2 py-1 text-xs bg-surface0 text-overlay0 rounded hover:text-text transition-colors">
+                  Next ▶
+                </button>
+              </div>
+              {/* View mode toggle */}
+              <div className="flex items-center gap-1">
+                <button className="px-2 py-1 text-[10px] bg-mauve text-crust rounded font-medium">
+                  Fields
+                </button>
+                <button className="px-2 py-1 text-[10px] bg-surface0 text-overlay0 rounded hover:text-text transition-colors">
+                  JSON
+                </button>
+              </div>
+            </div>
+
+            {/* Fields View */}
+            <div className="p-3 space-y-2 max-h-[200px] overflow-auto">
+              {Object.entries(results[expandedRowIndex]).map(
+                ([key, value]) => (
+                  <div
+                    key={key}
+                    className="bg-surface0/30 rounded-lg p-2.5 border border-surface0"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px]">
+                        {key === "id"
+                          ? "🔑"
+                          : key === "email"
+                            ? "📧"
+                            : key === "status"
+                              ? "🏷️"
+                              : "📊"}
+                      </span>
+                      <span className="text-[10px] text-overlay0 uppercase tracking-wide font-medium">
+                        {key}
+                      </span>
+                      <span className="text-[10px] text-yellow font-mono ml-auto">
+                        {typeof value === "number"
+                          ? "integer"
+                          : typeof value}
+                      </span>
+                    </div>
+                    <div className="text-xs text-text font-mono pl-5">
+                      {key === "status" ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-green/20 text-green">
+                          {String(value)}
+                        </span>
+                      ) : (
+                        String(value)
+                      )}
+                    </div>
+                  </div>
+                ),
+              )}
+            </div>
+
+            {/* JSON Preview Panel */}
+            <div className="px-3 py-2 border-t border-surface0 bg-crust/50">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-overlay0 uppercase">
+                  JSON Preview
+                </span>
+                <button className="text-[10px] text-mauve hover:text-pink transition-colors">
+                  📋 Copy
+                </button>
+              </div>
+              <pre className="text-[10px] text-subtext0 font-mono whitespace-pre-wrap bg-crust rounded p-2 max-h-[60px] overflow-auto">
+{JSON.stringify(results[expandedRowIndex], null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Status Bar */}
       <div className="bg-surface0/50 px-4 py-2 text-xs text-overlay0 border-t border-surface0 flex justify-between items-center">

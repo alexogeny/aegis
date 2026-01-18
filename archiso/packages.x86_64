@@ -1,5 +1,7 @@
 # Aegis Linux - Package List
 # =============================================================================
+# This is the MINIMAL base system. Development tools, containers, audio
+# production, etc. are selected during installation via Calamares netinstall.
 
 # -----------------------------------------------------------------------------
 # Base System
@@ -49,11 +51,8 @@ syslinux
 # -----------------------------------------------------------------------------
 # GPU Drivers - Selected via Calamares netinstall
 # -----------------------------------------------------------------------------
-# NVIDIA, AMD, and Intel drivers are now optional and installed during
+# NVIDIA, AMD, and Intel drivers are optional and installed during
 # the Calamares installation process based on user selection.
-# This significantly reduces ISO size (~500MB).
-#
-# The egl-wayland package is still needed for Wayland compatibility
 egl-wayland
 
 # -----------------------------------------------------------------------------
@@ -76,9 +75,7 @@ hyprcursor
 # -----------------------------------------------------------------------------
 waybar
 fuzzel
-wofi
-
-# Global Search (Spotlight-like)
+# wofi - removed, fuzzel is lighter and sufficient
 anyrun
 
 # -----------------------------------------------------------------------------
@@ -88,7 +85,7 @@ swaync
 libnotify
 
 # -----------------------------------------------------------------------------
-# Audio (PipeWire)
+# Audio (PipeWire) - Core only
 # -----------------------------------------------------------------------------
 pipewire
 pipewire-alsa
@@ -97,18 +94,14 @@ pipewire-jack
 wireplumber
 pavucontrol
 pamixer
-
-# Audio Mixer & DSP
-qpwgraph
-easyeffects
-lsp-plugins
-calf
+# easyeffects, lsp-plugins, calf - moved to netinstall (Audio Production)
+# qpwgraph - moved to netinstall (Audio Production)
 
 # -----------------------------------------------------------------------------
 # Terminal Emulators
 # -----------------------------------------------------------------------------
 kitty
-foot
+# foot - removed, kitty is sufficient
 
 # -----------------------------------------------------------------------------
 # Shell & CLI Tools
@@ -124,12 +117,10 @@ fzf
 zoxide
 htop
 btop
-neofetch
 fastfetch
 less
 man-db
 man-pages
-texinfo
 
 # -----------------------------------------------------------------------------
 # Catppuccin Theming (from Chaotic-AUR)
@@ -138,7 +129,6 @@ colloid-catppuccin-gtk-theme-git
 catppuccin-cursors-mocha
 catppuccin-mocha-grub-theme-git
 papirus-icon-theme
-# gtk-engine-murrine - moved to AUR, only needed for GTK2 apps
 
 # -----------------------------------------------------------------------------
 # Fonts
@@ -174,7 +164,6 @@ iptables-nft
 # Security - Anti-Malware (ClamAV)
 # -----------------------------------------------------------------------------
 clamav
-inotify-tools
 
 # -----------------------------------------------------------------------------
 # Security - Additional Tools
@@ -185,8 +174,6 @@ keepassxc
 gnupg
 pass
 lynis
-
-# Rootkit detection (rkhunter is in extra repo)
 rkhunter
 
 # -----------------------------------------------------------------------------
@@ -195,15 +182,13 @@ rkhunter
 networkmanager
 network-manager-applet
 iwd
-wpa_supplicant
-wireless_tools
 iw
 dhcpcd
 openssh
 curl
 wget
 rsync
-bind
+bind-tools
 
 # -----------------------------------------------------------------------------
 # Bluetooth
@@ -220,7 +205,6 @@ thunar-archive-plugin
 thunar-volman
 gvfs
 gvfs-mtp
-gvfs-smb
 tumbler
 file-roller
 p7zip
@@ -237,7 +221,6 @@ gstreamer
 gst-plugins-base
 gst-plugins-good
 gst-plugins-bad
-gst-plugins-ugly
 gst-libav
 
 # -----------------------------------------------------------------------------
@@ -250,11 +233,11 @@ wl-clipboard
 cliphist
 
 # -----------------------------------------------------------------------------
-# Screen Recording
+# Screen Recording (lightweight)
 # -----------------------------------------------------------------------------
 gpu-screen-recorder
 wf-recorder
-obs-studio
+# obs-studio - moved to netinstall (Streaming & Content Creation)
 
 # -----------------------------------------------------------------------------
 # Authentication & Polkit
@@ -273,8 +256,6 @@ qt5-quickcontrols2
 qt5-svg
 qt6-svg
 qt6-declarative
-# SDDM theme - will use default or configure post-install
-# sddm-theme-catppuccin
 
 # -----------------------------------------------------------------------------
 # System Utilities
@@ -291,15 +272,13 @@ xdg-user-dirs
 xdg-utils
 reflector
 zram-generator
-# systemd-oomd is part of systemd package
 
 # -----------------------------------------------------------------------------
 # Installer
 # -----------------------------------------------------------------------------
-# archinstall as fallback CLI installer (always works)
 archinstall
 
-# Calamares dependencies (calamares built during ISO creation)
+# Calamares dependencies
 ckbcomp
 kpmcore
 yaml-cpp
@@ -313,96 +292,40 @@ libpwquality
 icu
 
 # -----------------------------------------------------------------------------
-# Development Tools
+# Minimal Dev Tools (for system maintenance)
 # -----------------------------------------------------------------------------
 git
-git-lfs
-gcc
-clang
-llvm
 make
-cmake
-ninja
 pkgconf
-autoconf
-automake
 patch
 
-# Rust
-rust
-rust-src
-rust-analyzer
-
-# Python (uv is a fast Python package manager)
+# Python (required for system scripts and Aegis apps)
 python
-python-pip
-uv
 
-# JavaScript/TypeScript (Bun - fast JS runtime & package manager)
-bun
-
-# Go
-go
-
-# Git Forges CLI
-github-cli
-glab
-
-# Additional dev utilities
+# CLI utilities that are useful for everyone
 jq
-yq
-httpie
 lazygit
-git-delta
-tokei
-hyperfine
-difftastic
-watchexec
-just
-direnv
-mkcert
-age
-sops
-pre-commit
-shellcheck
-shfmt
-
-# Database tools
-sqlite
-postgresql-libs
-redis
-
-# API & Network dev
-curlie
-xh
-# grpcurl - install from AUR if needed
-websocat
-
-# Container & K8s
-kubectl
-k9s
-helm
-podman
 
 # -----------------------------------------------------------------------------
-# Applications - Browsers
+# Development Tools - Moved to netinstall
+# -----------------------------------------------------------------------------
+# Languages: rust, go, gcc, clang, llvm, bun, python-pip, uv
+# Containers: docker, podman, kubectl, k9s, helm
+# IDEs: code (VS Code)
+# All selectable during installation
+
+# -----------------------------------------------------------------------------
+# Applications - Browser
 # -----------------------------------------------------------------------------
 firefox
 
 # -----------------------------------------------------------------------------
-# Applications - Containers
-# -----------------------------------------------------------------------------
-docker
-docker-compose
-docker-buildx
-
-# -----------------------------------------------------------------------------
-# Text Editors & IDEs
+# Text Editors
 # -----------------------------------------------------------------------------
 nano
 vim
 neovim
-code
+# code (VS Code) - moved to netinstall (Software Developer)
 
 # -----------------------------------------------------------------------------
 # Additional Utilities
@@ -413,11 +336,6 @@ dconf-editor
 
 # -----------------------------------------------------------------------------
 # Aegis GTK4/Libadwaita Apps
-# - aegis-mixer: Virtual audio mixer for PipeWire
-# - aegis-macropad: Macro button controller (works with Stream Deck)
-# - aegis-lighting: Smart light controller (works with Elgato Key Light)
-# - aegis-armor: Security configuration (AppArmor, firewall, hardening)
-# - aegis-dbview: Database viewer (PostgreSQL, SQLite, MySQL, etc.)
 # -----------------------------------------------------------------------------
 libadwaita
 python-gobject
@@ -432,11 +350,10 @@ python-hidapi
 avahi
 nss-mdns
 
-# PipeWire routing (for advanced users)
-qpwgraph
-
 # -----------------------------------------------------------------------------
 # Database Drivers for aegis-dbview
 # -----------------------------------------------------------------------------
+sqlite
+postgresql-libs
 python-asyncpg
 python-pygments
