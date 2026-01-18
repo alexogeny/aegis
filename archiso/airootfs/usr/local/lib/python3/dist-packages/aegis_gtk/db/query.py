@@ -7,7 +7,8 @@ Handles async query execution with progress tracking and cancellation.
 import asyncio
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 from .drivers.base import DatabaseDriver, QueryResult
 from .history import QueryHistory, HistoryEntry
@@ -15,6 +16,7 @@ from .history import QueryHistory, HistoryEntry
 
 class QueryState(Enum):
     """Query execution state."""
+
     IDLE = 'idle'
     RUNNING = 'running'
     CANCELLING = 'cancelling'
@@ -26,6 +28,7 @@ class QueryState(Enum):
 @dataclass
 class QueryExecution:
     """Represents a query execution."""
+
     query: str
     state: QueryState = QueryState.IDLE
     result: QueryResult | None = None
@@ -117,7 +120,7 @@ class QueryExecutor:
                     columns=[],
                     rows=[],
                     row_count=0,
-                    error="Query cancelled",
+                    error='Query cancelled',
                 )
 
             self._current_execution.result = result
@@ -147,7 +150,7 @@ class QueryExecutor:
                 columns=[],
                 rows=[],
                 row_count=0,
-                error="Query cancelled",
+                error='Query cancelled',
             )
 
         except Exception as e:
@@ -191,6 +194,7 @@ class QueryExecutor:
         Returns:
             The asyncio task for the execution.
         """
+
         async def _run():
             result = await self.execute(query, params, limit)
             if on_complete:
@@ -244,7 +248,7 @@ class QueryExecutor:
             Execution plan as a string.
         """
         if not self.driver.supports_explain:
-            return "EXPLAIN not supported for this database"
+            return 'EXPLAIN not supported for this database'
 
         return await self.driver.explain_query(query)
 

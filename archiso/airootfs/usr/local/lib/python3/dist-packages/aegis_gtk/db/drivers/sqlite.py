@@ -63,14 +63,14 @@ class SQLiteDriver(DatabaseDriver):
         db_path = Path(config['database']).expanduser().resolve()
 
         if not db_path.exists():
-            raise FileNotFoundError(f"Database file not found: {db_path}")
+            raise FileNotFoundError(f'Database file not found: {db_path}')
 
         self._db_path = db_path
 
         # Build connection URI
-        uri = f"file:{db_path}"
+        uri = f'file:{db_path}'
         if config.get('read_only', False):
-            uri += "?mode=ro"
+            uri += '?mode=ro'
 
         # Connect in thread pool since sqlite3 is synchronous
         loop = asyncio.get_event_loop()
@@ -79,7 +79,7 @@ class SQLiteDriver(DatabaseDriver):
             conn = sqlite3.connect(uri, uri=True, check_same_thread=False)
             conn.row_factory = sqlite3.Row
             # Enable foreign key support
-            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute('PRAGMA foreign_keys = ON')
             return conn
 
         self._connection = await loop.run_in_executor(None, _connect)
@@ -99,26 +99,24 @@ class SQLiteDriver(DatabaseDriver):
             db_path = Path(config['database']).expanduser().resolve()
 
             if not db_path.exists():
-                return False, f"File not found: {db_path}"
+                return False, f'File not found: {db_path}'
 
             if not db_path.is_file():
-                return False, f"Not a file: {db_path}"
+                return False, f'Not a file: {db_path}'
 
             # Try to open and read version
-            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-            version = conn.execute("SELECT sqlite_version()").fetchone()[0]
+            conn = sqlite3.connect(f'file:{db_path}?mode=ro', uri=True)
+            version = conn.execute('SELECT sqlite_version()').fetchone()[0]
 
             # Get basic stats
-            tables = conn.execute(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"
-            ).fetchone()[0]
+            tables = conn.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'").fetchone()[0]
             conn.close()
 
             size_mb = db_path.stat().st_size / (1024 * 1024)
-            return True, f"SQLite {version}\n{tables} tables, {size_mb:.1f} MB"
+            return True, f'SQLite {version}\n{tables} tables, {size_mb:.1f} MB'
 
         except sqlite3.DatabaseError as e:
-            return False, f"Invalid database: {e}"
+            return False, f'Invalid database: {e}'
         except Exception as e:
             return False, str(e)
 
@@ -134,7 +132,7 @@ class SQLiteDriver(DatabaseDriver):
                 columns=[],
                 rows=[],
                 row_count=0,
-                error="Not connected to database",
+                error='Not connected to database',
             )
 
         loop = asyncio.get_event_loop()
@@ -231,9 +229,7 @@ class SQLiteDriver(DatabaseDriver):
             # Get row count for tables
             row_count = None
             if table_type == 'table':
-                count_result = await self.execute(
-                    f'SELECT COUNT(*) FROM "{name}"'
-                )
+                count_result = await self.execute(f'SELECT COUNT(*) FROM "{name}"')
                 if count_result.is_success and count_result.rows:
                     row_count = count_result.rows[0][0]
 
@@ -248,9 +244,7 @@ class SQLiteDriver(DatabaseDriver):
 
         return tables
 
-    async def get_columns(
-        self, table: str, schema: str | None = None
-    ) -> list[ColumnDef]:
+    async def get_columns(self, table: str, schema: str | None = None) -> list[ColumnDef]:
         result = await self.execute(f"PRAGMA table_info('{table}')")
 
         if not result.is_success:
@@ -290,9 +284,7 @@ class SQLiteDriver(DatabaseDriver):
     ) -> QueryResult:
         return await self.execute(f'SELECT * FROM "{table}" LIMIT {limit}')
 
-    async def get_indexes(
-        self, table: str, schema: str | None = None
-    ) -> list[IndexInfo]:
+    async def get_indexes(self, table: str, schema: str | None = None) -> list[IndexInfo]:
         # Get index list
         result = await self.execute(f"PRAGMA index_list('{table}')")
 
@@ -321,10 +313,10 @@ class SQLiteDriver(DatabaseDriver):
         return indexes
 
     async def explain_query(self, query: str) -> str:
-        result = await self.execute(f"EXPLAIN QUERY PLAN {query}")
+        result = await self.execute(f'EXPLAIN QUERY PLAN {query}')
 
         if not result.is_success:
-            return f"Error: {result.error}"
+            return f'Error: {result.error}'
 
         lines = []
         for row in result.rows:

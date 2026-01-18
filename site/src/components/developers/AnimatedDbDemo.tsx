@@ -94,7 +94,11 @@ const mockSchema: SchemaNode[] = [
             type: "column",
             metadata: { dataType: "bigint", isPK: true },
           },
-          { name: "name", type: "column", metadata: { dataType: "varchar(200)" } },
+          {
+            name: "name",
+            type: "column",
+            metadata: { dataType: "varchar(200)" },
+          },
           {
             name: "price",
             type: "column",
@@ -112,8 +116,16 @@ const mockSchema: SchemaNode[] = [
         type: "view",
         children: [
           { name: "id", type: "column", metadata: { dataType: "bigint" } },
-          { name: "email", type: "column", metadata: { dataType: "varchar(255)" } },
-          { name: "name", type: "column", metadata: { dataType: "varchar(100)" } },
+          {
+            name: "email",
+            type: "column",
+            metadata: { dataType: "varchar(255)" },
+          },
+          {
+            name: "name",
+            type: "column",
+            metadata: { dataType: "varchar(100)" },
+          },
         ],
       },
     ],
@@ -158,7 +170,12 @@ ORDER BY created_at DESC
 LIMIT 10;`;
 
 const mockResults = [
-  { id: 1, name: "Alice Johnson", email: "alice@example.com", status: "active" },
+  {
+    id: 1,
+    name: "Alice Johnson",
+    email: "alice@example.com",
+    status: "active",
+  },
   { id: 2, name: "Bob Smith", email: "bob@example.com", status: "active" },
   { id: 3, name: "Carol White", email: "carol@example.com", status: "active" },
   { id: 4, name: "David Brown", email: "david@example.com", status: "active" },
@@ -255,7 +272,8 @@ function TreeNode({
   onSelect: (name: string) => void;
 }) {
   const isExpanded = expandedNodes.has(node.name);
-  const isSelected = selectedNode === node.name || selectedNode?.startsWith(node.name + "/");
+  const isSelected =
+    selectedNode === node.name || selectedNode?.startsWith(node.name + "/");
   const hasChildren = node.children && node.children.length > 0;
 
   const getIcon = () => {
@@ -267,11 +285,7 @@ function TreeNode({
       case "view":
         return "👁️";
       case "column":
-        return node.metadata?.isPK
-          ? "🔑"
-          : node.metadata?.isFK
-            ? "🔗"
-            : "📊";
+        return node.metadata?.isPK ? "🔑" : node.metadata?.isFK ? "🔗" : "📊";
     }
   };
 
@@ -603,8 +617,12 @@ export function AnimatedDbDemo() {
               </div>
               <div className="flex-1 p-2">
                 <pre className="font-mono text-xs text-text whitespace-pre-wrap min-h-[70px]">
-                  <code dangerouslySetInnerHTML={{ __html: highlightSQL(query) }} />
-                  {isAnimating && <span className="animate-pulse text-mauve">|</span>}
+                  <code
+                    dangerouslySetInnerHTML={{ __html: highlightSQL(query) }}
+                  />
+                  {isAnimating && (
+                    <span className="animate-pulse text-mauve">|</span>
+                  )}
                 </pre>
               </div>
             </div>

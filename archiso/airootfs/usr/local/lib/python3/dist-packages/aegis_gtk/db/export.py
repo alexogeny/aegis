@@ -16,6 +16,7 @@ from .drivers.base import QueryResult, ColumnInfo
 
 class ExportFormat(Enum):
     """Supported export formats."""
+
     CSV = 'csv'
     JSON = 'json'
     JSON_LINES = 'jsonl'
@@ -64,7 +65,7 @@ class ResultExporter:
 
         exporter = exporters.get(format)
         if not exporter:
-            raise ValueError(f"Unsupported format: {format}")
+            raise ValueError(f'Unsupported format: {format}')
 
         content = exporter()
 
@@ -116,7 +117,7 @@ class ResultExporter:
     def _to_sql_insert(self, table_name: str) -> str:
         """Export as SQL INSERT statements."""
         if not self.result.rows:
-            return f"-- No data to insert into {table_name}\n"
+            return f'-- No data to insert into {table_name}\n'
 
         col_names = ', '.join(f'"{col.name}"' for col in self.result.columns)
         lines = []
@@ -130,7 +131,7 @@ class ResultExporter:
     def _to_sql_copy(self, table_name: str) -> str:
         """Export as PostgreSQL COPY format."""
         if not self.result.rows:
-            return f"-- No data to copy into {table_name}\n"
+            return f'-- No data to copy into {table_name}\n'
 
         col_names = ', '.join(f'"{col.name}"' for col in self.result.columns)
         lines = [f'COPY "{table_name}" ({col_names}) FROM stdin;']
@@ -145,7 +146,7 @@ class ResultExporter:
     def _to_markdown(self, include_headers: bool = True) -> str:
         """Export as Markdown table."""
         if not self.result.columns:
-            return "No data\n"
+            return 'No data\n'
 
         lines = []
 

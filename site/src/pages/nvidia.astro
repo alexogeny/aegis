@@ -4,7 +4,11 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 
 const envVariables = [
-  { name: "LIBVA_DRIVER_NAME", value: "nvidia", desc: "VA-API driver selection" },
+  {
+    name: "LIBVA_DRIVER_NAME",
+    value: "nvidia",
+    desc: "VA-API driver selection",
+  },
   { name: "GBM_BACKEND", value: "nvidia-drm", desc: "GBM backend for Wayland" },
   { name: "__GLX_VENDOR_LIBRARY_NAME", value: "nvidia", desc: "GLX vendor" },
   {
@@ -88,7 +92,9 @@ const supportedCards = [
             >
               📦
             </div>
-            <h3 class="text-xl font-bold text-text mb-2">Open Kernel Modules</h3>
+            <h3 class="text-xl font-bold text-text mb-2">
+              Open Kernel Modules
+            </h3>
             <p class="text-subtext0 text-sm">
               Using nvidia-open-dkms for better stability and open source
               compliance. Automatically builds for your kernel.
@@ -101,7 +107,9 @@ const supportedCards = [
             >
               🎬
             </div>
-            <h3 class="text-xl font-bold text-text mb-2">Hardware Acceleration</h3>
+            <h3 class="text-xl font-bold text-text mb-2">
+              Hardware Acceleration
+            </h3>
             <p class="text-subtext0 text-sm">
               VA-API and VDPAU pre-configured for hardware video decoding.
               Smooth playback for 4K and HDR content.
@@ -263,7 +271,9 @@ const supportedCards = [
               </div>
               <div class="mt-4">
                 <span class="text-overlay0">$ </span>
-                <span class="text-text">nvidia-smi --query-gpu=name --format=csv</span>
+                <span class="text-text"
+                  >nvidia-smi --query-gpu=name --format=csv</span
+                >
               </div>
               <div class="text-green">
                 name<br />
@@ -311,8 +321,8 @@ const supportedCards = [
               Can I use CUDA and machine learning frameworks?
             </h3>
             <p class="text-subtext0 text-sm">
-              Yes. CUDA toolkit and cuDNN are available in the Arch repositories.
-              Install them with
+              Yes. CUDA toolkit and cuDNN are available in the Arch
+              repositories. Install them with
               <code class="text-mauve font-mono">pacman -S cuda cudnn</code>.
             </p>
           </div>

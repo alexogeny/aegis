@@ -207,10 +207,7 @@ class QueryHistory:
             List of matching history entries.
         """
         query_lower = query_text.lower()
-        matches = [
-            e for e in self._entries
-            if query_lower in e.query.lower()
-        ]
+        matches = [e for e in self._entries if query_lower in e.query.lower()]
         return matches[:limit]
 
     def clear(self, connection_id: str | None = None):
@@ -220,10 +217,7 @@ class QueryHistory:
             connection_id: If provided, only clear history for this connection.
         """
         if connection_id:
-            self._entries = [
-                e for e in self._entries
-                if e.connection_id != connection_id
-            ]
+            self._entries = [e for e in self._entries if e.connection_id != connection_id]
         else:
             self._entries = []
 

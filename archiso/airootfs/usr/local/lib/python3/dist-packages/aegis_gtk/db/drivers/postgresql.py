@@ -29,12 +29,12 @@ def _ensure_asyncpg():
     if asyncpg is None:
         try:
             import asyncpg as _asyncpg
+
             asyncpg = _asyncpg
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
-                "asyncpg is required for PostgreSQL support. "
-                "Install it with: pip install asyncpg"
-            )
+                'asyncpg is required for PostgreSQL support. Install it with: pip install asyncpg'
+            ) from err
 
 
 class PostgreSQLDriver(DatabaseDriver):
@@ -110,6 +110,7 @@ class PostgreSQLDriver(DatabaseDriver):
 
         if ssl_mode in ('require', 'verify-full'):
             import ssl
+
             ssl_context = ssl.create_default_context()
             if ssl_mode == 'require':
                 ssl_context.check_hostname = False
@@ -142,6 +143,7 @@ class PostgreSQLDriver(DatabaseDriver):
 
             if ssl_mode in ('require', 'verify-full'):
                 import ssl
+
                 ssl_context = ssl.create_default_context()
                 if ssl_mode == 'require':
                     ssl_context.check_hostname = False
@@ -177,7 +179,7 @@ class PostgreSQLDriver(DatabaseDriver):
                 columns=[],
                 rows=[],
                 row_count=0,
-                error="Not connected to database",
+                error='Not connected to database',
             )
 
         start = time.time()
@@ -305,9 +307,7 @@ class PostgreSQLDriver(DatabaseDriver):
 
         return tables
 
-    async def get_columns(
-        self, table: str, schema: str | None = None
-    ) -> list[ColumnDef]:
+    async def get_columns(self, table: str, schema: str | None = None) -> list[ColumnDef]:
         schema = schema or self._current_schema or 'public'
 
         query = """
@@ -352,8 +352,7 @@ class PostgreSQLDriver(DatabaseDriver):
 
         columns = []
         for row in result.rows:
-            (name, data_type, nullable, default, ordinal,
-             is_primary, is_unique, comment) = row
+            (name, data_type, nullable, default, ordinal, is_primary, is_unique, comment) = row
 
             columns.append(
                 ColumnDef(
@@ -404,9 +403,7 @@ class PostgreSQLDriver(DatabaseDriver):
         quoted_table = f'"{schema}"."{table}"'
         return await self.execute(f'SELECT * FROM {quoted_table} LIMIT {limit}')
 
-    async def get_indexes(
-        self, table: str, schema: str | None = None
-    ) -> list[IndexInfo]:
+    async def get_indexes(self, table: str, schema: str | None = None) -> list[IndexInfo]:
         schema = schema or self._current_schema or 'public'
 
         query = """
@@ -443,9 +440,7 @@ class PostgreSQLDriver(DatabaseDriver):
             for row in result.rows
         ]
 
-    async def get_foreign_keys(
-        self, table: str, schema: str | None = None
-    ) -> list[ForeignKeyInfo]:
+    async def get_foreign_keys(self, table: str, schema: str | None = None) -> list[ForeignKeyInfo]:
         schema = schema or self._current_schema or 'public'
 
         query = """
@@ -488,17 +483,17 @@ class PostgreSQLDriver(DatabaseDriver):
         ]
 
     async def explain_query(self, query: str) -> str:
-        result = await self.execute(f"EXPLAIN ANALYZE {query}")
+        result = await self.execute(f'EXPLAIN ANALYZE {query}')
 
         if not result.is_success:
-            return f"Error: {result.error}"
+            return f'Error: {result.error}'
 
         return '\n'.join(row[0] for row in result.rows)
 
     async def cancel_query(self) -> bool:
         if self._connection:
             try:
-                await self._connection.execute("SELECT pg_cancel_backend(pg_backend_pid())")
+                await self._connection.execute('SELECT pg_cancel_backend(pg_backend_pid())')
                 return True
             except Exception:
                 return False

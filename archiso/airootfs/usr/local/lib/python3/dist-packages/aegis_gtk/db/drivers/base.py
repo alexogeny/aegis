@@ -8,11 +8,13 @@ consistent behavior across different database types.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Iterator
+from typing import Any
+from collections.abc import Iterator
 
 
 class DriverType(Enum):
     """Supported database driver types."""
+
     SQLITE = 'sqlite'
     POSTGRESQL = 'postgresql'
     MYSQL = 'mysql'
@@ -25,6 +27,7 @@ class DriverType(Enum):
 @dataclass
 class ConnectionField:
     """Describes a field in the connection configuration form."""
+
     name: str
     label: str
     field_type: str  # 'text', 'password', 'number', 'file', 'dropdown', 'checkbox'
@@ -38,6 +41,7 @@ class ConnectionField:
 @dataclass
 class ColumnInfo:
     """Column metadata for query results."""
+
     name: str
     type_name: str
     python_type: type = str
@@ -48,6 +52,7 @@ class ColumnInfo:
 @dataclass
 class QueryResult:
     """Result of a query execution."""
+
     columns: list[ColumnInfo]
     rows: list[tuple]
     row_count: int
@@ -61,7 +66,7 @@ class QueryResult:
         """Convert rows to dictionaries."""
         col_names = [c.name for c in self.columns]
         for row in self.rows:
-            yield dict(zip(col_names, row))
+            yield dict(zip(col_names, row, strict=False))
 
     @property
     def is_success(self) -> bool:
@@ -72,6 +77,7 @@ class QueryResult:
 @dataclass
 class TableInfo:
     """Table metadata for schema browser."""
+
     name: str
     schema: str | None = None
     table_type: str = 'table'  # 'table', 'view', 'materialized_view'
@@ -83,13 +89,14 @@ class TableInfo:
     def full_name(self) -> str:
         """Get fully qualified table name."""
         if self.schema:
-            return f"{self.schema}.{self.name}"
+            return f'{self.schema}.{self.name}'
         return self.name
 
 
 @dataclass
 class ColumnDef:
     """Column definition for schema browser."""
+
     name: str
     data_type: str
     nullable: bool = True
@@ -105,6 +112,7 @@ class ColumnDef:
 @dataclass
 class IndexInfo:
     """Index information for a table."""
+
     name: str
     columns: list[str]
     is_unique: bool = False
@@ -115,6 +123,7 @@ class IndexInfo:
 @dataclass
 class ForeignKeyInfo:
     """Foreign key relationship information."""
+
     name: str
     columns: list[str]
     referenced_table: str
@@ -243,9 +252,7 @@ class DatabaseDriver(ABC):
         ...
 
     @abstractmethod
-    async def get_columns(
-        self, table: str, schema: str | None = None
-    ) -> list[ColumnDef]:
+    async def get_columns(self, table: str, schema: str | None = None) -> list[ColumnDef]:
         """Get column definitions for a table.
 
         Args:
@@ -278,9 +285,7 @@ class DatabaseDriver(ABC):
 
     # Optional methods with default implementations
 
-    async def get_indexes(
-        self, table: str, schema: str | None = None
-    ) -> list[IndexInfo]:
+    async def get_indexes(self, table: str, schema: str | None = None) -> list[IndexInfo]:
         """Get index information for a table.
 
         Args:
@@ -292,9 +297,7 @@ class DatabaseDriver(ABC):
         """
         return []
 
-    async def get_foreign_keys(
-        self, table: str, schema: str | None = None
-    ) -> list[ForeignKeyInfo]:
+    async def get_foreign_keys(self, table: str, schema: str | None = None) -> list[ForeignKeyInfo]:
         """Get foreign key relationships for a table.
 
         Args:
@@ -315,7 +318,7 @@ class DatabaseDriver(ABC):
         Returns:
             Execution plan as a string.
         """
-        return "EXPLAIN not supported for this database"
+        return 'EXPLAIN not supported for this database'
 
     async def cancel_query(self) -> bool:
         """Cancel the currently running query.

@@ -12,54 +12,180 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, Pango, Gdk
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from .theme import COLORS
 
 # SQL syntax highlighting colors (Catppuccin Mocha)
 SQL_COLORS = {
-    'keyword': COLORS['mauve'],      # SELECT, FROM, WHERE, etc.
-    'function': COLORS['blue'],       # COUNT, SUM, MAX, etc.
-    'string': COLORS['green'],        # 'string values'
-    'number': COLORS['peach'],        # 123, 45.67
-    'comment': COLORS['overlay0'],    # -- comments
-    'operator': COLORS['sky'],        # =, <, >, AND, OR
-    'identifier': COLORS['text'],     # column names
-    'type': COLORS['yellow'],         # INTEGER, VARCHAR, etc.
+    'keyword': COLORS['mauve'],  # SELECT, FROM, WHERE, etc.
+    'function': COLORS['blue'],  # COUNT, SUM, MAX, etc.
+    'string': COLORS['green'],  # 'string values'
+    'number': COLORS['peach'],  # 123, 45.67
+    'comment': COLORS['overlay0'],  # -- comments
+    'operator': COLORS['sky'],  # =, <, >, AND, OR
+    'identifier': COLORS['text'],  # column names
+    'type': COLORS['yellow'],  # INTEGER, VARCHAR, etc.
 }
 
 # SQL keywords for highlighting
 SQL_KEYWORDS = {
-    'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'IS', 'NULL',
-    'LIKE', 'BETWEEN', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'FULL',
-    'ON', 'AS', 'ORDER', 'BY', 'GROUP', 'HAVING', 'LIMIT', 'OFFSET',
-    'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'CREATE',
-    'TABLE', 'INDEX', 'VIEW', 'DROP', 'ALTER', 'ADD', 'COLUMN',
-    'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'UNIQUE', 'CHECK',
-    'DEFAULT', 'CONSTRAINT', 'CASCADE', 'DISTINCT', 'ALL', 'UNION',
-    'EXCEPT', 'INTERSECT', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
-    'EXISTS', 'ANY', 'SOME', 'TRUE', 'FALSE', 'ASC', 'DESC', 'NULLS',
-    'FIRST', 'LAST', 'OVER', 'PARTITION', 'WINDOW', 'WITH', 'RECURSIVE',
-    'RETURNING', 'CONFLICT', 'DO', 'NOTHING', 'EXCLUDED',
+    'SELECT',
+    'FROM',
+    'WHERE',
+    'AND',
+    'OR',
+    'NOT',
+    'IN',
+    'IS',
+    'NULL',
+    'LIKE',
+    'BETWEEN',
+    'JOIN',
+    'LEFT',
+    'RIGHT',
+    'INNER',
+    'OUTER',
+    'FULL',
+    'ON',
+    'AS',
+    'ORDER',
+    'BY',
+    'GROUP',
+    'HAVING',
+    'LIMIT',
+    'OFFSET',
+    'INSERT',
+    'INTO',
+    'VALUES',
+    'UPDATE',
+    'SET',
+    'DELETE',
+    'CREATE',
+    'TABLE',
+    'INDEX',
+    'VIEW',
+    'DROP',
+    'ALTER',
+    'ADD',
+    'COLUMN',
+    'PRIMARY',
+    'KEY',
+    'FOREIGN',
+    'REFERENCES',
+    'UNIQUE',
+    'CHECK',
+    'DEFAULT',
+    'CONSTRAINT',
+    'CASCADE',
+    'DISTINCT',
+    'ALL',
+    'UNION',
+    'EXCEPT',
+    'INTERSECT',
+    'CASE',
+    'WHEN',
+    'THEN',
+    'ELSE',
+    'END',
+    'EXISTS',
+    'ANY',
+    'SOME',
+    'TRUE',
+    'FALSE',
+    'ASC',
+    'DESC',
+    'NULLS',
+    'FIRST',
+    'LAST',
+    'OVER',
+    'PARTITION',
+    'WINDOW',
+    'WITH',
+    'RECURSIVE',
+    'RETURNING',
+    'CONFLICT',
+    'DO',
+    'NOTHING',
+    'EXCLUDED',
 }
 
 SQL_FUNCTIONS = {
-    'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'COALESCE', 'NULLIF',
-    'CAST', 'CONVERT', 'SUBSTRING', 'TRIM', 'UPPER', 'LOWER',
-    'LENGTH', 'CONCAT', 'REPLACE', 'NOW', 'CURRENT_DATE',
-    'CURRENT_TIME', 'CURRENT_TIMESTAMP', 'DATE', 'TIME', 'EXTRACT',
-    'ROUND', 'FLOOR', 'CEIL', 'ABS', 'MOD', 'POWER', 'SQRT',
-    'ROW_NUMBER', 'RANK', 'DENSE_RANK', 'LAG', 'LEAD', 'FIRST_VALUE',
-    'LAST_VALUE', 'NTH_VALUE', 'ARRAY_AGG', 'STRING_AGG', 'JSON_AGG',
+    'COUNT',
+    'SUM',
+    'AVG',
+    'MIN',
+    'MAX',
+    'COALESCE',
+    'NULLIF',
+    'CAST',
+    'CONVERT',
+    'SUBSTRING',
+    'TRIM',
+    'UPPER',
+    'LOWER',
+    'LENGTH',
+    'CONCAT',
+    'REPLACE',
+    'NOW',
+    'CURRENT_DATE',
+    'CURRENT_TIME',
+    'CURRENT_TIMESTAMP',
+    'DATE',
+    'TIME',
+    'EXTRACT',
+    'ROUND',
+    'FLOOR',
+    'CEIL',
+    'ABS',
+    'MOD',
+    'POWER',
+    'SQRT',
+    'ROW_NUMBER',
+    'RANK',
+    'DENSE_RANK',
+    'LAG',
+    'LEAD',
+    'FIRST_VALUE',
+    'LAST_VALUE',
+    'NTH_VALUE',
+    'ARRAY_AGG',
+    'STRING_AGG',
+    'JSON_AGG',
 }
 
 SQL_TYPES = {
-    'INTEGER', 'INT', 'SMALLINT', 'BIGINT', 'SERIAL', 'BIGSERIAL',
-    'REAL', 'DOUBLE', 'PRECISION', 'NUMERIC', 'DECIMAL', 'FLOAT',
-    'BOOLEAN', 'BOOL', 'TEXT', 'VARCHAR', 'CHAR', 'CHARACTER',
-    'DATE', 'TIME', 'TIMESTAMP', 'TIMESTAMPTZ', 'INTERVAL',
-    'UUID', 'JSON', 'JSONB', 'ARRAY', 'BYTEA', 'BLOB',
+    'INTEGER',
+    'INT',
+    'SMALLINT',
+    'BIGINT',
+    'SERIAL',
+    'BIGSERIAL',
+    'REAL',
+    'DOUBLE',
+    'PRECISION',
+    'NUMERIC',
+    'DECIMAL',
+    'FLOAT',
+    'BOOLEAN',
+    'BOOL',
+    'TEXT',
+    'VARCHAR',
+    'CHAR',
+    'CHARACTER',
+    'DATE',
+    'TIME',
+    'TIMESTAMP',
+    'TIMESTAMPTZ',
+    'INTERVAL',
+    'UUID',
+    'JSON',
+    'JSONB',
+    'ARRAY',
+    'BYTEA',
+    'BLOB',
 }
 
 SQL_OPERATORS = {'=', '<', '>', '<=', '>=', '<>', '!=', '+', '-', '*', '/', '%'}
@@ -196,6 +322,7 @@ class SyntaxHighlightedEditor(Gtk.Box):
     def _highlight_comments(self, text: str):
         """Highlight SQL comments."""
         import re
+
         # Single-line comments
         for match in re.finditer(r'--[^\n]*', text):
             start_iter = self.buffer.get_iter_at_offset(match.start())
@@ -211,6 +338,7 @@ class SyntaxHighlightedEditor(Gtk.Box):
     def _highlight_strings(self, text: str):
         """Highlight string literals."""
         import re
+
         for match in re.finditer(r"'(?:[^'\\]|\\.)*'", text):
             start_iter = self.buffer.get_iter_at_offset(match.start())
             end_iter = self.buffer.get_iter_at_offset(match.end())
@@ -219,6 +347,7 @@ class SyntaxHighlightedEditor(Gtk.Box):
     def _highlight_numbers(self, text: str):
         """Highlight numeric literals."""
         import re
+
         for match in re.finditer(r'\b\d+\.?\d*\b', text):
             start_iter = self.buffer.get_iter_at_offset(match.start())
             end_iter = self.buffer.get_iter_at_offset(match.end())
@@ -230,6 +359,7 @@ class SyntaxHighlightedEditor(Gtk.Box):
     def _highlight_words(self, text: str):
         """Highlight keywords, functions, and types."""
         import re
+
         for match in re.finditer(r'\b[A-Za-z_][A-Za-z0-9_]*\b', text):
             word = match.group().upper()
             start_iter = self.buffer.get_iter_at_offset(match.start())
@@ -283,6 +413,7 @@ class SyntaxHighlightedEditor(Gtk.Box):
 @dataclass
 class VirtualRow:
     """Represents a row in the virtual table."""
+
     index: int
     data: tuple
     widget: Gtk.Box | None = None
@@ -387,10 +518,7 @@ class VirtualScrollingTable(Gtk.Box):
         viewport_height = vadj.get_page_size()
 
         first_visible = max(0, int(scroll_top / self.ROW_HEIGHT) - self.BUFFER_ROWS)
-        last_visible = min(
-            len(self.rows),
-            int((scroll_top + viewport_height) / self.ROW_HEIGHT) + self.BUFFER_ROWS
-        )
+        last_visible = min(len(self.rows), int((scroll_top + viewport_height) / self.ROW_HEIGHT) + self.BUFFER_ROWS)
 
         new_range = (first_visible, last_visible)
 
@@ -400,10 +528,7 @@ class VirtualScrollingTable(Gtk.Box):
         self._visible_range = new_range
 
         # Remove rows outside visible range
-        rows_to_remove = [
-            idx for idx in self._row_widgets
-            if idx < first_visible or idx >= last_visible
-        ]
+        rows_to_remove = [idx for idx in self._row_widgets if idx < first_visible or idx >= last_visible]
         for idx in rows_to_remove:
             widget = self._row_widgets.pop(idx)
             self.rows_container.remove(widget)
@@ -704,6 +829,7 @@ class EditConfirmDialog(Adw.Window):
 @dataclass
 class SchemaNode:
     """Represents a node in the schema tree."""
+
     name: str
     node_type: str  # 'schema', 'table', 'column', 'index', 'view'
     children: list['SchemaNode'] | None = None
@@ -758,7 +884,7 @@ class SchemaTree(Gtk.Box):
 
     def _add_schema_node(self, node: SchemaNode, parent_path: str, level: int):
         """Recursively add a node to the tree."""
-        path = f"{parent_path}/{node.name}" if parent_path else node.name
+        path = f'{parent_path}/{node.name}' if parent_path else node.name
         self._nodes[path] = node
 
         # Check filter
@@ -824,7 +950,7 @@ class SchemaTree(Gtk.Box):
         # Metadata badge (e.g., row count, data type)
         if node.metadata:
             if 'row_count' in node.metadata:
-                badge = Gtk.Label(label=f"{node.metadata['row_count']:,}")
+                badge = Gtk.Label(label=f'{node.metadata["row_count"]:,}')
                 badge.add_css_class('schema-badge')
                 row.append(badge)
             elif 'data_type' in node.metadata:
@@ -978,8 +1104,11 @@ class EntityView(Gtk.Box):
 
         # Update header
         icons = {
-            'schema': '📁', 'table': '🗃️', 'view': '👁️',
-            'column': '📊', 'index': '🔑',
+            'schema': '📁',
+            'table': '🗃️',
+            'view': '👁️',
+            'column': '📊',
+            'index': '🔑',
         }
         self.icon_label.set_label(icons.get(node.node_type, '📄'))
         self.title_label.set_label(node.name)
@@ -1027,7 +1156,7 @@ class EntityView(Gtk.Box):
             self.content_box.append(meta_group)
 
             if 'row_count' in node.metadata:
-                self._add_info_row(meta_group, 'Rows', f"{node.metadata['row_count']:,}")
+                self._add_info_row(meta_group, 'Rows', f'{node.metadata["row_count"]:,}')
             if 'size' in node.metadata:
                 self._add_info_row(meta_group, 'Size', node.metadata['size'])
             if 'schema' in node.metadata:

@@ -83,8 +83,8 @@ class ConnectionConfig:
         if self.driver_type == 'sqlite':
             return self.database
         elif self.host:
-            port_str = f":{self.port}" if self.port else ""
-            return f"{self.username}@{self.host}{port_str}/{self.database}"
+            port_str = f':{self.port}' if self.port else ''
+            return f'{self.username}@{self.host}{port_str}/{self.database}'
         return self.database
 
 
@@ -100,8 +100,10 @@ class CredentialManager:
         """Initialize libsecret if available."""
         try:
             import gi
+
             gi.require_version('Secret', '1')
             from gi.repository import Secret
+
             self._secret = Secret
             self._available = True
 
@@ -111,7 +113,7 @@ class CredentialManager:
                 Secret.SchemaFlags.NONE,
                 {
                     'connection_id': Secret.SchemaAttributeType.STRING,
-                }
+                },
             )
         except (ImportError, ValueError):
             self._available = False
@@ -139,7 +141,7 @@ class CredentialManager:
                 self._schema,
                 {'connection_id': connection_id},
                 self._secret.COLLECTION_DEFAULT,
-                f"aegis-dbview: {connection_id}",
+                f'aegis-dbview: {connection_id}',
                 password,
                 None,
             )
@@ -318,7 +320,7 @@ class ConnectionManager:
         # Create new config with new ID
         new_config = ConnectionConfig.from_dict(source.to_dict())
         new_config.id = str(uuid.uuid4())
-        new_config.name = f"{source.name} (copy)"
+        new_config.name = f'{source.name} (copy)'
 
         self.save_connection(new_config)
 

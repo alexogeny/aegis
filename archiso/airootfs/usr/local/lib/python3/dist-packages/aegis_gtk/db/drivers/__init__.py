@@ -34,7 +34,7 @@ def get_driver(driver_type: DriverType | str) -> type[DatabaseDriver]:
     if isinstance(driver_type, str):
         driver_type = DriverType(driver_type)
     if driver_type not in _DRIVERS:
-        raise ValueError(f"Unknown driver type: {driver_type}")
+        raise ValueError(f'Unknown driver type: {driver_type}')
     return _DRIVERS[driver_type]
 
 

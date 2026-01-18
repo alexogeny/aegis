@@ -47,7 +47,12 @@ const mockData: QueryResult[] = [
 ];
 
 const connections = [
-  { name: "Production DB", type: "postgresql", icon: "🐘", status: "connected" },
+  {
+    name: "Production DB",
+    type: "postgresql",
+    icon: "🐘",
+    status: "connected",
+  },
   { name: "Dev MySQL", type: "mysql", icon: "🐬", status: "disconnected" },
   { name: "Local SQLite", type: "sqlite", icon: "📁", status: "disconnected" },
 ];
@@ -365,7 +370,8 @@ export function InteractiveDbView() {
                       <td
                         className={`px-3 py-2 ${editMode ? "cursor-pointer hover:bg-blue/10" : ""}`}
                         onClick={() =>
-                          editMode && setEditingCell({ row: rowIdx, col: "name" })
+                          editMode &&
+                          setEditingCell({ row: rowIdx, col: "name" })
                         }
                       >
                         {editingCell?.row === rowIdx &&
