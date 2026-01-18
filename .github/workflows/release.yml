@@ -37,6 +37,20 @@ jobs:
           echo "[chaotic-aur]" >> /etc/pacman.conf
           echo "Include = /etc/pacman.d/chaotic-mirrorlist" >> /etc/pacman.conf
 
+      - name: Set up EndeavourOS repository (for calamares)
+        run: |
+          pacman-key --recv-key A3B0A6DF16E00CCA --keyserver keyserver.ubuntu.com
+          pacman-key --lsign-key A3B0A6DF16E00CCA
+          cat > /etc/pacman.d/endeavouros-mirrorlist << 'EOF'
+          Server = https://mirror.alpix.eu/endeavouros/repo/$repo/$arch
+          Server = https://mirrors.gigenet.com/endeavouros/repo/$repo/$arch
+          Server = https://endeavouros.luzea.de/repo/$repo/$arch
+          EOF
+          echo "" >> /etc/pacman.conf
+          echo "[endeavouros]" >> /etc/pacman.conf
+          echo "SigLevel = PackageRequired" >> /etc/pacman.conf
+          echo "Include = /etc/pacman.d/endeavouros-mirrorlist" >> /etc/pacman.conf
+
       - name: Set up ArchZFS repository
         run: |
           pacman-key --recv-keys DDF7DB817396A49B2A2723F7403BD972F75D9D76 --keyserver keyserver.ubuntu.com
@@ -54,7 +68,7 @@ jobs:
       - name: Prepare profile
         run: |
           cp -r archiso /tmp/aegis-profile
-          # Add calamares from Chaotic-AUR to package list
+          # Add calamares from EndeavourOS repo
           echo "calamares" >> /tmp/aegis-profile/packages.x86_64
           # Remove custom .desktop to avoid conflict with package
           rm -f /tmp/aegis-profile/airootfs/usr/share/applications/calamares.desktop
